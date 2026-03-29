@@ -1,0 +1,229 @@
+-- ============================================================
+-- FLOWCRM - Supabase Schema
+-- Run this in: Supabase > SQL Editor > New query
+-- ============================================================
+
+-- Enable UUID extension
+create extension if not exists "uuid-ossp";
+
+-- ============================================================
+-- WORKSPACES
+-- ============================================================
+create table if not exists workspaces (
+  id          uuid primary key default uuid_generate_v4(),
+  name        text not null,
+  slug        text unique,
+  plan        text default 'free' check (plan in ('free','starter','growth','scale')),
+  owner_id    uuid not null references auth.users(id) on delete cascade,
+  logo_url    text,
+  primary_color text default '#6172f3',
+  created_at  timestamptz default now()
+);
+
+alter table workspaces enable row level security;
+create policy "Users manage own workspace" on workspaces
+  using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+-- ============================================================
+-- PROFILES
+-- ============================================================
+create table if not exists profiles (
+  id            uuid primary key references auth.users(id) on delete cascade,
+  workspace_id  uuid references workspaces(id) on delete cascade,
+  full_name     text not null default '',
+  email         text,
+  avatar_url    text,
+  role          text default 'admin' check (role in ('admin','manager','member')),
+  created_at    timestamptz default now()
+);
+
+alter table profiles enable row level security;
+create policy "Users manage own profile" on profiles
+  using (id = auth.uid()) with check (id = auth.uid());
+create policy "Workspace members can view profiles" on profiles
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- PIPELINES
+-- ============================================================
+create table if not exists pipelines (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  name          text not null,
+  description   text,
+  color         text default '#6172f3',
+  order_index   int default 0,
+  created_at    timestamptz default now()
+);
+
+alter table pipelines enable row level security;
+create policy "Workspace owner manages pipelines" on pipelines
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- PIPELINE STAGES
+-- ============================================================
+create table if not exists pipeline_stages (
+  id            uuid primary key default uuid_generate_v4(),
+  pipeline_id   uuid not null references pipelines(id) on delete cascade,
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  name          text not null,
+  order_index   int default 0,
+  color         text default '#6172f3',
+  win_stage     boolean default false,
+  lost_stage    boolean default false,
+  created_at    timestamptz default now()
+);
+
+alter table pipeline_stages enable row level security;
+create policy "Workspace owner manages stages" on pipeline_stages
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- CONTACTS
+-- ============================================================
+create table if not exists contacts (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  type          text default 'person' check (type in ('person','company')),
+  name          text not null,
+  email         text,
+  phone         text,
+  company_name  text,
+  company_id    uuid references contacts(id),
+  job_title     text,
+  website       text,
+  address       text,
+  tags          text[],
+  notes         text,
+  custom_fields jsonb default '{}',
+  owner_id      uuid references auth.users(id),
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+alter table contacts enable row level security;
+create policy "Workspace owner manages contacts" on contacts
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- DEALS
+-- ============================================================
+create table if not exists deals (
+  id                    uuid primary key default uuid_generate_v4(),
+  workspace_id          uuid not null references workspaces(id) on delete cascade,
+  pipeline_id           uuid references pipelines(id) on delete set null,
+  stage_id              uuid references pipeline_stages(id) on delete set null,
+  title                 text not null,
+  value                 numeric,
+  currency              text default 'USD',
+  contact_id            uuid references contacts(id) on delete set null,
+  company_id            uuid references contacts(id) on delete set null,
+  owner_id              uuid references auth.users(id),
+  probability           int default 0 check (probability >= 0 and probability <= 100),
+  expected_close_date   date,
+  status                text default 'open' check (status in ('open','won','lost')),
+  lost_reason           text,
+  tags                  text[],
+  custom_fields         jsonb default '{}',
+  order_index           int default 0,
+  created_at            timestamptz default now(),
+  updated_at            timestamptz default now()
+);
+
+alter table deals enable row level security;
+create policy "Workspace owner manages deals" on deals
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- ACTIVITIES (Tasks, calls, emails, meetings, notes)
+-- ============================================================
+create table if not exists activities (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  type          text default 'task' check (type in ('call','email','meeting','note','task')),
+  title         text not null,
+  notes         text,
+  deal_id       uuid references deals(id) on delete cascade,
+  contact_id    uuid references contacts(id) on delete set null,
+  owner_id      uuid references auth.users(id),
+  due_date      timestamptz,
+  done          boolean default false,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+alter table activities enable row level security;
+create policy "Workspace owner manages activities" on activities
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- CUSTOM FIELD DEFINITIONS
+-- ============================================================
+create table if not exists custom_field_defs (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  entity        text not null check (entity in ('deal','contact','company')),
+  label         text not null,
+  key           text not null,
+  type          text not null check (type in ('text','number','currency','date','select','boolean','url')),
+  options       text[],
+  required      boolean default false,
+  order_index   int default 0,
+  created_at    timestamptz default now(),
+  unique(workspace_id, entity, key)
+);
+
+alter table custom_field_defs enable row level security;
+create policy "Workspace owner manages custom fields" on custom_field_defs
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- TRIGGERS: Auto-update updated_at
+-- ============================================================
+create or replace function update_updated_at()
+returns trigger as $$
+begin new.updated_at = now(); return new; end;
+$$ language plpgsql;
+
+create trigger contacts_updated_at before update on contacts for each row execute function update_updated_at();
+create trigger deals_updated_at before update on deals for each row execute function update_updated_at();
+create trigger activities_updated_at before update on activities for each row execute function update_updated_at();
+
+-- ============================================================
+-- TRIGGER: Auto-create workspace + profile on signup
+-- ============================================================
+create or replace function handle_new_user()
+returns trigger as $$
+declare
+  new_workspace_id uuid;
+begin
+  -- Create workspace
+  insert into workspaces (owner_id, name, slug)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'workspace_name', 'My Workspace'),
+    coalesce(new.raw_user_meta_data->>'workspace_slug', 'workspace-' || substr(new.id::text, 1, 8))
+  )
+  returning id into new_workspace_id;
+
+  -- Create profile
+  insert into profiles (id, workspace_id, full_name, email, role)
+  values (
+    new.id,
+    new_workspace_id,
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    new.email,
+    'admin'
+  );
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function handle_new_user();
+
+-- Done! Your FlowCRM database is ready.
