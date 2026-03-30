@@ -141,7 +141,7 @@ export default function PipelinePage() {
 
     const stages: PipelineStage[] = stagesRes.data || []
     const deals: DealWithContact[] = dealsRes.data || []
-    setContacts(contactsRes.data || [])
+    setContacts((contactsRes.data || []) as Contact[])
 
     setColumns(stages.map(stage => ({
       ...stage,
