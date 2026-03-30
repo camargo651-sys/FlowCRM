@@ -192,6 +192,53 @@ export async function POST() {
     })
   }
 
+  // AI-powered engagement insights
+  const { data: hotContacts } = await supabase
+    .from('contacts')
+    .select('id, name, engagement_score, score_label')
+    .eq('workspace_id', ws.id)
+    .eq('score_label', 'hot')
+    .limit(5)
+
+  if (hotContacts && hotContacts.length > 0) {
+    const topNames = hotContacts.slice(0, 3).map(c => c.name).join(', ')
+    insights.push({
+      id: '5', type: 'opportunity',
+      title: `${hotContacts.length} hot ${contactLabel.toLowerCase()}${hotContacts.length > 1 ? 's' : ''}`,
+      description: `${topNames}${hotContacts.length > 3 ? ` and ${hotContacts.length - 3} more` : ''} ${hotContacts.length > 1 ? 'are' : 'is'} highly engaged right now. Strike while the iron is hot.`,
+    })
+
+    // Add hot contacts as actions
+    hotContacts.slice(0, 2).forEach(c => {
+      actions.push({
+        id: String(actionId++),
+        priority: 'high' as const,
+        icon: 'star',
+        title: `${c.name} is hot (score: ${c.engagement_score})`,
+        description: `High engagement detected. Reach out now — send a message, schedule a call, or create a ${dealLabel.toLowerCase()}.`,
+        entity_type: 'contact',
+        entity_name: c.name,
+      })
+    })
+  }
+
+  const { data: atRiskDeals } = await supabase
+    .from('deals')
+    .select('id, title, value, ai_risk, ai_score')
+    .eq('workspace_id', ws.id)
+    .eq('status', 'open')
+    .eq('ai_risk', 'critical')
+    .limit(3)
+
+  if (atRiskDeals && atRiskDeals.length > 0) {
+    const totalAtRisk = atRiskDeals.reduce((s, d) => s + (d.value || 0), 0)
+    insights.push({
+      id: '6', type: 'risk',
+      title: `$${totalAtRisk.toLocaleString()} in critical ${dealLabelPlural.toLowerCase()}`,
+      description: `${atRiskDeals.length} ${dealLabelPlural.toLowerCase()} are at critical risk of being lost. Immediate action required.`,
+    })
+  }
+
   // Greeting
   const hour = now.getHours()
   const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'

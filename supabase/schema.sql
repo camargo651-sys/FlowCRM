@@ -547,4 +547,50 @@ alter table call_logs enable row level security;
 create policy "Workspace owner manages call logs" on call_logs
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 
+-- ============================================================
+-- ENGAGEMENT SIGNALS (real-time events for AI scoring)
+-- ============================================================
+create table if not exists engagement_signals (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  contact_id      uuid references contacts(id) on delete cascade,
+  deal_id         uuid references deals(id) on delete set null,
+  signal_type     text not null check (signal_type in (
+    'email_opened','email_replied','email_sent','email_received',
+    'whatsapp_received','whatsapp_sent','whatsapp_read',
+    'call_completed','call_positive','call_negative',
+    'quote_viewed','quote_sent','quote_accepted','quote_rejected',
+    'deal_stage_changed','deal_created','deal_stale',
+    'meeting_scheduled','meeting_completed',
+    'linkedin_connected','contact_created'
+  )),
+  strength        int default 1 check (strength >= 1 and strength <= 10),
+  source          text,
+  metadata        jsonb default '{}',
+  created_at      timestamptz default now()
+);
+
+alter table engagement_signals enable row level security;
+create policy "Workspace owner manages signals" on engagement_signals
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- Index for fast scoring queries
+create index if not exists idx_signals_contact on engagement_signals(contact_id, created_at desc);
+create index if not exists idx_signals_deal on engagement_signals(deal_id, created_at desc);
+
+-- ============================================================
+-- CONTACT SCORES (AI-calculated engagement scores)
+-- ============================================================
+alter table contacts add column if not exists engagement_score int default 0;
+alter table contacts add column if not exists score_label text default 'cold' check (score_label in ('hot','warm','cold','inactive'));
+alter table contacts add column if not exists last_interaction_at timestamptz;
+alter table contacts add column if not exists interaction_count int default 0;
+
+-- ============================================================
+-- DEAL SCORES (AI-calculated win probability)
+-- ============================================================
+alter table deals add column if not exists ai_score int default 0;
+alter table deals add column if not exists ai_risk text check (ai_risk in ('on_track','at_risk','critical'));
+alter table deals add column if not exists ai_next_action text;
+
 -- Done! Your FlowCRM database is ready.

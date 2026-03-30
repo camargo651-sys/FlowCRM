@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
+import { emitSignal } from '@/lib/ai/signal-emitter'
 
 interface EmailAddress {
   email: string
@@ -137,6 +138,16 @@ export async function extractContactsAndStore(
     }, { onConflict: 'email_account_id,provider_message_id' })
 
     if (!msgError) messagesStored++
+
+    // Emit engagement signal
+    if (primaryContactId) {
+      await emitSignal(supabase, {
+        workspaceId,
+        contactId: primaryContactId,
+        signalType: direction === 'inbound' ? 'email_received' : 'email_sent',
+        source: provider,
+      })
+    }
 
     // Create activity for this email
     if (primaryContactId) {

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { matchPhoneNumber, normalizePhone } from '@/lib/whatsapp/client'
 import { analyzeTranscript } from '@/lib/calls/transcription-analyzer'
+import { emitSignal } from '@/lib/ai/signal-emitter'
 
 function getServiceSupabase() {
   return createClient(
@@ -104,6 +105,21 @@ export async function POST(request: NextRequest) {
     contact_id: contactId,
     owner_id: ws?.owner_id || null,
   }).select('id').single()
+
+  // Emit engagement signals
+  if (contactId && workspaceId) {
+    await emitSignal(supabase, {
+      workspaceId,
+      contactId,
+      signalType: 'call_completed',
+      source: provider,
+    })
+    if (analysis.sentiment === 'positive') {
+      await emitSignal(supabase, { workspaceId, contactId, signalType: 'call_positive', source: provider })
+    } else if (analysis.sentiment === 'negative') {
+      await emitSignal(supabase, { workspaceId, contactId, signalType: 'call_negative', source: provider })
+    }
+  }
 
   // Log activity
   if (contactId && ws) {

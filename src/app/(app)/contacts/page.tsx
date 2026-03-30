@@ -239,6 +239,7 @@ export default function ContactsPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden md:table-cell">Email</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden lg:table-cell">Company</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden lg:table-cell">Phone</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden xl:table-cell">Score</th>
                 <th className="px-4 py-3 w-10"></th>
               </tr>
             </thead>
@@ -265,6 +266,22 @@ export default function ContactsPage() {
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="text-xs text-surface-600">{contact.phone || '—'}</span>
+                  </td>
+                  <td className="px-4 py-3 hidden xl:table-cell">
+                    {(contact as any).score_label && (contact as any).score_label !== 'cold' ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn('w-2 h-2 rounded-full',
+                          (contact as any).score_label === 'hot' ? 'bg-red-500' :
+                          (contact as any).score_label === 'warm' ? 'bg-amber-500' : 'bg-surface-300')} />
+                        <span className={cn('text-[10px] font-semibold capitalize',
+                          (contact as any).score_label === 'hot' ? 'text-red-600' :
+                          (contact as any).score_label === 'warm' ? 'text-amber-600' : 'text-surface-400')}>
+                          {(contact as any).score_label} ({(contact as any).engagement_score || 0})
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-surface-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn('badge text-[10px]', contact.type === 'company' ? 'badge-blue' : 'badge-gray')}>

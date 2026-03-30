@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { matchPhoneNumber, normalizePhone } from './client'
+import { emitSignal } from '@/lib/ai/signal-emitter'
 
 interface InboundMessage {
   wamid: string
@@ -121,7 +122,17 @@ export async function processInboundWhatsAppMessage(
     })
   }
 
-  // 4. Update last_webhook_at
+  // 4. Emit engagement signal
+  if (contactId) {
+    await emitSignal(supabase, {
+      workspaceId: account.workspace_id,
+      contactId,
+      signalType: 'whatsapp_received',
+      source: 'whatsapp',
+    })
+  }
+
+  // 5. Update last_webhook_at
   await supabase.from('whatsapp_accounts').update({
     last_webhook_at: new Date().toISOString(),
   }).eq('id', account.id)
