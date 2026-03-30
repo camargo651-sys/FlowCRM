@@ -17,6 +17,10 @@ create table if not exists workspaces (
   owner_id    uuid not null references auth.users(id) on delete cascade,
   logo_url    text,
   primary_color text default '#6172f3',
+  industry    text,
+  team_size   text,
+  language    text default 'en',
+  onboarding_completed boolean default false,
   created_at  timestamptz default now()
 );
 
@@ -53,6 +57,7 @@ create table if not exists pipelines (
   description   text,
   color         text default '#6172f3',
   order_index   int default 0,
+  contact_id    uuid references contacts(id) on delete set null,
   created_at    timestamptz default now()
 );
 
@@ -225,5 +230,74 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
+
+-- ============================================================
+-- INTEGRATIONS
+-- ============================================================
+create table if not exists integrations (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  key           text not null,
+  name          text not null,
+  enabled       boolean default false,
+  config        jsonb default '{}',
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now(),
+  unique(workspace_id, key)
+);
+
+alter table integrations enable row level security;
+create policy "Workspace owner manages integrations" on integrations
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create trigger integrations_updated_at before update on integrations for each row execute function update_updated_at();
+
+-- ============================================================
+-- QUOTES / PROPOSALS
+-- ============================================================
+create table if not exists quotes (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  deal_id         uuid references deals(id) on delete set null,
+  contact_id      uuid references contacts(id) on delete set null,
+  quote_number    text not null,
+  title           text not null,
+  status          text default 'draft' check (status in ('draft','sent','accepted','rejected','expired')),
+  currency        text default 'USD',
+  subtotal        numeric default 0,
+  discount_type   text default 'percent' check (discount_type in ('percent','fixed')),
+  discount_value  numeric default 0,
+  tax_rate        numeric default 0,
+  tax_amount      numeric default 0,
+  total           numeric default 0,
+  notes           text,
+  terms           text,
+  valid_until      date,
+  sent_at         timestamptz,
+  accepted_at     timestamptz,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+
+alter table quotes enable row level security;
+create policy "Workspace owner manages quotes" on quotes
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create trigger quotes_updated_at before update on quotes for each row execute function update_updated_at();
+
+create table if not exists quote_items (
+  id            uuid primary key default uuid_generate_v4(),
+  quote_id      uuid not null references quotes(id) on delete cascade,
+  description   text not null,
+  quantity      numeric default 1,
+  unit_price    numeric default 0,
+  discount      numeric default 0,
+  total         numeric default 0,
+  order_index   int default 0
+);
+
+alter table quote_items enable row level security;
+create policy "Quote items follow quote access" on quote_items
+  using (quote_id in (select id from quotes where workspace_id in (select id from workspaces where owner_id = auth.uid())));
 
 -- Done! Your FlowCRM database is ready.

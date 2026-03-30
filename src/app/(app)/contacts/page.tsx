@@ -1,14 +1,21 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
+import { useWorkspace } from '@/lib/workspace-context'
+import { useI18n } from '@/lib/i18n/context'
 import type { Contact } from '@/types'
 
 const AVATAR_COLORS = ['bg-brand-500','bg-violet-500','bg-emerald-500','bg-amber-500','bg-rose-500','bg-cyan-500']
 const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
 
-function NewContactModal({ onClose, onSave, workspaceId }: { onClose: () => void; onSave: (c: Partial<Contact>) => void; workspaceId: string }) {
+function NewContactModal({ onClose, onSave, workspaceId, customFields, template }: {
+  onClose: () => void; onSave: (c: Partial<Contact>) => void; workspaceId: string;
+  customFields: { entity: string; label: string; key: string; type: string; options?: string[] }[];
+  template: any;
+}) {
   const [type, setType] = useState<'person' | 'company'>('person')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -17,23 +24,32 @@ function NewContactModal({ onClose, onSave, workspaceId }: { onClose: () => void
   const [jobTitle, setJobTitle] = useState('')
   const [website, setWebsite] = useState('')
   const [notes, setNotes] = useState('')
+  const [customValues, setCustomValues] = useState<Record<string, any>>({})
+
+  const contactFields = customFields.filter(f => f.entity === 'contact')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave({ type, name, email: email || undefined, phone: phone || undefined, company_name: company || undefined, job_title: jobTitle || undefined, website: website || undefined, notes: notes || undefined, workspace_id: workspaceId })
+    onSave({
+      type, name, email: email || undefined, phone: phone || undefined,
+      company_name: company || undefined, job_title: jobTitle || undefined,
+      website: website || undefined, notes: notes || undefined,
+      workspace_id: workspaceId,
+      custom_fields: Object.keys(customValues).length > 0 ? customValues : undefined,
+    })
     onClose()
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-surface-100 sticky top-0 bg-white z-10">
-          <h2 className="font-semibold text-surface-900">New Contact</h2>
+      <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
+          <h2 className="font-semibold text-surface-900">New {template.contactLabel.singular}</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100 transition-colors">
             <X className="w-4 h-4 text-surface-500" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
           {/* Type toggle */}
           <div className="flex gap-2 p-1 bg-surface-100 rounded-xl">
             {(['person', 'company'] as const).map(t => (
@@ -86,6 +102,42 @@ function NewContactModal({ onClose, onSave, workspaceId }: { onClose: () => void
               <input className="input pl-8" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://acme.com" />
             </div>
           </div>
+
+          {/* Industry-specific custom fields */}
+          {contactFields.length > 0 && (
+            <div className="pt-2 border-t border-surface-100">
+              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide mb-3">
+                {template.name} Details
+              </p>
+              <div className="space-y-3">
+                {contactFields.map(field => (
+                  <div key={field.key}>
+                    <label className="label">{field.label}</label>
+                    {field.type === 'select' && field.options ? (
+                      <select className="input" value={customValues[field.key] || ''}
+                        onChange={e => setCustomValues(v => ({ ...v, [field.key]: e.target.value }))}>
+                        <option value="">Select...</option>
+                        {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : field.type === 'date' ? (
+                      <input type="date" className="input" value={customValues[field.key] || ''}
+                        onChange={e => setCustomValues(v => ({ ...v, [field.key]: e.target.value }))} />
+                    ) : field.type === 'number' || field.type === 'currency' ? (
+                      <input type="number" className="input" value={customValues[field.key] || ''} placeholder="0"
+                        onChange={e => setCustomValues(v => ({ ...v, [field.key]: e.target.value }))} />
+                    ) : field.type === 'url' ? (
+                      <input type="url" className="input" value={customValues[field.key] || ''} placeholder="https://..."
+                        onChange={e => setCustomValues(v => ({ ...v, [field.key]: e.target.value }))} />
+                    ) : (
+                      <input type="text" className="input" value={customValues[field.key] || ''}
+                        onChange={e => setCustomValues(v => ({ ...v, [field.key]: e.target.value }))} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="label">Notes</label>
             <div className="relative"><FileText className="absolute left-3 top-3 w-3.5 h-3.5 text-surface-400" />
@@ -95,7 +147,7 @@ function NewContactModal({ onClose, onSave, workspaceId }: { onClose: () => void
 
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" className="btn-primary flex-1">Save Contact</button>
+            <button type="submit" className="btn-primary flex-1">Save {template.contactLabel.singular}</button>
           </div>
         </form>
       </div>
@@ -105,13 +157,15 @@ function NewContactModal({ onClose, onSave, workspaceId }: { onClose: () => void
 
 export default function ContactsPage() {
   const supabase = createClient()
+  const router = useRouter()
+  const { template, customFields } = useWorkspace()
+  const { t } = useI18n()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [workspaceId, setWorkspaceId] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'person' | 'company'>('all')
   const [showNew, setShowNew] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<Contact | null>(null)
 
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -143,15 +197,17 @@ export default function ContactsPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Contacts</h1>
+          <h1 className="page-title">{template.contactLabel.plural}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{contacts.length} total</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-            <input className="input pl-9 w-56 text-xs" placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="input pl-9 w-56 text-xs" placeholder={`Search ${template.contactLabel.plural.toLowerCase()}...`} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Contact</button>
+          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm">
+            <Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}
+          </button>
         </div>
       </div>
 
@@ -170,9 +226,9 @@ export default function ContactsPage() {
           <div className="w-14 h-14 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <User className="w-7 h-7 text-surface-400" />
           </div>
-          <p className="text-surface-600 font-medium mb-1">No contacts yet</p>
-          <p className="text-surface-400 text-sm mb-4">Add your first contact to get started</p>
-          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Contact</button>
+          <p className="text-surface-600 font-medium mb-1">No {template.contactLabel.plural.toLowerCase()} yet</p>
+          <p className="text-surface-400 text-sm mb-4">Add your first {template.contactLabel.singular.toLowerCase()} to get started</p>
+          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}</button>
         </div>
       ) : (
         <div className="card overflow-hidden">
@@ -188,7 +244,8 @@ export default function ContactsPage() {
             </thead>
             <tbody>
               {filtered.map((contact, i) => (
-                <tr key={contact.id} onClick={() => setSelected(contact)}
+                <tr key={contact.id}
+                  onClick={() => router.push(`/contacts/${contact.id}`)}
                   className="border-b border-surface-50 last:border-0 hover:bg-surface-50 cursor-pointer transition-colors animate-fade-in"
                   style={{ animationDelay: `${i * 30}ms` }}>
                   <td className="px-4 py-3">
@@ -221,7 +278,15 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {showNew && <NewContactModal workspaceId={workspaceId} onClose={() => setShowNew(false)} onSave={handleCreate} />}
+      {showNew && (
+        <NewContactModal
+          workspaceId={workspaceId}
+          customFields={customFields}
+          template={template}
+          onClose={() => setShowNew(false)}
+          onSave={handleCreate}
+        />
+      )}
     </div>
   )
 }
