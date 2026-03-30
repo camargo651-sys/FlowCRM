@@ -15,7 +15,7 @@ interface Column extends PipelineStage {
 
 // --- NEW DEAL MODAL ---
 function NewDealModal({ stages, contacts, onClose, onSave, workspaceId }: {
-  stages: PipelineStage[], contacts: Contact[], onClose: () => void,
+  stages: PipelineStage[], contacts: Pick<Contact, 'id' | 'name' | 'email'>[], onClose: () => void,
   onSave: (deal: Partial<Deal>) => void, workspaceId: string
 }) {
   const [title, setTitle] = useState('')
@@ -119,7 +119,7 @@ function DealCard({ deal, onClick }: { deal: DealWithContact; onClick: () => voi
 export default function PipelinePage() {
   const supabase = createClient()
   const [columns, setColumns] = useState<Column[]>([])
-  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contacts, setContacts] = useState<Pick<Contact, 'id' | 'name' | 'email'>[]>([])
   const [workspaceId, setWorkspaceId] = useState<string>('')
   const [showNewDeal, setShowNewDeal] = useState(false)
   const [search, setSearch] = useState('')
@@ -141,7 +141,7 @@ export default function PipelinePage() {
 
     const stages: PipelineStage[] = stagesRes.data || []
     const deals: DealWithContact[] = dealsRes.data || []
-    setContacts((contactsRes.data || []) as Contact[])
+    setContacts(contactsRes.data || [])
 
     setColumns(stages.map(stage => ({
       ...stage,
