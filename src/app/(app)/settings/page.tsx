@@ -191,7 +191,8 @@ export default function SettingsPage() {
         await supabase.from('pipeline_stages').delete().eq('pipeline_id', pipeline.id)
       }
 
-      for (const [i, stage] of pipeline.stages.entries()) {
+      for (let i = 0; i < pipeline.stages.length; i++) {
+        const stage = pipeline.stages[i]
         const stageData = { ...stage, order_index: i }
         if (stage.id.startsWith('temp-')) {
           const { id, ...rest } = stageData
@@ -242,7 +243,8 @@ export default function SettingsPage() {
   const saveFields = async () => {
     setSaving(true)
     const fieldsToSave = customFields.filter(f => f.entity === fieldEntity)
-    for (const [i, field] of fieldsToSave.entries()) {
+    for (let i = 0; i < fieldsToSave.length; i++) {
+      const field = fieldsToSave[i]
       const data = {
         workspace_id: field.workspace_id, entity: field.entity,
         label: field.label, key: field.label.toLowerCase().replace(/\s+/g, '_'),

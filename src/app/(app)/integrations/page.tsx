@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, XCircle, ExternalLink, ChevronRight, Search, Shield, Save, X, Star } from 'lucide-react'
+import { CheckCircle2, XCircle, ExternalLink, ChevronRight, Search, Shield, Save, X, Star, RefreshCw, Mail, Trash2, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { INTEGRATIONS_CATALOG, CATEGORIES, type IntegrationDef } from '@/lib/integrations-catalog'
 
@@ -9,6 +9,15 @@ interface SavedIntegration {
   key: string
   enabled: boolean
   config: Record<string, string>
+}
+
+interface EmailAccount {
+  id: string
+  provider: string
+  email_address: string
+  status: string
+  last_synced_at: string | null
+  created_at: string
 }
 
 export default function IntegrationsPage() {
@@ -22,6 +31,9 @@ export default function IntegrationsPage() {
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([])
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -34,6 +46,16 @@ export default function IntegrationsPage() {
     const map = new Map<string, SavedIntegration>()
     ;(data || []).forEach((s: any) => map.set(s.key, { key: s.key, enabled: s.enabled, config: s.config || {} }))
     setSaved(map)
+
+    // Load connected email accounts
+    try {
+      const res = await fetch('/api/email/accounts')
+      if (res.ok) {
+        const { accounts } = await res.json()
+        setEmailAccounts(accounts || [])
+      }
+    } catch {}
+
     setLoading(false)
   }, [])
 
@@ -212,26 +234,123 @@ export default function IntegrationsPage() {
               </div>
             </div>
 
-            {/* Config */}
-            <div className="card p-6">
-              <h3 className="font-semibold text-surface-900 mb-1">Configuration</h3>
-              <p className="text-xs text-surface-500 mb-4">Enter your credentials to complete the connection</p>
-              <div className="space-y-4">
-                {selected.fields.map(field => (
-                  <div key={field.key}>
-                    <label className="label">{field.label}</label>
-                    <input type={field.type || 'text'} className="input" placeholder={field.placeholder}
-                      value={config[field.key] || ''} onChange={e => setConfig(v => ({ ...v, [field.key]: e.target.value }))} />
-                    {field.help && <p className="text-[11px] text-surface-400 mt-1">{field.help}</p>}
+            {/* Config — OAuth or Manual */}
+            {selected.oauthFlow ? (
+              <div className="card p-6">
+                <h3 className="font-semibold text-surface-900 mb-1">Connection</h3>
+                <p className="text-xs text-surface-500 mb-4">
+                  Connect your {selected.name} account with one click. We only request read-only access.
+                </p>
+
+                {/* Connected accounts */}
+                {emailAccounts.filter(a => a.provider === selected.key).map(account => (
+                  <div key={account.id} className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-emerald-600" />
+                        <span className="text-sm font-semibold text-surface-900">{account.email_address}</span>
+                      </div>
+                      <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold',
+                        account.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                        account.status === 'expired' ? 'bg-amber-100 text-amber-700' :
+                        'bg-red-100 text-red-700')}>
+                        {account.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-surface-500 mb-3">
+                      {account.last_synced_at
+                        ? `Last synced: ${new Date(account.last_synced_at).toLocaleString()}`
+                        : 'Not synced yet'}
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={async () => {
+                        setSyncing(true)
+                        setSyncResult(null)
+                        try {
+                          const res = await fetch('/api/email/sync', { method: 'POST' })
+                          const data = await res.json()
+                          if (res.ok) {
+                            const r = data.results?.[0]
+                            setSyncResult(r ? `Synced ${r.messagesStored} emails, created ${r.contactsCreated} contacts` : 'Sync complete')
+                            load()
+                          } else {
+                            setSyncResult(data.error || 'Sync failed')
+                          }
+                        } catch { setSyncResult('Sync failed') }
+                        setSyncing(false)
+                      }} disabled={syncing} className="btn-secondary btn-sm">
+                        <RefreshCw className={cn('w-3.5 h-3.5', syncing && 'animate-spin')} />
+                        {syncing ? 'Syncing...' : 'Sync Now'}
+                      </button>
+                      <button onClick={async () => {
+                        if (!confirm('Disconnect this email account? Synced data will be deleted.')) return
+                        await fetch('/api/email/accounts', {
+                          method: 'DELETE',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ accountId: account.id }),
+                        })
+                        load()
+                      }} className="btn-ghost btn-sm text-red-500 hover:text-red-600">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Disconnect
+                      </button>
+                    </div>
+                    {syncResult && (
+                      <p className="text-xs text-brand-600 mt-2 font-medium">{syncResult}</p>
+                    )}
                   </div>
                 ))}
+
+                {/* Connect button */}
+                {emailAccounts.filter(a => a.provider === selected.key).length === 0 && (
+                  <a href={selected.oauthUrl} className="btn-primary inline-flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    Connect {selected.name}
+                  </a>
+                )}
+
+                {/* Expired/Error reconnect */}
+                {emailAccounts.filter(a => a.provider === selected.key && a.status !== 'active').length > 0 && (
+                  <a href={selected.oauthUrl} className="btn-secondary inline-flex items-center gap-2 mt-2">
+                    <RefreshCw className="w-4 h-4" />
+                    Reconnect {selected.name}
+                  </a>
+                )}
+
+                <div className="mt-4 p-3 bg-blue-50 rounded-xl">
+                  <div className="flex items-start gap-2">
+                    <Shield className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-blue-800">Privacy & Security</p>
+                      <p className="text-xs text-blue-600 mt-0.5">
+                        We only read email metadata (sender, subject, date). We never read email bodies or attachments.
+                        Tokens are encrypted at rest. You can disconnect anytime.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <button onClick={saveConfig} disabled={saving} className="btn-primary mt-5">
-                {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  : savedMsg ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                {savedMsg ? 'Saved!' : 'Save Configuration'}
-              </button>
-            </div>
+            ) : (
+              <div className="card p-6">
+                <h3 className="font-semibold text-surface-900 mb-1">Configuration</h3>
+                <p className="text-xs text-surface-500 mb-4">Enter your credentials to complete the connection</p>
+                <div className="space-y-4">
+                  {selected.fields.map(field => (
+                    <div key={field.key}>
+                      <label className="label">{field.label}</label>
+                      <input type={field.type || 'text'} className="input" placeholder={field.placeholder}
+                        value={config[field.key] || ''} onChange={e => setConfig(v => ({ ...v, [field.key]: e.target.value }))} />
+                      {field.help && <p className="text-[11px] text-surface-400 mt-1">{field.help}</p>}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={saveConfig} disabled={saving} className="btn-primary mt-5">
+                  {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : savedMsg ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                  {savedMsg ? 'Saved!' : 'Save Configuration'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -188,7 +188,7 @@ interface PipelineInfo {
   name: string
   color: string
   contact_id?: string | null
-  contacts?: { name: string } | null
+  contacts?: any
 }
 
 export default function PipelinePage() {

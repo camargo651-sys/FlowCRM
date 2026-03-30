@@ -19,11 +19,18 @@ function getSupabase() {
 }
 
 export async function POST() {
-  const supabase = getSupabase()
+  const supabase = await getSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: ws } = await supabase.from('workspaces').select('id, name, terminology').eq('owner_id', user.id).single()
+  let ws: any = null
+  const { data: wsData, error: wsError } = await supabase.from('workspaces').select('id, name, terminology').eq('owner_id', user.id).single()
+  if (wsError) {
+    const { data: wsBasic } = await supabase.from('workspaces').select('id, name').eq('owner_id', user.id).single()
+    ws = wsBasic ? { ...wsBasic, terminology: {} } : null
+  } else {
+    ws = wsData
+  }
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
   const now = new Date()

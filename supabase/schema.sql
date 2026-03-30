@@ -20,6 +20,7 @@ create table if not exists workspaces (
   industry    text,
   team_size   text,
   language    text default 'en',
+  terminology jsonb default '{}',
   onboarding_completed boolean default false,
   created_at  timestamptz default now()
 );
@@ -299,5 +300,85 @@ create table if not exists quote_items (
 alter table quote_items enable row level security;
 create policy "Quote items follow quote access" on quote_items
   using (quote_id in (select id from quotes where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+-- ============================================================
+-- ADD metadata COLUMN TO ACTIVITIES (for email linking)
+-- ============================================================
+alter table activities add column if not exists metadata jsonb default '{}';
+
+-- ============================================================
+-- EMAIL ACCOUNTS (OAuth tokens for Gmail / Outlook)
+-- ============================================================
+create table if not exists email_accounts (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  provider        text not null check (provider in ('gmail','outlook')),
+  email_address   text not null,
+  access_token    text not null,
+  refresh_token   text not null,
+  token_expires_at timestamptz not null,
+  scopes          text[],
+  sync_cursor     text,
+  last_synced_at  timestamptz,
+  status          text default 'active' check (status in ('active','expired','revoked','error')),
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now(),
+  unique(workspace_id, email_address)
+);
+
+alter table email_accounts enable row level security;
+create policy "Workspace owner manages email accounts" on email_accounts
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create trigger email_accounts_updated_at before update on email_accounts for each row execute function update_updated_at();
+
+-- ============================================================
+-- EMAIL MESSAGES (synced email metadata)
+-- ============================================================
+create table if not exists email_messages (
+  id                  uuid primary key default uuid_generate_v4(),
+  workspace_id        uuid not null references workspaces(id) on delete cascade,
+  email_account_id    uuid not null references email_accounts(id) on delete cascade,
+  provider_message_id text not null,
+  thread_id           text,
+  subject             text,
+  snippet             text,
+  from_address        text not null,
+  from_name           text,
+  to_addresses        jsonb default '[]',
+  cc_addresses        jsonb default '[]',
+  direction           text not null check (direction in ('inbound','outbound')),
+  received_at         timestamptz not null,
+  is_read             boolean default false,
+  labels              text[],
+  contact_id          uuid references contacts(id) on delete set null,
+  deal_id             uuid references deals(id) on delete set null,
+  created_at          timestamptz default now(),
+  unique(email_account_id, provider_message_id)
+);
+
+alter table email_messages enable row level security;
+create policy "Workspace owner manages email messages" on email_messages
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- EMAIL SYNC LOG (debugging / stats)
+-- ============================================================
+create table if not exists email_sync_log (
+  id                uuid primary key default uuid_generate_v4(),
+  email_account_id  uuid not null references email_accounts(id) on delete cascade,
+  started_at        timestamptz default now(),
+  completed_at      timestamptz,
+  messages_synced   int default 0,
+  contacts_created  int default 0,
+  contacts_updated  int default 0,
+  error             text,
+  status            text default 'running' check (status in ('running','completed','failed'))
+);
+
+alter table email_sync_log enable row level security;
+create policy "Email sync log follows account access" on email_sync_log
+  using (email_account_id in (select id from email_accounts where workspace_id in (select id from workspaces where owner_id = auth.uid())));
 
 -- Done! Your FlowCRM database is ready.

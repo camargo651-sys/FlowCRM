@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ArrowLeft, Mail, Phone, Building2, Globe, MapPin, Edit2, Save, X,
   Plus, FileText, TrendingUp, CheckSquare, Clock, MessageCircle,
-  DollarSign, Calendar, User, Send, CheckCircle2, XCircle, Trash2
+  DollarSign, Calendar, User, Send, CheckCircle2, XCircle, Trash2,
+  ArrowDownLeft, ArrowUpRight
 } from 'lucide-react'
 import { formatCurrency, getInitials, cn, formatDate } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -19,7 +20,7 @@ interface ContactDetail {
 
 interface DealRow {
   id: string; title: string; value?: number; status: string;
-  created_at: string; pipeline_stages?: { name: string; color: string } | null;
+  created_at: string; pipeline_stages?: any;
 }
 
 interface QuoteRow {
@@ -30,6 +31,14 @@ interface QuoteRow {
 interface ActivityRow {
   id: string; type: string; title: string; notes?: string;
   due_date?: string; done: boolean; created_at: string;
+  metadata?: any;
+}
+
+interface EmailMessage {
+  id: string; subject: string; snippet: string; from_address: string;
+  from_name: string; to_addresses: { email: string; name: string }[];
+  direction: 'inbound' | 'outbound'; received_at: string;
+  is_read: boolean; thread_id: string;
 }
 
 const ACTIVITY_ICONS: Record<string, any> = {
@@ -51,7 +60,8 @@ export default function ContactDetailPage() {
   const [deals, setDeals] = useState<DealRow[]>([])
   const [quotes, setQuotes] = useState<QuoteRow[]>([])
   const [activities, setActivities] = useState<ActivityRow[]>([])
-  const [tab, setTab] = useState<'overview' | 'deals' | 'quotes' | 'activities'>('overview')
+  const [emails, setEmails] = useState<EmailMessage[]>([])
+  const [tab, setTab] = useState<'overview' | 'deals' | 'quotes' | 'activities' | 'emails'>('overview')
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState<Partial<ContactDetail>>({})
   const [showNewActivity, setShowNewActivity] = useState(false)
@@ -92,6 +102,16 @@ export default function ContactDetailPage() {
     setDeals(dealsRes.data || [])
     setQuotes(quotesRes.data || [])
     setActivities(activitiesRes.data || [])
+
+    // Load synced emails for this contact
+    const { data: emailsData } = await supabase
+      .from('email_messages')
+      .select('id, subject, snippet, from_address, from_name, to_addresses, direction, received_at, is_read, thread_id')
+      .eq('contact_id', id)
+      .order('received_at', { ascending: false })
+      .limit(50)
+    setEmails(emailsData || [])
+
     setLoading(false)
   }, [id])
 
@@ -137,7 +157,8 @@ export default function ContactDetailPage() {
   const timeline = [
     ...deals.map(d => ({ type: 'deal' as const, date: d.created_at, data: d })),
     ...quotes.map(q => ({ type: 'quote' as const, date: q.created_at, data: q })),
-    ...activities.map(a => ({ type: 'activity' as const, date: a.created_at, data: a })),
+    ...activities.filter(a => a.type !== 'email').map(a => ({ type: 'activity' as const, date: a.created_at, data: a })),
+    ...emails.map(e => ({ type: 'email' as const, date: e.received_at, data: e })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   if (loading || !contact) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
@@ -186,7 +207,7 @@ export default function ContactDetailPage() {
         </div>
 
         {/* Quick stats */}
-        <div className="grid grid-cols-4 gap-3 mt-5 pt-5 border-t border-surface-100">
+        <div className="grid grid-cols-5 gap-3 mt-5 pt-5 border-t border-surface-100">
           <div className="text-center">
             <p className="text-lg font-bold text-surface-900">{deals.length}</p>
             <p className="text-[10px] text-surface-400 font-semibold uppercase">{template.dealLabel.plural}</p>
@@ -198,6 +219,10 @@ export default function ContactDetailPage() {
           <div className="text-center">
             <p className="text-lg font-bold text-surface-900">{quotes.length}</p>
             <p className="text-[10px] text-surface-400 font-semibold uppercase">Quotes</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-surface-900">{emails.length}</p>
+            <p className="text-[10px] text-surface-400 font-semibold uppercase">Emails</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-surface-900">{activities.filter(a => !a.done).length}</p>
@@ -212,7 +237,8 @@ export default function ContactDetailPage() {
           { id: 'overview', label: 'Timeline', count: timeline.length },
           { id: 'deals', label: template.dealLabel.plural, count: deals.length },
           { id: 'quotes', label: 'Quotes', count: quotes.length },
-          { id: 'activities', label: 'Activities', count: activities.length },
+          { id: 'activities', label: 'Activities', count: activities.filter(a => a.type !== 'email').length },
+          { id: 'emails', label: 'Emails', count: emails.length },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -247,9 +273,11 @@ export default function ContactDetailPage() {
                 <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                   item.type === 'deal' ? 'bg-brand-50 text-brand-600' :
                   item.type === 'quote' ? 'bg-violet-50 text-violet-600' :
+                  item.type === 'email' ? ((item.data as EmailMessage).direction === 'inbound' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600') :
                   ACTIVITY_COLORS[(item.data as ActivityRow).type] || 'bg-surface-100 text-surface-500')}>
                   {item.type === 'deal' && <TrendingUp className="w-4 h-4" />}
                   {item.type === 'quote' && <FileText className="w-4 h-4" />}
+                  {item.type === 'email' && ((item.data as EmailMessage).direction === 'inbound' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />)}
                   {item.type === 'activity' && (() => {
                     const Icon = ACTIVITY_ICONS[(item.data as ActivityRow).type] || CheckSquare
                     return <Icon className="w-4 h-4" />
@@ -266,6 +294,7 @@ export default function ContactDetailPage() {
                       {item.type === 'deal' && `${template.dealLabel.singular}: ${(item.data as DealRow).title}`}
                       {item.type === 'quote' && `Quote: ${(item.data as QuoteRow).title}`}
                       {item.type === 'activity' && (item.data as ActivityRow).title}
+                      {item.type === 'email' && (item.data as EmailMessage).subject}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] text-surface-400">{new Date(item.date).toLocaleDateString()} · {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -295,6 +324,19 @@ export default function ContactDetailPage() {
                           {(item.data as ActivityRow).done ? 'Done' : (item.data as ActivityRow).type}
                         </span>
                       )}
+                      {item.type === 'email' && (
+                        <>
+                          <span className="text-xs text-surface-500">
+                            {(item.data as EmailMessage).direction === 'inbound'
+                              ? `From: ${(item.data as EmailMessage).from_name || (item.data as EmailMessage).from_address}`
+                              : `To: ${(item.data as EmailMessage).to_addresses?.[0]?.name || (item.data as EmailMessage).to_addresses?.[0]?.email || ''}`}
+                          </span>
+                          <span className={cn('badge text-[9px]',
+                            (item.data as EmailMessage).direction === 'inbound' ? 'badge-blue' : 'badge-green')}>
+                            {(item.data as EmailMessage).direction === 'inbound' ? 'Received' : 'Sent'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                   {item.type === 'activity' && (
@@ -307,6 +349,9 @@ export default function ContactDetailPage() {
                 </div>
                 {item.type === 'activity' && (item.data as ActivityRow).notes && (
                   <p className="text-xs text-surface-500 mt-2">{(item.data as ActivityRow).notes}</p>
+                )}
+                {item.type === 'email' && (item.data as EmailMessage).snippet && (
+                  <p className="text-xs text-surface-500 mt-2 line-clamp-2">{(item.data as EmailMessage).snippet}</p>
                 )}
               </div>
             </div>
@@ -428,6 +473,52 @@ export default function ContactDetailPage() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ====== EMAILS TAB ====== */}
+      {tab === 'emails' && (
+        <div>
+          {emails.length === 0 ? (
+            <div className="text-center py-12 card p-6">
+              <Mail className="w-10 h-10 text-surface-300 mx-auto mb-3" />
+              <p className="text-surface-600 font-medium">No emails synced</p>
+              <p className="text-xs text-surface-400 mt-1">Connect Gmail or Outlook in Integrations to auto-sync emails</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {emails.map(email => (
+                <div key={email.id} className="card p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                      email.direction === 'inbound' ? 'bg-blue-50' : 'bg-emerald-50')}>
+                      {email.direction === 'inbound'
+                        ? <ArrowDownLeft className="w-4 h-4 text-blue-600" />
+                        : <ArrowUpRight className="w-4 h-4 text-emerald-600" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-surface-800 truncate">{email.subject}</p>
+                        <span className={cn('badge text-[9px] flex-shrink-0',
+                          email.direction === 'inbound' ? 'badge-blue' : 'badge-green')}>
+                          {email.direction === 'inbound' ? 'Received' : 'Sent'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-surface-500 mt-0.5">
+                        {email.direction === 'inbound'
+                          ? `From: ${email.from_name || email.from_address}`
+                          : `To: ${email.to_addresses?.[0]?.name || email.to_addresses?.[0]?.email || ''}`}
+                        {' · '}{new Date(email.received_at).toLocaleDateString()} {new Date(email.received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      {email.snippet && (
+                        <p className="text-xs text-surface-400 mt-1.5 line-clamp-2">{email.snippet}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

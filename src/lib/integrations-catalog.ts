@@ -6,6 +6,8 @@ export interface IntegrationDef {
   color: string
   icon: string // emoji for simplicity across the catalog
   popular?: boolean
+  oauthFlow?: boolean // true = uses OAuth connect button instead of manual fields
+  oauthUrl?: string   // API route to initiate OAuth
   fields: { key: string; label: string; placeholder: string; type?: string; help?: string }[]
   setupSteps: { step: number; title: string; description: string }[]
 }
@@ -99,29 +101,24 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
   // === EMAIL & CALENDAR ===
   {
     key: 'gmail', name: 'Gmail', category: 'email', color: '#EA4335', icon: '📧', popular: true,
-    description: 'Sync emails with contacts and deals. Send emails directly from the CRM.',
-    fields: [
-      { key: 'client_id', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', help: 'Google Cloud Console > Credentials' },
-      { key: 'client_secret', label: 'Client Secret', placeholder: 'GOCSPX-...', type: 'password', help: 'Google Cloud Console > Credentials' },
-    ],
+    oauthFlow: true, oauthUrl: '/api/auth/gmail',
+    description: 'Automatically sync emails with contacts and deals. Zero manual data entry — emails are captured, contacts are created, and activities are logged automatically.',
+    fields: [],
     setupSteps: [
-      { step: 1, title: 'Create Google Cloud Project', description: 'Go to console.cloud.google.com, create a project, enable Gmail API.' },
-      { step: 2, title: 'Configure OAuth', description: 'Set up OAuth consent screen with your app name and domains.' },
-      { step: 3, title: 'Create credentials', description: 'Credentials > OAuth Client ID > Web application. Add redirect URI.' },
+      { step: 1, title: 'Click Connect', description: 'Click the button below to sign in with your Google account.' },
+      { step: 2, title: 'Grant permissions', description: 'Allow FlowCRM to read your emails (read-only access).' },
+      { step: 3, title: 'Automatic sync', description: 'Emails will sync every 10 minutes. Contacts are created automatically.' },
     ],
   },
   {
     key: 'outlook', name: 'Outlook / Office 365', category: 'email', color: '#0078D4', icon: '📬',
-    description: 'Connect Outlook email and calendar. Sync emails, events, and contacts.',
-    fields: [
-      { key: 'client_id', label: 'Application (Client) ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', help: 'Azure AD > App registrations' },
-      { key: 'client_secret', label: 'Client Secret', placeholder: 'xxxxxxxx', type: 'password', help: 'Certificates & secrets' },
-      { key: 'tenant_id', label: 'Tenant ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', help: 'Azure AD > Overview' },
-    ],
+    oauthFlow: true, oauthUrl: '/api/auth/outlook',
+    description: 'Automatically sync Outlook emails with contacts and deals. Zero manual data entry — emails are captured, contacts are created, and activities are logged automatically.',
+    fields: [],
     setupSteps: [
-      { step: 1, title: 'Register Azure AD app', description: 'portal.azure.com > Azure AD > App registrations > New.' },
-      { step: 2, title: 'Add permissions', description: 'Add Graph permissions: Mail.Read, Mail.Send, Calendars.ReadWrite.' },
-      { step: 3, title: 'Create secret', description: 'Certificates & secrets > New client secret. Copy immediately.' },
+      { step: 1, title: 'Click Connect', description: 'Click the button below to sign in with your Microsoft account.' },
+      { step: 2, title: 'Grant permissions', description: 'Allow FlowCRM to read your emails (read-only access).' },
+      { step: 3, title: 'Automatic sync', description: 'Emails will sync every 10 minutes. Contacts are created automatically.' },
     ],
   },
   {

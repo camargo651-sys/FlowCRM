@@ -21,14 +21,22 @@ function getSupabase() {
 export async function POST() {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return NextResponse.json({ error: 'AI not configured' }, { status: 500 })
+    return NextResponse.json({ error: 'AI not configured' }, { status: 501 })
   }
 
-  const supabase = getSupabase()
+  const supabase = await getSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: ws } = await supabase.from('workspaces').select('id, name, terminology, industry').eq('owner_id', user.id).single()
+  let ws: any = null
+  const { data: wsData, error: wsError } = await supabase.from('workspaces').select('id, name, terminology, industry').eq('owner_id', user.id).single()
+  if (wsError) {
+    // Fallback without terminology column
+    const { data: wsBasic } = await supabase.from('workspaces').select('id, name, industry').eq('owner_id', user.id).single()
+    ws = wsBasic ? { ...wsBasic, terminology: {} } : null
+  } else {
+    ws = wsData
+  }
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
   const now = new Date()
@@ -106,7 +114,7 @@ ${quotes.slice(0, 5).map(q => `- "${q.title}" — $${q.total} — ${q.status} �
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1500,
         messages: [{
           role: 'user',

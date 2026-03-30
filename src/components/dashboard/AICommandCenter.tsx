@@ -180,12 +180,12 @@ export default function AICommandCenter() {
           </div>
 
           <div className="space-y-2">
-            {data.urgent_actions.map(action => {
+            {data.urgent_actions.map((action, idx) => {
               const Icon = ICON_MAP[action.icon] || Zap
               const isExpanded = expandedAction === action.id
 
               return (
-                <div key={action.id}
+                <div key={`action-${action.id}-${idx}`}
                   className={cn('card border-l-4 overflow-hidden transition-all cursor-pointer',
                     PRIORITY_STYLES[action.priority])}
                   onClick={() => setExpandedAction(isExpanded ? null : action.id)}>
@@ -243,12 +243,12 @@ export default function AICommandCenter() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {data.insights.map(insight => {
+            {data.insights.map((insight, idx) => {
               const style = INSIGHT_STYLES[insight.type] || INSIGHT_STYLES.info
               const InsightIcon = style.icon
 
               return (
-                <div key={insight.id} className="card p-4">
+                <div key={`insight-${insight.id}-${idx}`} className="card p-4">
                   <div className="flex items-start gap-3">
                     <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', style.bg)}>
                       <InsightIcon className={cn('w-4 h-4', style.color)} />
