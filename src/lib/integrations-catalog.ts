@@ -30,17 +30,18 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
   // === COMMUNICATION ===
   {
     key: 'whatsapp', name: 'WhatsApp Business', category: 'communication', color: '#25D366', icon: '💬', popular: true,
-    description: 'Send and receive WhatsApp messages. Automate responses and log conversations.',
+    description: 'Capture WhatsApp conversations automatically. Contacts are created, messages logged, and you can reply directly from FlowCRM.',
     fields: [
-      { key: 'phone_number_id', label: 'Phone Number ID', placeholder: '1234567890', help: 'WhatsApp Manager > API Setup' },
-      { key: 'access_token', label: 'Access Token', placeholder: 'EAAx...', type: 'password', help: 'Meta Business > System Users' },
-      { key: 'verify_token', label: 'Webhook Verify Token', placeholder: 'my-verify-token', help: 'Same string in Meta webhook config' },
+      { key: 'phone_number_id', label: 'Phone Number ID', placeholder: '1234567890', help: 'WhatsApp Manager > API Setup > Phone Number ID' },
+      { key: 'access_token', label: 'Permanent Access Token', placeholder: 'EAAx...', type: 'password', help: 'Meta Business > System Users > Generate Token' },
+      { key: 'verify_token', label: 'Webhook Verify Token', placeholder: 'my-verify-token', help: 'Choose any string — use the same in Meta webhook config' },
     ],
     setupSteps: [
       { step: 1, title: 'Create Meta Business Account', description: 'Go to business.facebook.com and create a Meta Business account.' },
-      { step: 2, title: 'Set up WhatsApp Business API', description: 'In Meta Business Suite > WhatsApp Manager, set up the API with a phone number.' },
-      { step: 3, title: 'Get API credentials', description: 'Copy Phone Number ID and generate a permanent access token.' },
-      { step: 4, title: 'Configure Webhook', description: 'Set webhook URL to: https://your-domain.com/api/webhooks/whatsapp' },
+      { step: 2, title: 'Set up WhatsApp Business API', description: 'In Meta Business Suite > WhatsApp Manager, set up the Cloud API with a phone number.' },
+      { step: 3, title: 'Get API credentials', description: 'Copy Phone Number ID and generate a permanent System User access token with whatsapp_business_messaging permission.' },
+      { step: 4, title: 'Configure Webhook', description: 'Set webhook URL to: https://your-domain.com/api/webhooks/whatsapp — use the same Verify Token you enter below.' },
+      { step: 5, title: 'Subscribe to messages', description: 'In the webhook config, subscribe to the "messages" field.' },
     ],
   },
   {

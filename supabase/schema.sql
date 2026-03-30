@@ -381,4 +381,87 @@ alter table email_sync_log enable row level security;
 create policy "Email sync log follows account access" on email_sync_log
   using (email_account_id in (select id from email_accounts where workspace_id in (select id from workspaces where owner_id = auth.uid())));
 
+-- ============================================================
+-- ALTER ACTIVITIES: add 'whatsapp' type
+-- ============================================================
+alter table activities drop constraint if exists activities_type_check;
+alter table activities add constraint activities_type_check
+  check (type in ('call','email','meeting','note','task','whatsapp'));
+
+-- ============================================================
+-- WHATSAPP ACCOUNTS
+-- ============================================================
+create table if not exists whatsapp_accounts (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  phone_number_id text not null,
+  waba_id         text,
+  display_phone   text,
+  access_token    text not null,
+  verify_token    text not null,
+  status          text default 'active' check (status in ('active','error','revoked')),
+  last_webhook_at timestamptz,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now(),
+  unique(workspace_id, phone_number_id)
+);
+
+alter table whatsapp_accounts enable row level security;
+create policy "Workspace owner manages whatsapp accounts" on whatsapp_accounts
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger whatsapp_accounts_updated_at before update on whatsapp_accounts for each row execute function update_updated_at();
+
+-- ============================================================
+-- WHATSAPP MESSAGES
+-- ============================================================
+create table if not exists whatsapp_messages (
+  id                  uuid primary key default uuid_generate_v4(),
+  workspace_id        uuid not null references workspaces(id) on delete cascade,
+  whatsapp_account_id uuid not null references whatsapp_accounts(id) on delete cascade,
+  wamid               text not null,
+  conversation_id     text,
+  from_number         text not null,
+  to_number           text not null,
+  direction           text not null check (direction in ('inbound','outbound')),
+  message_type        text default 'text' check (message_type in ('text','image','video','document','audio','location','template','reaction','sticker')),
+  body                text,
+  media_url           text,
+  media_mime_type     text,
+  status              text default 'sent' check (status in ('sent','delivered','read','failed')),
+  status_updated_at   timestamptz,
+  contact_id          uuid references contacts(id) on delete set null,
+  deal_id             uuid references deals(id) on delete set null,
+  metadata            jsonb default '{}',
+  received_at         timestamptz not null,
+  created_at          timestamptz default now(),
+  unique(whatsapp_account_id, wamid)
+);
+
+alter table whatsapp_messages enable row level security;
+create policy "Workspace owner manages whatsapp messages" on whatsapp_messages
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- WHATSAPP CONTACTS (WA profile cache)
+-- ============================================================
+create table if not exists whatsapp_contacts (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  wa_id         text not null,
+  profile_name  text,
+  contact_id    uuid references contacts(id) on delete set null,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now(),
+  unique(workspace_id, wa_id)
+);
+
+alter table whatsapp_contacts enable row level security;
+create policy "Workspace owner manages whatsapp contacts" on whatsapp_contacts
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger whatsapp_contacts_updated_at before update on whatsapp_contacts for each row execute function update_updated_at();
+
+-- Enable Realtime for WhatsApp messages
+alter publication supabase_realtime add table whatsapp_messages;
+
 -- Done! Your FlowCRM database is ready.

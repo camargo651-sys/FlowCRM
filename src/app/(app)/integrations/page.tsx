@@ -86,9 +86,46 @@ export default function IntegrationsPage() {
     })
   }
 
+  const [connectError, setConnectError] = useState('')
+
   const saveConfig = async () => {
     if (!selected) return
     setSaving(true)
+    setConnectError('')
+
+    // WhatsApp uses a special connect API that validates credentials
+    if (selected.key === 'whatsapp') {
+      try {
+        const res = await fetch('/api/whatsapp/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone_number_id: config.phone_number_id,
+            access_token: config.access_token,
+            verify_token: config.verify_token,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setConnectError(data.error || 'Connection failed')
+          setSaving(false)
+          return
+        }
+        setSaved(prev => {
+          const next = new Map(prev)
+          next.set('whatsapp', { key: 'whatsapp', enabled: true, config: { ...config, display_phone: data.display_phone } })
+          return next
+        })
+        setSaving(false)
+        setSavedMsg(true)
+        setTimeout(() => setSavedMsg(false), 2000)
+        return
+      } catch (err: any) {
+        setConnectError(err.message)
+        setSaving(false)
+        return
+      }
+    }
 
     const { data: existing } = await supabase.from('integrations').select('id').eq('workspace_id', workspaceId).eq('key', selected.key).single()
     if (existing) {
@@ -344,11 +381,22 @@ export default function IntegrationsPage() {
                     </div>
                   ))}
                 </div>
+                {connectError && (
+                  <p className="text-xs text-red-500 mt-3 font-medium">{connectError}</p>
+                )}
                 <button onClick={saveConfig} disabled={saving} className="btn-primary mt-5">
                   {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     : savedMsg ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                  {savedMsg ? 'Saved!' : 'Save Configuration'}
+                  {savedMsg ? 'Saved!' : selected.key === 'whatsapp' ? 'Connect & Verify' : 'Save Configuration'}
                 </button>
+                {selected.key === 'whatsapp' && saved.get('whatsapp')?.enabled && (
+                  <div className="mt-4 p-3 bg-emerald-50 rounded-xl">
+                    <p className="text-xs font-semibold text-emerald-800">WhatsApp Connected</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      Phone: {saved.get('whatsapp')?.config?.display_phone || 'Connected'}. Webhook URL: <code className="bg-emerald-100 px-1 rounded">your-domain.com/api/webhooks/whatsapp</code>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

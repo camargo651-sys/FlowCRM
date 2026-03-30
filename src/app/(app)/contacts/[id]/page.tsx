@@ -41,13 +41,19 @@ interface EmailMessage {
   is_read: boolean; thread_id: string;
 }
 
+interface WhatsAppMessage {
+  id: string; wamid: string; from_number: string; to_number: string;
+  direction: 'inbound' | 'outbound'; message_type: string;
+  body: string | null; status: string; received_at: string;
+}
+
 const ACTIVITY_ICONS: Record<string, any> = {
-  call: Phone, email: Mail, meeting: Calendar, note: FileText, task: CheckSquare,
+  call: Phone, email: Mail, meeting: Calendar, note: FileText, task: CheckSquare, whatsapp: MessageCircle,
 }
 const ACTIVITY_COLORS: Record<string, string> = {
   call: 'bg-emerald-50 text-emerald-600', email: 'bg-blue-50 text-blue-600',
   meeting: 'bg-violet-50 text-violet-600', note: 'bg-amber-50 text-amber-600',
-  task: 'bg-surface-100 text-surface-600',
+  task: 'bg-surface-100 text-surface-600', whatsapp: 'bg-green-50 text-green-600',
 }
 
 export default function ContactDetailPage() {
@@ -61,7 +67,10 @@ export default function ContactDetailPage() {
   const [quotes, setQuotes] = useState<QuoteRow[]>([])
   const [activities, setActivities] = useState<ActivityRow[]>([])
   const [emails, setEmails] = useState<EmailMessage[]>([])
-  const [tab, setTab] = useState<'overview' | 'deals' | 'quotes' | 'activities' | 'emails'>('overview')
+  const [waMessages, setWaMessages] = useState<WhatsAppMessage[]>([])
+  const [waSendText, setWaSendText] = useState('')
+  const [waSending, setWaSending] = useState(false)
+  const [tab, setTab] = useState<'overview' | 'deals' | 'quotes' | 'activities' | 'emails' | 'whatsapp'>('overview')
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState<Partial<ContactDetail>>({})
   const [showNewActivity, setShowNewActivity] = useState(false)
@@ -112,6 +121,15 @@ export default function ContactDetailPage() {
       .limit(50)
     setEmails(emailsData || [])
 
+    // Load WhatsApp messages
+    const { data: waData } = await supabase
+      .from('whatsapp_messages')
+      .select('id, wamid, from_number, to_number, direction, message_type, body, status, received_at')
+      .eq('contact_id', id)
+      .order('received_at', { ascending: true })
+      .limit(100)
+    setWaMessages(waData || [])
+
     setLoading(false)
   }, [id])
 
@@ -149,6 +167,24 @@ export default function ContactDetailPage() {
     }]).select('id, title, value, status, created_at, pipeline_stages(name, color)').single()
     if (data) setDeals(prev => [data, ...prev])
     setDealTitle(''); setDealValue(''); setShowNewDeal(false)
+  }
+
+  const handleWaSend = async () => {
+    if (!waSendText.trim() || !contact) return
+    setWaSending(true)
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId: id, message: waSendText.trim() }),
+      })
+      if (res.ok) {
+        const { message: stored } = await res.json()
+        if (stored) setWaMessages(prev => [...prev, stored])
+        setWaSendText('')
+      }
+    } catch {}
+    setWaSending(false)
   }
 
   const contactCustomFields = wsCustomFields.filter(f => f.entity === 'contact')
@@ -207,7 +243,7 @@ export default function ContactDetailPage() {
         </div>
 
         {/* Quick stats */}
-        <div className="grid grid-cols-5 gap-3 mt-5 pt-5 border-t border-surface-100">
+        <div className="grid grid-cols-6 gap-3 mt-5 pt-5 border-t border-surface-100">
           <div className="text-center">
             <p className="text-lg font-bold text-surface-900">{deals.length}</p>
             <p className="text-[10px] text-surface-400 font-semibold uppercase">{template.dealLabel.plural}</p>
@@ -225,6 +261,10 @@ export default function ContactDetailPage() {
             <p className="text-[10px] text-surface-400 font-semibold uppercase">Emails</p>
           </div>
           <div className="text-center">
+            <p className="text-lg font-bold text-surface-900">{waMessages.length}</p>
+            <p className="text-[10px] text-surface-400 font-semibold uppercase">WhatsApp</p>
+          </div>
+          <div className="text-center">
             <p className="text-lg font-bold text-surface-900">{activities.filter(a => !a.done).length}</p>
             <p className="text-[10px] text-surface-400 font-semibold uppercase">Open Tasks</p>
           </div>
@@ -239,6 +279,7 @@ export default function ContactDetailPage() {
           { id: 'quotes', label: 'Quotes', count: quotes.length },
           { id: 'activities', label: 'Activities', count: activities.filter(a => a.type !== 'email').length },
           { id: 'emails', label: 'Emails', count: emails.length },
+          { id: 'whatsapp', label: 'WhatsApp', count: waMessages.length },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -474,6 +515,72 @@ export default function ContactDetailPage() {
                 )
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ====== WHATSAPP TAB ====== */}
+      {tab === 'whatsapp' && (
+        <div className="card overflow-hidden" style={{ maxHeight: '70vh' }}>
+          {waMessages.length === 0 ? (
+            <div className="text-center py-12 px-6">
+              <MessageCircle className="w-10 h-10 text-surface-300 mx-auto mb-3" />
+              <p className="text-surface-600 font-medium">No WhatsApp messages</p>
+              <p className="text-xs text-surface-400 mt-1">Connect WhatsApp in Integrations to auto-capture conversations</p>
+            </div>
+          ) : (
+            <>
+              {/* Chat messages */}
+              <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(70vh - 72px)' }}>
+                {waMessages.map(msg => (
+                  <div key={msg.id} className={cn('flex', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}>
+                    <div className={cn('max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm',
+                      msg.direction === 'outbound'
+                        ? 'bg-[#DCF8C6] rounded-tr-sm'
+                        : 'bg-white border border-surface-100 rounded-tl-sm')}>
+                      <p className="text-sm text-surface-800 whitespace-pre-wrap">{msg.body || `[${msg.message_type}]`}</p>
+                      <div className="flex items-center justify-end gap-1.5 mt-1">
+                        <span className="text-[10px] text-surface-400">
+                          {new Date(msg.received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {msg.direction === 'outbound' && (
+                          <span className={cn('text-[10px]',
+                            msg.status === 'read' ? 'text-blue-500' :
+                            msg.status === 'delivered' ? 'text-surface-400' : 'text-surface-300')}>
+                            {msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : msg.status === 'failed' ? '!' : '✓'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Send message */}
+              {contact?.phone && (
+                <div className="p-3 border-t border-surface-100 bg-surface-50 flex gap-2">
+                  <input
+                    type="text"
+                    className="input flex-1"
+                    placeholder="Type a message..."
+                    value={waSendText}
+                    onChange={e => setWaSendText(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && waSendText.trim()) {
+                        e.preventDefault()
+                        handleWaSend()
+                      }
+                    }}
+                  />
+                  <button onClick={handleWaSend} disabled={waSending || !waSendText.trim()}
+                    className="btn-primary btn-sm px-4" style={{ backgroundColor: '#25D366' }}>
+                    {waSending
+                      ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      : <Send className="w-4 h-4" />}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
