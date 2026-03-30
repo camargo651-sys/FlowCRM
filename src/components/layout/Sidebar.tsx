@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut, ChevronDown, Plug, FileText } from 'lucide-react'
+import { Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut, ChevronDown, Plug, FileText, Package, UserPlus } from 'lucide-react'
 import NotificationBell from './NotificationBell'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -34,7 +34,9 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     { href: '/tasks',         icon: CheckSquare,     label: t('nav.tasks') },
     { href: '/analytics',     icon: BarChart2,       label: t('nav.analytics') },
     { href: '/integrations',  icon: Plug,            label: t('nav.integrations') },
+    { href: '/inventory',     icon: Package,         label: 'Inventory' },
     { href: '/automations',   icon: Zap,             label: 'Automations' },
+    { href: '/team',          icon: UserPlus,        label: 'Team' },
   ]
 
   const handleLogout = async () => {

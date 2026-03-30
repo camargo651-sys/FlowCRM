@@ -681,4 +681,100 @@ create policy "User manages own notifications" on notifications
 create index if not exists idx_notifications_user on notifications(user_id, read, created_at desc);
 alter publication supabase_realtime add table notifications;
 
+-- ============================================================
+-- TEAM INVITATIONS
+-- ============================================================
+create table if not exists team_invitations (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  email           text not null,
+  role            text default 'member' check (role in ('admin','manager','member')),
+  invited_by      uuid not null references auth.users(id),
+  token           text unique not null,
+  status          text default 'pending' check (status in ('pending','accepted','expired','revoked')),
+  accepted_at     timestamptz,
+  expires_at      timestamptz default (now() + interval '7 days'),
+  created_at      timestamptz default now()
+);
+
+alter table team_invitations enable row level security;
+create policy "Workspace owner manages invitations" on team_invitations
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- INVENTORY / STOCK (configurable product types)
+-- ============================================================
+create table if not exists product_categories (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  name            text not null,
+  type            text default 'basic' check (type in ('basic','apparel','technical','digital','service')),
+  icon            text,
+  fields_config   jsonb default '[]',
+  created_at      timestamptz default now(),
+  unique(workspace_id, name)
+);
+
+alter table product_categories enable row level security;
+create policy "Workspace owner manages categories" on product_categories
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists products (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  category_id     uuid references product_categories(id) on delete set null,
+  sku             text,
+  name            text not null,
+  description     text,
+  unit_price      numeric default 0,
+  cost_price      numeric default 0,
+  currency        text default 'USD',
+  stock_quantity  int default 0,
+  min_stock       int default 0,
+  max_stock       int,
+  unit            text default 'unit',
+  status          text default 'active' check (status in ('active','inactive','discontinued')),
+  image_url       text,
+  barcode         text,
+  -- Apparel-specific
+  sizes           text[],
+  colors          text[],
+  -- Technical-specific
+  brand           text,
+  model           text,
+  specs           jsonb default '{}',
+  warranty_months int,
+  -- General custom fields
+  custom_fields   jsonb default '{}',
+  tags            text[],
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+
+alter table products enable row level security;
+create policy "Workspace owner manages products" on products
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger products_updated_at before update on products for each row execute function update_updated_at();
+
+create table if not exists stock_movements (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  product_id      uuid not null references products(id) on delete cascade,
+  type            text not null check (type in ('purchase','sale','adjustment','return','transfer')),
+  quantity        int not null,
+  previous_stock  int not null,
+  new_stock       int not null,
+  unit_cost       numeric,
+  reference       text,
+  notes           text,
+  deal_id         uuid references deals(id) on delete set null,
+  contact_id      uuid references contacts(id) on delete set null,
+  created_by      uuid references auth.users(id),
+  created_at      timestamptz default now()
+);
+
+alter table stock_movements enable row level security;
+create policy "Workspace owner manages stock movements" on stock_movements
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
 -- Done! Your FlowCRM database is ready.
