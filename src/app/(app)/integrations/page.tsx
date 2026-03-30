@@ -47,12 +47,31 @@ export default function IntegrationsPage() {
     ;(data || []).forEach((s: any) => map.set(s.key, { key: s.key, enabled: s.enabled, config: s.config || {} }))
     setSaved(map)
 
-    // Load connected email accounts
+    // Load connected email accounts + linkedin accounts
     try {
       const res = await fetch('/api/email/accounts')
       if (res.ok) {
         const { accounts } = await res.json()
         setEmailAccounts(accounts || [])
+      }
+    } catch {}
+
+    // Load LinkedIn accounts as email-like accounts for the OAuth UI
+    try {
+      const { data: liAccounts } = await supabase
+        .from('linkedin_accounts')
+        .select('id, status, name, email, last_synced_at, created_at')
+        .eq('workspace_id', ws.id)
+      if (liAccounts) {
+        const mapped = liAccounts.map((a: any) => ({
+          id: a.id,
+          provider: 'linkedin',
+          email_address: a.name || a.email || 'LinkedIn Account',
+          status: a.status,
+          last_synced_at: a.last_synced_at,
+          created_at: a.created_at,
+        }))
+        setEmailAccounts(prev => [...prev, ...mapped])
       }
     } catch {}
 

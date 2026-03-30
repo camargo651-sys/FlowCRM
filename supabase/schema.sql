@@ -464,4 +464,87 @@ create trigger whatsapp_contacts_updated_at before update on whatsapp_contacts f
 -- Enable Realtime for WhatsApp messages
 alter publication supabase_realtime add table whatsapp_messages;
 
+-- ============================================================
+-- LINKEDIN ACCOUNTS
+-- ============================================================
+create table if not exists linkedin_accounts (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  linkedin_id     text not null,
+  name            text,
+  email           text,
+  profile_url     text,
+  access_token    text not null,
+  refresh_token   text,
+  token_expires_at timestamptz not null,
+  scopes          text[],
+  status          text default 'active' check (status in ('active','expired','revoked','error')),
+  last_synced_at  timestamptz,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now(),
+  unique(workspace_id, linkedin_id)
+);
+
+alter table linkedin_accounts enable row level security;
+create policy "Workspace owner manages linkedin accounts" on linkedin_accounts
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger linkedin_accounts_updated_at before update on linkedin_accounts for each row execute function update_updated_at();
+
+-- ============================================================
+-- LINKEDIN CONNECTIONS (synced contacts from LinkedIn)
+-- ============================================================
+create table if not exists linkedin_connections (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  linkedin_account_id uuid not null references linkedin_accounts(id) on delete cascade,
+  linkedin_id     text not null,
+  first_name      text,
+  last_name       text,
+  headline        text,
+  profile_url     text,
+  email           text,
+  company         text,
+  position        text,
+  contact_id      uuid references contacts(id) on delete set null,
+  synced_at       timestamptz default now(),
+  created_at      timestamptz default now(),
+  unique(linkedin_account_id, linkedin_id)
+);
+
+alter table linkedin_connections enable row level security;
+create policy "Workspace owner manages linkedin connections" on linkedin_connections
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- CALL LOGS (transcribed calls from Twilio, Zoom, etc.)
+-- ============================================================
+create table if not exists call_logs (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  provider        text default 'manual' check (provider in ('twilio','zoom','google_meet','manual')),
+  external_id     text,
+  from_number     text,
+  to_number       text,
+  direction       text check (direction in ('inbound','outbound')),
+  duration_seconds int,
+  started_at      timestamptz,
+  ended_at        timestamptz,
+  recording_url   text,
+  transcript      text,
+  summary         text,
+  sentiment       text check (sentiment in ('positive','neutral','negative')),
+  key_topics      text[],
+  next_actions    text[],
+  contact_id      uuid references contacts(id) on delete set null,
+  deal_id         uuid references deals(id) on delete set null,
+  owner_id        uuid references auth.users(id),
+  metadata        jsonb default '{}',
+  created_at      timestamptz default now()
+);
+
+alter table call_logs enable row level security;
+create policy "Workspace owner manages call logs" on call_logs
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
 -- Done! Your FlowCRM database is ready.

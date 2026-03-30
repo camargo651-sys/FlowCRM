@@ -202,15 +202,13 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
   },
   {
     key: 'linkedin', name: 'LinkedIn', category: 'social', color: '#0A66C2', icon: '💼',
-    description: 'Import LinkedIn contacts. Track connection requests and messages.',
-    fields: [
-      { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxxxx', help: 'LinkedIn Developer Portal' },
-      { key: 'client_secret', label: 'Client Secret', placeholder: 'xxxxxxxx', type: 'password', help: 'LinkedIn Developer Portal' },
-    ],
+    oauthFlow: true, oauthUrl: '/api/auth/linkedin',
+    description: 'Connect your LinkedIn account to import contacts with their company, title, and profile data automatically.',
+    fields: [],
     setupSteps: [
-      { step: 1, title: 'Create LinkedIn App', description: 'Go to linkedin.com/developers > Create App.' },
-      { step: 2, title: 'Request access', description: 'Request Sign In with LinkedIn and Marketing APIs.' },
-      { step: 3, title: 'Add redirect URL', description: 'Add: https://your-domain.com/api/auth/linkedin/callback' },
+      { step: 1, title: 'Click Connect', description: 'Click the button below to sign in with your LinkedIn account.' },
+      { step: 2, title: 'Grant permissions', description: 'Allow FlowCRM to access your basic profile and email.' },
+      { step: 3, title: 'Import contacts', description: 'Your LinkedIn connections will be available to import into the CRM.' },
     ],
   },
 

@@ -47,6 +47,13 @@ interface WhatsAppMessage {
   body: string | null; status: string; received_at: string;
 }
 
+interface CallLog {
+  id: string; provider: string; direction: string; duration_seconds: number;
+  transcript: string | null; summary: string | null; sentiment: string | null;
+  key_topics: string[]; next_actions: string[]; started_at: string;
+  recording_url: string | null;
+}
+
 const ACTIVITY_ICONS: Record<string, any> = {
   call: Phone, email: Mail, meeting: Calendar, note: FileText, task: CheckSquare, whatsapp: MessageCircle,
 }
@@ -68,6 +75,7 @@ export default function ContactDetailPage() {
   const [activities, setActivities] = useState<ActivityRow[]>([])
   const [emails, setEmails] = useState<EmailMessage[]>([])
   const [waMessages, setWaMessages] = useState<WhatsAppMessage[]>([])
+  const [callLogs, setCallLogs] = useState<CallLog[]>([])
   const [waSendText, setWaSendText] = useState('')
   const [waSending, setWaSending] = useState(false)
   const [tab, setTab] = useState<'overview' | 'deals' | 'quotes' | 'activities' | 'emails' | 'whatsapp'>('overview')
@@ -129,6 +137,15 @@ export default function ContactDetailPage() {
       .order('received_at', { ascending: true })
       .limit(100)
     setWaMessages(waData || [])
+
+    // Load call logs
+    const { data: callData } = await supabase
+      .from('call_logs')
+      .select('id, provider, direction, duration_seconds, transcript, summary, sentiment, key_topics, next_actions, started_at, recording_url')
+      .eq('contact_id', id)
+      .order('started_at', { ascending: false })
+      .limit(30)
+    setCallLogs(callData || [])
 
     setLoading(false)
   }, [id])
@@ -195,6 +212,7 @@ export default function ContactDetailPage() {
     ...quotes.map(q => ({ type: 'quote' as const, date: q.created_at, data: q })),
     ...activities.filter(a => a.type !== 'email').map(a => ({ type: 'activity' as const, date: a.created_at, data: a })),
     ...emails.map(e => ({ type: 'email' as const, date: e.received_at, data: e })),
+    ...callLogs.map(c => ({ type: 'call_log' as const, date: c.started_at, data: c })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   if (loading || !contact) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
@@ -314,10 +332,12 @@ export default function ContactDetailPage() {
                 <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                   item.type === 'deal' ? 'bg-brand-50 text-brand-600' :
                   item.type === 'quote' ? 'bg-violet-50 text-violet-600' :
+                  item.type === 'call_log' ? 'bg-orange-50 text-orange-600' :
                   item.type === 'email' ? ((item.data as EmailMessage).direction === 'inbound' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600') :
                   ACTIVITY_COLORS[(item.data as ActivityRow).type] || 'bg-surface-100 text-surface-500')}>
                   {item.type === 'deal' && <TrendingUp className="w-4 h-4" />}
                   {item.type === 'quote' && <FileText className="w-4 h-4" />}
+                  {item.type === 'call_log' && <Phone className="w-4 h-4" />}
                   {item.type === 'email' && ((item.data as EmailMessage).direction === 'inbound' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />)}
                   {item.type === 'activity' && (() => {
                     const Icon = ACTIVITY_ICONS[(item.data as ActivityRow).type] || CheckSquare
@@ -336,6 +356,7 @@ export default function ContactDetailPage() {
                       {item.type === 'quote' && `Quote: ${(item.data as QuoteRow).title}`}
                       {item.type === 'activity' && (item.data as ActivityRow).title}
                       {item.type === 'email' && (item.data as EmailMessage).subject}
+                      {item.type === 'call_log' && `Call (${Math.floor((item.data as CallLog).duration_seconds / 60)}m ${(item.data as CallLog).duration_seconds % 60}s)`}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] text-surface-400">{new Date(item.date).toLocaleDateString()} · {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -378,6 +399,20 @@ export default function ContactDetailPage() {
                           </span>
                         </>
                       )}
+                      {item.type === 'call_log' && (
+                        <>
+                          {(item.data as CallLog).sentiment && (
+                            <span className={cn('badge text-[9px]',
+                              (item.data as CallLog).sentiment === 'positive' ? 'badge-green' :
+                              (item.data as CallLog).sentiment === 'negative' ? 'badge-red' : 'badge-gray')}>
+                              {(item.data as CallLog).sentiment}
+                            </span>
+                          )}
+                          {(item.data as CallLog).key_topics?.slice(0, 2).map((t, i) => (
+                            <span key={i} className="badge badge-blue text-[9px]">{t}</span>
+                          ))}
+                        </>
+                      )}
                     </div>
                   </div>
                   {item.type === 'activity' && (
@@ -393,6 +428,18 @@ export default function ContactDetailPage() {
                 )}
                 {item.type === 'email' && (item.data as EmailMessage).snippet && (
                   <p className="text-xs text-surface-500 mt-2 line-clamp-2">{(item.data as EmailMessage).snippet}</p>
+                )}
+                {item.type === 'call_log' && (item.data as CallLog).summary && (
+                  <div className="mt-2">
+                    <p className="text-xs text-surface-500">{(item.data as CallLog).summary}</p>
+                    {(item.data as CallLog).next_actions?.length > 0 && (
+                      <div className="mt-1.5 space-y-0.5">
+                        {(item.data as CallLog).next_actions.map((a, i) => (
+                          <p key={i} className="text-[10px] text-brand-600 font-medium">→ {a}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
