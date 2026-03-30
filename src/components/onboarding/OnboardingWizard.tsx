@@ -101,6 +101,15 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
     // Apply industry template (stages, custom fields)
     await applyTemplate(template)
 
+    // Apply automations via API
+    try {
+      await fetch('/api/workspace/apply-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateKey: industryKey || 'generic' }),
+      })
+    } catch {}
+
     // Save workspace settings
     await supabase.from('workspaces').update({
       name: companyName,
@@ -109,6 +118,10 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
       industry: industryKey,
       team_size: teamSize,
       language: selectedLocale,
+      terminology: {
+        deal: template.dealLabel,
+        contact: template.contactLabel,
+      },
       onboarding_completed: true,
     }).eq('id', workspaceId)
 

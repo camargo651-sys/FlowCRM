@@ -593,4 +593,37 @@ alter table deals add column if not exists ai_score int default 0;
 alter table deals add column if not exists ai_risk text check (ai_risk in ('on_track','at_risk','critical'));
 alter table deals add column if not exists ai_next_action text;
 
+-- ============================================================
+-- AUTOMATIONS (industry-specific workflow rules)
+-- ============================================================
+create table if not exists automations (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  name            text not null,
+  enabled         boolean default true,
+  trigger_type    text not null check (trigger_type in (
+    'deal_stage_changed','deal_created','deal_idle','deal_won','deal_lost',
+    'contact_created','contact_birthday',
+    'task_overdue','task_due_soon',
+    'quote_sent','quote_accepted','quote_rejected',
+    'whatsapp_received','email_received',
+    'schedule_daily','schedule_weekly','schedule_monthly'
+  )),
+  trigger_config  jsonb default '{}',
+  action_type     text not null check (action_type in (
+    'create_task','send_whatsapp','send_email','notify_team',
+    'update_deal','update_contact','create_deal','webhook'
+  )),
+  action_config   jsonb default '{}',
+  last_triggered  timestamptz,
+  trigger_count   int default 0,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+
+alter table automations enable row level security;
+create policy "Workspace owner manages automations" on automations
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger automations_updated_at before update on automations for each row execute function update_updated_at();
+
 -- Done! Your FlowCRM database is ready.

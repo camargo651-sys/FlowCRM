@@ -33,6 +33,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     { href: '/tasks',         icon: CheckSquare,     label: t('nav.tasks') },
     { href: '/analytics',     icon: BarChart2,       label: t('nav.analytics') },
     { href: '/integrations',  icon: Plug,            label: t('nav.integrations') },
+    { href: '/automations',   icon: Zap,             label: 'Automations' },
   ]
 
   const handleLogout = async () => {
