@@ -5,8 +5,10 @@ import Link from 'next/link'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import AICommandCenter from '@/components/dashboard/AICommandCenter'
 
+import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
+
 async function getData(userId: string, supabase: any) {
-  const { data: ws } = await supabase.from('workspaces').select('id, terminology').eq('owner_id', userId).single()
+  const { data: ws } = await supabase.from('workspaces').select('id, terminology, industry').eq('owner_id', userId).single()
   if (!ws) return null
 
   const now = new Date()
@@ -25,6 +27,12 @@ async function getData(userId: string, supabase: any) {
   const quotes = quotesRes.data || []
   const term = (ws.terminology as any) || {}
 
+  // Get industry-specific KPIs
+  let industryKPIs: any[] = []
+  try {
+    industryKPIs = await getIndustryKPIs(supabase, ws.id, ws.industry || 'generic')
+  } catch {}
+
   return {
     stats: {
       open_deals: openDeals.length,
@@ -38,6 +46,8 @@ async function getData(userId: string, supabase: any) {
     },
     dealLabel: term.deal?.plural || 'Deals',
     contactLabel: term.contact?.plural || 'Contacts',
+    industryKPIs,
+    industry: ws.industry,
   }
 }
 
@@ -52,29 +62,34 @@ export default async function DashboardPage() {
   const contactLabel = result?.contactLabel || 'Contacts'
   const firstName = user.user_metadata?.full_name?.split(' ')[0] || ''
 
-  const statCards = [
-    { label: `Open ${dealLabel}`, value: stats.open_deals, sub: formatCurrency(stats.total_value), icon: TrendingUp, color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: 'Won This Month', value: stats.won_this_month, sub: formatCurrency(stats.won_value), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: contactLabel, value: stats.contacts, sub: 'Total', icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
-    { label: 'Overdue', value: stats.overdue, sub: stats.overdue > 0 ? 'Needs attention' : 'All caught up', icon: stats.overdue > 0 ? AlertCircle : CheckSquare, color: stats.overdue > 0 ? 'text-red-600' : 'text-emerald-600', bg: stats.overdue > 0 ? 'bg-red-50' : 'bg-emerald-50' },
-    { label: 'Pending Quotes', value: stats.quotes_pending, sub: formatCurrency(stats.quotes_value) + ' accepted', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' },
-  ]
+  const industryKPIs = result?.industryKPIs || []
+
+  // Use industry KPIs if available, otherwise fall back to defaults
+  const statCards = industryKPIs.length > 0
+    ? industryKPIs.slice(0, 6)
+    : [
+        { label: `Open ${dealLabel}`, value: stats.open_deals, icon: '📊' },
+        { label: 'Won This Month', value: stats.won_this_month, icon: '💰' },
+        { label: contactLabel, value: stats.contacts, icon: '👥' },
+        { label: 'Overdue', value: stats.overdue, icon: stats.overdue > 0 ? '⚠️' : '✅' },
+        { label: 'Pending Quotes', value: stats.quotes_pending, icon: '📄' },
+      ]
 
   return (
     <div className="animate-fade-in">
       <DashboardClient />
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        {statCards.map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <div key={label} className="card p-4">
+      {/* Industry KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        {statCards.map((kpi: any) => (
+          <div key={kpi.key || kpi.label} className="card p-4">
             <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                <Icon className={`w-4 h-4 ${color}`} />
+              <div className="w-9 h-9 bg-surface-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">
+                {kpi.icon || '📊'}
               </div>
               <div className="min-w-0">
-                <p className="text-lg font-bold text-surface-900 leading-tight">{value}</p>
-                <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">{label}</p>
+                <p className="text-lg font-bold text-surface-900 leading-tight">{kpi.value}</p>
+                <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">{kpi.label}</p>
               </div>
             </div>
           </div>

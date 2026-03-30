@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut, ChevronDown, Plug, FileText } from 'lucide-react'
+import NotificationBell from './NotificationBell'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, getInitials } from '@/lib/utils'
@@ -76,10 +77,13 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
 
       {/* Bottom */}
       <div className="p-3 border-t border-surface-100 space-y-0.5">
-        <Link href="/settings" className={cn(pathname.startsWith('/settings') ? 'nav-item-active' : 'nav-item')}>
-          <Settings className="w-4 h-4 flex-shrink-0" />
-          <span>{t('nav.settings')}</span>
-        </Link>
+        <div className="flex items-center justify-between px-1 mb-1">
+          <Link href="/settings" className={cn('flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all flex-1', pathname.startsWith('/settings') ? 'text-brand-600 bg-brand-50' : 'text-surface-500 hover:bg-surface-50')}>
+            <Settings className="w-4 h-4 flex-shrink-0" />
+            <span>{t('nav.settings')}</span>
+          </Link>
+          <NotificationBell />
+        </div>
 
         {/* User menu */}
         <div className="relative">

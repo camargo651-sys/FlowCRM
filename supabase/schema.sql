@@ -626,4 +626,59 @@ create policy "Workspace owner manages automations" on automations
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 create trigger automations_updated_at before update on automations for each row execute function update_updated_at();
 
+-- ============================================================
+-- QUOTE VIEW TRACKING (proposal analytics)
+-- ============================================================
+alter table quotes add column if not exists view_token text unique;
+alter table quotes add column if not exists view_count int default 0;
+alter table quotes add column if not exists last_viewed_at timestamptz;
+alter table quotes add column if not exists avg_view_seconds int default 0;
+
+create table if not exists quote_views (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  quote_id        uuid not null references quotes(id) on delete cascade,
+  contact_id      uuid references contacts(id) on delete set null,
+  ip_address      text,
+  user_agent      text,
+  duration_seconds int default 0,
+  sections_viewed  text[],
+  created_at       timestamptz default now()
+);
+
+alter table quote_views enable row level security;
+create policy "Workspace owner manages quote views" on quote_views
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- NOTIFICATIONS (real-time proactive alerts)
+-- ============================================================
+create table if not exists notifications (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  type            text not null check (type in (
+    'quote_viewed','hot_contact','deal_at_risk','whatsapp_received',
+    'email_replied','call_positive','task_overdue','deal_won',
+    'automation_fired','system'
+  )),
+  title           text not null,
+  body            text,
+  icon            text,
+  priority        text default 'medium' check (priority in ('low','medium','high','urgent')),
+  read            boolean default false,
+  action_url      text,
+  contact_id      uuid references contacts(id) on delete set null,
+  deal_id         uuid references deals(id) on delete set null,
+  metadata        jsonb default '{}',
+  created_at      timestamptz default now()
+);
+
+alter table notifications enable row level security;
+create policy "User manages own notifications" on notifications
+  using (user_id = auth.uid());
+
+create index if not exists idx_notifications_user on notifications(user_id, read, created_at desc);
+alter publication supabase_realtime add table notifications;
+
 -- Done! Your FlowCRM database is ready.
