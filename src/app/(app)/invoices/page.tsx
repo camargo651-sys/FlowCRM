@@ -186,8 +186,11 @@ export default function InvoicesPage() {
                   </td>
                   <td className="px-4 py-3"><span className={cn('badge text-[10px]', STATUS_STYLES[inv.status])}>{inv.status}</span></td>
                   <td className="px-4 py-3">
-                    {inv.status === 'draft' && <button onClick={() => updateStatus(inv.id, 'sent')} className="btn-secondary btn-sm text-[10px]"><Send className="w-3 h-3" /> Send</button>}
-                    {inv.status === 'sent' && <button onClick={() => updateStatus(inv.id, 'paid')} className="btn-sm bg-emerald-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><DollarSign className="w-3 h-3" /> Paid</button>}
+                    <div className="flex items-center gap-1">
+                      <a href={`/api/pdf?type=invoice&id=${inv.id}`} target="_blank" className="btn-ghost btn-sm text-[10px]"><Download className="w-3 h-3" /></a>
+                      {inv.status === 'draft' && <button onClick={() => updateStatus(inv.id, 'sent')} className="btn-secondary btn-sm text-[10px]"><Send className="w-3 h-3" /> Send</button>}
+                      {inv.status === 'sent' && <button onClick={() => updateStatus(inv.id, 'paid')} className="btn-sm bg-emerald-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><DollarSign className="w-3 h-3" /> Paid</button>}
+                    </div>
                   </td>
                 </tr>
               ))}
