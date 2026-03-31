@@ -1367,4 +1367,52 @@ create policy "ws owner work_orders" on work_orders
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 create trigger work_orders_updated_at before update on work_orders for each row execute function update_updated_at();
 
+-- ============================================================
+-- E-COMMERCE (public storefront)
+-- ============================================================
+alter table workspaces add column if not exists store_enabled boolean default false;
+alter table workspaces add column if not exists store_name text;
+alter table workspaces add column if not exists store_description text;
+
+alter table products add column if not exists published boolean default false;
+alter table products add column if not exists short_description text;
+
+create table if not exists store_orders (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  order_number    text not null,
+  customer_name   text not null,
+  customer_email  text not null,
+  customer_phone  text,
+  shipping_address text,
+  status          text default 'pending' check (status in ('pending','confirmed','processing','shipped','delivered','cancelled','refunded')),
+  subtotal        numeric default 0,
+  tax_amount      numeric default 0,
+  shipping_cost   numeric default 0,
+  total           numeric default 0,
+  payment_method  text,
+  payment_status  text default 'pending' check (payment_status in ('pending','paid','failed','refunded')),
+  contact_id      uuid references contacts(id) on delete set null,
+  notes           text,
+  metadata        jsonb default '{}',
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table store_orders enable row level security;
+create policy "ws owner store_orders" on store_orders
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists store_order_items (
+  id              uuid primary key default uuid_generate_v4(),
+  order_id        uuid not null references store_orders(id) on delete cascade,
+  product_id      uuid references products(id) on delete set null,
+  name            text not null,
+  quantity        numeric default 1,
+  unit_price      numeric default 0,
+  total           numeric default 0
+);
+alter table store_order_items enable row level security;
+create policy "ws owner store_order_items" on store_order_items
+  using (order_id in (select id from store_orders where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
 -- Done! Your Tracktio database is ready.
