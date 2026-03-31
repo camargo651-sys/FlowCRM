@@ -24,16 +24,21 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(20)
+  try {
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
 
-  const unreadCount = (notifications || []).filter(n => !n.read).length
+    if (error) return NextResponse.json({ notifications: [], unread_count: 0 })
 
-  return NextResponse.json({ notifications: notifications || [], unread_count: unreadCount })
+    const unreadCount = (notifications || []).filter(n => !n.read).length
+    return NextResponse.json({ notifications: notifications || [], unread_count: unreadCount })
+  } catch {
+    return NextResponse.json({ notifications: [], unread_count: 0 })
+  }
 }
 
 // PATCH: Mark notifications as read

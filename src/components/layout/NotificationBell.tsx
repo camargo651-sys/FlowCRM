@@ -57,22 +57,24 @@ export default function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications()
-    // Poll every 30 seconds
     const interval = setInterval(fetchNotifications, 30000)
 
-    // Realtime subscription for instant notifications
-    const channel = supabase
-      .channel('notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-        const newNotif = payload.new as Notification
-        setNotifications(prev => [newNotif, ...prev].slice(0, 20))
-        setUnread(prev => prev + 1)
-      })
-      .subscribe()
+    // Realtime subscription (graceful — won't break if table doesn't exist)
+    let channel: any = null
+    try {
+      channel = supabase
+        .channel('notifications')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+          const newNotif = payload.new as Notification
+          setNotifications(prev => [newNotif, ...prev].slice(0, 20))
+          setUnread(prev => prev + 1)
+        })
+        .subscribe()
+    } catch {}
 
     return () => {
       clearInterval(interval)
-      supabase.removeChannel(channel)
+      if (channel) supabase.removeChannel(channel)
     }
   }, [])
 
