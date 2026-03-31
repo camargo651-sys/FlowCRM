@@ -2,10 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 
 async function getQuote(token: string) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) return null
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key)
 
   const { data: quote } = await supabase
     .from('quotes')

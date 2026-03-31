@@ -13,45 +13,41 @@ async function getData(userId: string, supabase: any) {
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
   // Parallel fetch all ERP data
-  const [
-    dealsRes, wonRes, tasksRes, contactsRes, quotesRes,
-    invoicesRes, productsRes, employeesRes,
-  ] = await Promise.all([
-    supabase.from('deals').select('id, value, status, ai_risk').eq('workspace_id', ws.id),
-    supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('status', 'won').gte('updated_at', firstOfMonth),
-    supabase.from('activities').select('id').eq('workspace_id', ws.id).eq('done', false).lte('due_date', now.toISOString()),
-    supabase.from('contacts').select('id, score_label').eq('workspace_id', ws.id),
-    supabase.from('quotes').select('id, total, status').eq('workspace_id', ws.id),
-    supabase.from('invoices').select('id, total, balance_due, status').eq('workspace_id', ws.id),
-    supabase.from('products').select('id, stock_quantity, min_stock, unit_price, cost_price, status').eq('workspace_id', ws.id).eq('status', 'active'),
-    supabase.from('employees').select('id, salary, salary_period, status').eq('workspace_id', ws.id).eq('status', 'active'),
+  // Safe query helper — returns empty array if table doesn't exist
+  const safeQuery = async (query: any) => {
+    const res = await query
+    return res?.data || []
+  }
+
+  const [deals, wonDeals, overdueTasks, contacts, quotes, invoices, products, employees] = await Promise.all([
+    safeQuery(supabase.from('deals').select('id, value, status, ai_risk').eq('workspace_id', ws.id)),
+    safeQuery(supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('status', 'won').gte('updated_at', firstOfMonth)),
+    safeQuery(supabase.from('activities').select('id').eq('workspace_id', ws.id).eq('done', false).lte('due_date', now.toISOString())),
+    safeQuery(supabase.from('contacts').select('id, score_label').eq('workspace_id', ws.id)),
+    safeQuery(supabase.from('quotes').select('id, total, status').eq('workspace_id', ws.id)),
+    safeQuery(supabase.from('invoices').select('id, total, balance_due, status').eq('workspace_id', ws.id)),
+    safeQuery(supabase.from('products').select('id, stock_quantity, min_stock, unit_price, cost_price, status').eq('workspace_id', ws.id).eq('status', 'active')),
+    safeQuery(supabase.from('employees').select('id, salary, salary_period, status').eq('workspace_id', ws.id).eq('status', 'active')),
   ])
 
-  const deals = dealsRes.data || []
   const openDeals = deals.filter((d: any) => d.status === 'open')
-  const wonDeals = wonRes.data || []
-  const contacts = contactsRes.data || []
-  const quotes = quotesRes.data || []
-  const invoices = invoicesRes?.data || []
-  const products = productsRes?.data || []
-  const employees = employeesRes?.data || []
   const term = (ws.terminology as any) || {}
 
   // CRM metrics
-  const hotContacts = contacts.filter((c: any) => c.score_label === 'hot').length
-  const atRiskDeals = deals.filter((d: any) => d.ai_risk === 'critical' || d.ai_risk === 'at_risk').length
+  const hotContacts = (contacts as any[]).filter((c: any) => c.score_label === 'hot').length
+  const atRiskDeals = (deals as any[]).filter((d: any) => d.ai_risk === 'critical' || d.ai_risk === 'at_risk').length
 
   // Finance metrics
-  const outstandingInvoices = invoices.filter((i: any) => ['sent', 'partial', 'overdue'].includes(i.status))
+  const outstandingInvoices = (invoices as any[]).filter((i: any) => ['sent', 'partial', 'overdue'].includes(i.status))
   const totalOutstanding = outstandingInvoices.reduce((s: number, i: any) => s + (i.balance_due || 0), 0)
-  const collectedThisMonth = invoices.filter((i: any) => i.status === 'paid').reduce((s: number, i: any) => s + (i.total || 0), 0)
+  const collectedThisMonth = (invoices as any[]).filter((i: any) => i.status === 'paid').reduce((s: number, i: any) => s + (i.total || 0), 0)
 
   // Inventory metrics
-  const lowStockCount = products.filter((p: any) => p.stock_quantity <= p.min_stock).length
-  const inventoryValue = products.reduce((s: number, p: any) => s + (p.stock_quantity * p.cost_price), 0)
+  const lowStockCount = (products as any[]).filter((p: any) => p.stock_quantity <= p.min_stock).length
+  const inventoryValue = (products as any[]).reduce((s: number, p: any) => s + (p.stock_quantity * p.cost_price), 0)
 
   // HR metrics
-  const monthlyPayroll = employees.reduce((s: number, e: any) => {
+  const monthlyPayroll = (employees as any[]).reduce((s: number, e: any) => {
     let monthly = e.salary || 0
     if (e.salary_period === 'annual') monthly /= 12
     if (e.salary_period === 'weekly') monthly *= 4.33
@@ -69,21 +65,21 @@ async function getData(userId: string, supabase: any) {
     contactLabel: term.contact?.plural || 'Contacts',
     industryKPIs,
     crm: {
-      pipelineValue: openDeals.reduce((s: number, d: any) => s + (d.value || 0), 0),
+      pipelineValue: (openDeals as any[]).reduce((s: number, d: any) => s + (d.value || 0), 0),
       openDeals: openDeals.length,
       wonThisMonth: wonDeals.length,
-      wonValue: wonDeals.reduce((s: number, d: any) => s + (d.value || 0), 0),
+      wonValue: (wonDeals as any[]).reduce((s: number, d: any) => s + (d.value || 0), 0),
       contacts: contacts.length,
       hotContacts,
       atRiskDeals,
-      overdueTasks: tasksRes.data?.length || 0,
-      pendingQuotes: quotes.filter((q: any) => q.status === 'sent').length,
+      overdueTasks: (overdueTasks as any[]).length,
+      pendingQuotes: (quotes as any[]).filter((q: any) => q.status === 'sent').length,
     },
     finance: {
       totalOutstanding,
       outstandingCount: outstandingInvoices.length,
       collected: collectedThisMonth,
-      overdueInvoices: invoices.filter((i: any) => i.status === 'overdue').length,
+      overdueInvoices: (invoices as any[]).filter((i: any) => i.status === 'overdue').length,
     },
     inventory: {
       totalProducts: products.length,

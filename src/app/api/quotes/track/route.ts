@@ -3,10 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { emitSignal } from '@/lib/ai/signal-emitter'
 
 function getServiceSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) return null
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key)
 }
 
 // POST: Record a quote view event
@@ -15,6 +14,7 @@ export async function POST(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 400 })
 
   const supabase = getServiceSupabase()
+  if (!supabase) return NextResponse.json({ error: 'Service not configured' }, { status: 503 })
 
   // Find quote by token
   const { data: quote } = await supabase

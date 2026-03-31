@@ -5,10 +5,9 @@ import { processInboundWhatsAppMessage } from '@/lib/whatsapp/process-inbound'
 
 // Use service role for webhook (no user session)
 function getServiceSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) return null
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key)
 }
 
 // GET: Meta webhook verification handshake
@@ -23,6 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = getServiceSupabase()
+  if (!supabase) return new NextResponse('Service not configured', { status: 503 })
   const { data: accounts } = await supabase
     .from('whatsapp_accounts')
     .select('verify_token')
@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = getServiceSupabase()
+  if (!supabase) return NextResponse.json({ status: 'ok' })
 
   // Process each entry
   for (const entry of payload.entry || []) {

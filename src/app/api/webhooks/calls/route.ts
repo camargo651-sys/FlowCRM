@@ -5,9 +5,11 @@ import { analyzeTranscript } from '@/lib/calls/transcription-analyzer'
 import { emitSignal } from '@/lib/ai/signal-emitter'
 
 function getServiceSupabase() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) return null
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    key,
   )
 }
 
@@ -25,6 +27,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = getServiceSupabase()
+  if (!supabase) return NextResponse.json({ error: 'Service not configured' }, { status: 503 })
 
   // Determine provider and extract fields
   const provider = body.provider || 'twilio'
