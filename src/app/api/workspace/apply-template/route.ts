@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getTemplate } from '@/lib/industry-templates'
+import { seedWorkspaceData } from '@/lib/seed/demo-data'
 
 function getSupabase() {
   const cookieStore = cookies()
@@ -220,7 +221,20 @@ export async function POST(request: Request) {
     }
   }
 
-  // 5. Mark onboarding as completed
+  // 5. Seed demo data (contacts, deals, products, accounts, departments)
+  const allStages = await supabase.from('pipeline_stages').select('id, name').eq('workspace_id', ws.id).order('order_index')
+  let seedResult = { contacts: 0, products: 0, accounts: 0 }
+  try {
+    seedResult = await seedWorkspaceData(supabase, {
+      workspaceId: ws.id,
+      userId: user.id,
+      industry: templateKey,
+      pipelineId,
+      stages: allStages.data || [],
+    })
+  } catch {}
+
+  // 6. Mark onboarding as completed
   await supabase.from('workspaces').update({
     onboarding_completed: true,
   }).eq('id', ws.id)
@@ -231,5 +245,6 @@ export async function POST(request: Request) {
     stages: template.stages.length,
     customFields: template.customFields.length,
     automations: template.automations.length,
+    demo_data: seedResult,
   })
 }
