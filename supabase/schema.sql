@@ -1152,4 +1152,79 @@ alter table workspaces add column if not exists po_prefix text default 'PO';
 alter table workspaces add column if not exists invoice_notes text;
 alter table workspaces add column if not exists invoice_terms text;
 
+-- ============================================================
+-- POS (Point of Sale)
+-- ============================================================
+create table if not exists pos_sessions (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid not null references auth.users(id),
+  opened_at       timestamptz default now(),
+  closed_at       timestamptz,
+  opening_cash    numeric default 0,
+  closing_cash    numeric,
+  total_sales     numeric default 0,
+  total_transactions int default 0,
+  status          text default 'open' check (status in ('open','closed')),
+  created_at      timestamptz default now()
+);
+alter table pos_sessions enable row level security;
+create policy "ws owner pos_sessions" on pos_sessions
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists pos_transactions (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  session_id      uuid references pos_sessions(id) on delete set null,
+  transaction_number text not null,
+  contact_id      uuid references contacts(id) on delete set null,
+  subtotal        numeric default 0,
+  tax_amount      numeric default 0,
+  discount_amount numeric default 0,
+  total           numeric default 0,
+  payment_method  text default 'cash' check (payment_method in ('cash','card','transfer','mixed','other')),
+  amount_paid     numeric default 0,
+  change_given    numeric default 0,
+  status          text default 'completed' check (status in ('completed','voided','refunded')),
+  cashier_id      uuid references auth.users(id),
+  invoice_id      uuid references invoices(id) on delete set null,
+  created_at      timestamptz default now()
+);
+alter table pos_transactions enable row level security;
+create policy "ws owner pos_transactions" on pos_transactions
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists pos_transaction_items (
+  id              uuid primary key default uuid_generate_v4(),
+  transaction_id  uuid not null references pos_transactions(id) on delete cascade,
+  product_id      uuid references products(id) on delete set null,
+  name            text not null,
+  quantity        numeric default 1,
+  unit_price      numeric default 0,
+  discount        numeric default 0,
+  total           numeric default 0
+);
+alter table pos_transaction_items enable row level security;
+create policy "ws owner pos_items" on pos_transaction_items
+  using (transaction_id in (select id from pos_transactions where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+-- ============================================================
+-- FILE ATTACHMENTS
+-- ============================================================
+create table if not exists attachments (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  entity_type     text not null,
+  entity_id       uuid not null,
+  file_name       text not null,
+  file_url        text not null,
+  file_size       int,
+  mime_type       text,
+  uploaded_by     uuid references auth.users(id),
+  created_at      timestamptz default now()
+);
+alter table attachments enable row level security;
+create policy "ws owner attachments" on attachments
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
 -- Done! Your FlowCRM database is ready.
