@@ -778,4 +778,307 @@ alter table stock_movements enable row level security;
 create policy "Workspace owner manages stock movements" on stock_movements
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 
+-- ============================================================
+-- API KEYS
+-- ============================================================
+create table if not exists api_keys (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  name            text not null,
+  key_hash        text not null unique,
+  key_prefix      text not null,
+  scopes          text[] default '{"*"}',
+  active          boolean default true,
+  last_used_at    timestamptz,
+  expires_at      timestamptz,
+  created_at      timestamptz default now()
+);
+alter table api_keys enable row level security;
+create policy "Workspace owner manages api keys" on api_keys
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- INVOICES (Sales)
+-- ============================================================
+create table if not exists invoices (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  invoice_number  text not null,
+  type            text default 'invoice' check (type in ('invoice','credit_note','debit_note')),
+  contact_id      uuid references contacts(id) on delete set null,
+  deal_id         uuid references deals(id) on delete set null,
+  quote_id        uuid references quotes(id) on delete set null,
+  status          text default 'draft' check (status in ('draft','sent','paid','partial','overdue','cancelled','refunded')),
+  currency        text default 'USD',
+  subtotal        numeric default 0,
+  discount_type   text default 'percent',
+  discount_value  numeric default 0,
+  tax_rate        numeric default 0,
+  tax_amount      numeric default 0,
+  total           numeric default 0,
+  amount_paid     numeric default 0,
+  balance_due     numeric default 0,
+  issue_date      date default current_date,
+  due_date        date,
+  paid_at         timestamptz,
+  notes           text,
+  terms           text,
+  metadata        jsonb default '{}',
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table invoices enable row level security;
+create policy "Workspace owner manages invoices" on invoices
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger invoices_updated_at before update on invoices for each row execute function update_updated_at();
+
+create table if not exists invoice_items (
+  id              uuid primary key default uuid_generate_v4(),
+  invoice_id      uuid not null references invoices(id) on delete cascade,
+  product_id      uuid references products(id) on delete set null,
+  description     text not null,
+  quantity        numeric default 1,
+  unit_price      numeric default 0,
+  discount        numeric default 0,
+  tax_rate        numeric default 0,
+  total           numeric default 0,
+  order_index     int default 0
+);
+alter table invoice_items enable row level security;
+create policy "Invoice items follow invoice" on invoice_items
+  using (invoice_id in (select id from invoices where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+-- ============================================================
+-- PAYMENTS
+-- ============================================================
+create table if not exists payments (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  invoice_id      uuid references invoices(id) on delete set null,
+  contact_id      uuid references contacts(id) on delete set null,
+  amount          numeric not null,
+  currency        text default 'USD',
+  method          text check (method in ('cash','bank_transfer','credit_card','debit_card','check','paypal','stripe','mercadopago','other')),
+  reference       text,
+  status          text default 'completed' check (status in ('pending','completed','failed','refunded')),
+  payment_date    date default current_date,
+  notes           text,
+  metadata        jsonb default '{}',
+  created_at      timestamptz default now()
+);
+alter table payments enable row level security;
+create policy "Workspace owner manages payments" on payments
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- PURCHASE ORDERS (Purchasing)
+-- ============================================================
+create table if not exists suppliers (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  name            text not null,
+  email           text,
+  phone           text,
+  address         text,
+  tax_id          text,
+  payment_terms   text,
+  currency        text default 'USD',
+  notes           text,
+  tags            text[],
+  contact_id      uuid references contacts(id) on delete set null,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table suppliers enable row level security;
+create policy "Workspace owner manages suppliers" on suppliers
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists purchase_orders (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  po_number       text not null,
+  supplier_id     uuid references suppliers(id) on delete set null,
+  status          text default 'draft' check (status in ('draft','sent','confirmed','received','partial','cancelled')),
+  currency        text default 'USD',
+  subtotal        numeric default 0,
+  tax_amount      numeric default 0,
+  total           numeric default 0,
+  expected_date   date,
+  received_at     timestamptz,
+  notes           text,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table purchase_orders enable row level security;
+create policy "Workspace owner manages purchase orders" on purchase_orders
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists purchase_order_items (
+  id              uuid primary key default uuid_generate_v4(),
+  purchase_order_id uuid not null references purchase_orders(id) on delete cascade,
+  product_id      uuid references products(id) on delete set null,
+  description     text not null,
+  quantity        numeric default 1,
+  unit_cost       numeric default 0,
+  total           numeric default 0,
+  received_qty    numeric default 0,
+  order_index     int default 0
+);
+alter table purchase_order_items enable row level security;
+create policy "PO items follow PO" on purchase_order_items
+  using (purchase_order_id in (select id from purchase_orders where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+-- ============================================================
+-- ACCOUNTING (Chart of Accounts + Journal Entries)
+-- ============================================================
+create table if not exists chart_of_accounts (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  code            text not null,
+  name            text not null,
+  type            text not null check (type in ('asset','liability','equity','revenue','expense')),
+  subtype         text,
+  parent_id       uuid references chart_of_accounts(id) on delete set null,
+  is_system       boolean default false,
+  balance         numeric default 0,
+  currency        text default 'USD',
+  active          boolean default true,
+  created_at      timestamptz default now(),
+  unique(workspace_id, code)
+);
+alter table chart_of_accounts enable row level security;
+create policy "Workspace owner manages accounts" on chart_of_accounts
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists journal_entries (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  entry_number    text not null,
+  date            date not null default current_date,
+  description     text,
+  reference       text,
+  source          text,
+  status          text default 'draft' check (status in ('draft','posted','voided')),
+  total_debit     numeric default 0,
+  total_credit    numeric default 0,
+  invoice_id      uuid references invoices(id) on delete set null,
+  payment_id      uuid references payments(id) on delete set null,
+  created_by      uuid references auth.users(id),
+  created_at      timestamptz default now()
+);
+alter table journal_entries enable row level security;
+create policy "Workspace owner manages journal entries" on journal_entries
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists journal_lines (
+  id              uuid primary key default uuid_generate_v4(),
+  journal_entry_id uuid not null references journal_entries(id) on delete cascade,
+  account_id      uuid not null references chart_of_accounts(id) on delete restrict,
+  description     text,
+  debit           numeric default 0,
+  credit          numeric default 0,
+  order_index     int default 0
+);
+alter table journal_lines enable row level security;
+create policy "Journal lines follow entry" on journal_lines
+  using (journal_entry_id in (select id from journal_entries where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+-- ============================================================
+-- HR (Employees, Departments, Payroll)
+-- ============================================================
+create table if not exists departments (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  name            text not null,
+  manager_id      uuid references auth.users(id),
+  parent_id       uuid references departments(id) on delete set null,
+  created_at      timestamptz default now(),
+  unique(workspace_id, name)
+);
+alter table departments enable row level security;
+create policy "Workspace owner manages departments" on departments
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists employees (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid references auth.users(id),
+  employee_number text,
+  first_name      text not null,
+  last_name       text not null,
+  email           text,
+  phone           text,
+  department_id   uuid references departments(id) on delete set null,
+  position        text,
+  employment_type text default 'full_time' check (employment_type in ('full_time','part_time','contractor','intern')),
+  start_date      date,
+  end_date        date,
+  salary          numeric default 0,
+  salary_currency text default 'USD',
+  salary_period   text default 'monthly' check (salary_period in ('hourly','daily','weekly','biweekly','monthly','annual')),
+  bank_account    text,
+  tax_id          text,
+  address         text,
+  emergency_contact text,
+  status          text default 'active' check (status in ('active','inactive','terminated','on_leave')),
+  custom_fields   jsonb default '{}',
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table employees enable row level security;
+create policy "Workspace owner manages employees" on employees
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger employees_updated_at before update on employees for each row execute function update_updated_at();
+
+create table if not exists leave_requests (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  employee_id     uuid not null references employees(id) on delete cascade,
+  type            text not null check (type in ('vacation','sick','personal','maternity','paternity','unpaid','other')),
+  start_date      date not null,
+  end_date        date not null,
+  days            numeric not null,
+  status          text default 'pending' check (status in ('pending','approved','rejected','cancelled')),
+  approved_by     uuid references auth.users(id),
+  notes           text,
+  created_at      timestamptz default now()
+);
+alter table leave_requests enable row level security;
+create policy "Workspace owner manages leave requests" on leave_requests
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists payroll_runs (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  period_start    date not null,
+  period_end      date not null,
+  status          text default 'draft' check (status in ('draft','processing','completed','cancelled')),
+  total_gross     numeric default 0,
+  total_deductions numeric default 0,
+  total_net       numeric default 0,
+  employee_count  int default 0,
+  processed_at    timestamptz,
+  created_at      timestamptz default now()
+);
+alter table payroll_runs enable row level security;
+create policy "Workspace owner manages payroll" on payroll_runs
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists payslips (
+  id              uuid primary key default uuid_generate_v4(),
+  payroll_run_id  uuid not null references payroll_runs(id) on delete cascade,
+  employee_id     uuid not null references employees(id) on delete cascade,
+  gross_salary    numeric default 0,
+  deductions      jsonb default '[]',
+  total_deductions numeric default 0,
+  net_salary      numeric default 0,
+  payment_method  text,
+  payment_status  text default 'pending' check (payment_status in ('pending','paid','failed')),
+  paid_at         timestamptz
+);
+alter table payslips enable row level security;
+create policy "Payslips follow payroll" on payslips
+  using (payroll_run_id in (select id from payroll_runs where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
 -- Done! Your FlowCRM database is ready.
