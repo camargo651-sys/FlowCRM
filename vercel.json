@@ -4,6 +4,10 @@
     {
       "path": "/api/email/sync",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/v1/recurring-invoices?action=generate",
+      "schedule": "0 6 * * *"
     }
   ]
 }

@@ -1081,4 +1081,51 @@ alter table payslips enable row level security;
 create policy "Payslips follow payroll" on payslips
   using (payroll_run_id in (select id from payroll_runs where workspace_id in (select id from workspaces where owner_id = auth.uid())));
 
+-- ============================================================
+-- RECURRING INVOICES (subscriptions)
+-- ============================================================
+create table if not exists recurring_invoices (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  contact_id      uuid references contacts(id) on delete set null,
+  title           text not null,
+  frequency       text not null check (frequency in ('weekly','biweekly','monthly','quarterly','yearly')),
+  currency        text default 'USD',
+  subtotal        numeric default 0,
+  tax_rate        numeric default 0,
+  total           numeric default 0,
+  next_date       date not null,
+  end_date        date,
+  items           jsonb default '[]',
+  auto_send       boolean default false,
+  active          boolean default true,
+  invoices_generated int default 0,
+  last_generated_at timestamptz,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table recurring_invoices enable row level security;
+create policy "Workspace owner manages recurring invoices" on recurring_invoices
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- AUDIT LOG (activity trail for compliance)
+-- ============================================================
+create table if not exists audit_log (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  user_id         uuid references auth.users(id),
+  action          text not null,
+  entity_type     text not null,
+  entity_id       uuid,
+  entity_name     text,
+  changes         jsonb default '{}',
+  ip_address      text,
+  created_at      timestamptz default now()
+);
+alter table audit_log enable row level security;
+create policy "Workspace owner views audit log" on audit_log
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create index if not exists idx_audit_workspace on audit_log(workspace_id, created_at desc);
+
 -- Done! Your FlowCRM database is ready.
