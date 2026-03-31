@@ -3,11 +3,7 @@
   "crons": [
     {
       "path": "/api/email/sync",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/v1/recurring-invoices?action=generate",
-      "schedule": "0 6 * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
