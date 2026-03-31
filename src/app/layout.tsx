@@ -3,12 +3,12 @@ import './globals.css'
 import Providers from '@/components/providers/Providers'
 
 export const metadata: Metadata = {
-  title: 'FlowCRM',
+  title: 'Tracktio',
   description: 'AI-Powered ERP — Zero Data Entry',
   manifest: '/manifest.json',
   themeColor: '#6172f3',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'FlowCRM' },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Tracktio' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

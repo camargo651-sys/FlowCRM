@@ -139,7 +139,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
             <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl">FlowCRM</span>
+            <span className="font-bold text-xl">Tracktio</span>
           </div>
           <h1 className="text-2xl font-bold">{t('onboarding.welcome')}</h1>
           <p className="text-white/70 text-sm mt-1">{t('onboarding.subtitle')}</p>

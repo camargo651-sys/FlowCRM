@@ -136,7 +136,7 @@ export default async function QuoteViewPage({ params }: { params: { token: strin
           </div>
 
           <div className="footer">
-            Powered by FlowCRM
+            Powered by Tracktio
           </div>
         </div>
 

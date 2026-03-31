@@ -45,9 +45,9 @@ export async function fireOutgoingWebhooks(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-FlowCRM-Event': event,
-        'X-FlowCRM-Signature': `sha256=${signature}`,
-        'X-FlowCRM-Timestamp': new Date().toISOString(),
+        'X-Tracktio-Event': event,
+        'X-Tracktio-Signature': `sha256=${signature}`,
+        'X-Tracktio-Timestamp': new Date().toISOString(),
       },
       body,
     })

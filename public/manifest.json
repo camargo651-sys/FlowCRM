@@ -1,6 +1,6 @@
 {
-  "name": "FlowCRM",
-  "short_name": "FlowCRM",
+  "name": "Tracktio",
+  "short_name": "Tracktio",
   "description": "AI-Powered ERP — Zero Data Entry",
   "start_url": "/dashboard",
   "display": "standalone",

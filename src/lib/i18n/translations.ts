@@ -109,7 +109,7 @@ const translations: Record<Locale, Record<string, string>> = {
 
     // Integrations
     'integrations.title': 'Integraciones',
-    'integrations.subtitle': 'Conecta tus herramientas favoritas con FlowCRM',
+    'integrations.subtitle': 'Conecta tus herramientas favoritas con Tracktio',
     'integrations.search': 'Buscar integraciones...',
     'integrations.connected': 'Conectado',
     'integrations.off': 'Desconectado',
@@ -147,7 +147,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'settings.language_select': 'Selecciona el idioma de la aplicación',
 
     // Onboarding
-    'onboarding.welcome': '¡Bienvenido a FlowCRM!',
+    'onboarding.welcome': '¡Bienvenido a Tracktio!',
     'onboarding.subtitle': 'Configura tu espacio de trabajo en pocos pasos',
     'onboarding.step1_title': 'Tu empresa',
     'onboarding.step1_desc': 'Cuéntanos sobre tu empresa',
@@ -167,7 +167,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'onboarding.language': 'Idioma de la aplicación',
     'onboarding.next': 'Siguiente',
     'onboarding.back': 'Atrás',
-    'onboarding.finish': 'Empezar a usar FlowCRM',
+    'onboarding.finish': 'Empezar a usar Tracktio',
     'onboarding.skip': 'Omitir por ahora',
     'onboarding.ready_title': '¡Todo listo!',
     'onboarding.ready_desc': 'Tu espacio de trabajo está configurado. Ahora puedes empezar a gestionar tus clientes, deals y tareas.',
@@ -337,7 +337,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'analytics.lost': 'Lost',
 
     'integrations.title': 'Integrations',
-    'integrations.subtitle': 'Connect your favorite tools with FlowCRM',
+    'integrations.subtitle': 'Connect your favorite tools with Tracktio',
     'integrations.search': 'Search integrations...',
     'integrations.connected': 'Connected',
     'integrations.off': 'Off',
@@ -373,7 +373,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'settings.upload_logo': 'Upload Logo',
     'settings.language_select': 'Select the application language',
 
-    'onboarding.welcome': 'Welcome to FlowCRM!',
+    'onboarding.welcome': 'Welcome to Tracktio!',
     'onboarding.subtitle': 'Set up your workspace in a few steps',
     'onboarding.step1_title': 'Your company',
     'onboarding.step1_desc': 'Tell us about your company',
@@ -393,7 +393,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'onboarding.language': 'Application language',
     'onboarding.next': 'Next',
     'onboarding.back': 'Back',
-    'onboarding.finish': 'Start using FlowCRM',
+    'onboarding.finish': 'Start using Tracktio',
     'onboarding.skip': 'Skip for now',
     'onboarding.ready_title': 'All set!',
     'onboarding.ready_desc': 'Your workspace is configured. Start managing your clients, deals, and tasks.',
@@ -504,7 +504,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'analytics.lost': 'Perdidos',
 
     'integrations.title': 'Integrações',
-    'integrations.subtitle': 'Conecte suas ferramentas favoritas com FlowCRM',
+    'integrations.subtitle': 'Conecte suas ferramentas favoritas com Tracktio',
     'integrations.search': 'Buscar integrações...',
     'integrations.connected': 'Conectado',
     'integrations.off': 'Desconectado',
@@ -540,7 +540,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'settings.upload_logo': 'Enviar logo',
     'settings.language_select': 'Selecione o idioma do aplicativo',
 
-    'onboarding.welcome': 'Bem-vindo ao FlowCRM!',
+    'onboarding.welcome': 'Bem-vindo ao Tracktio!',
     'onboarding.subtitle': 'Configure seu espaço em poucos passos',
     'onboarding.step1_title': 'Sua empresa',
     'onboarding.step1_desc': 'Conte-nos sobre sua empresa',
@@ -560,7 +560,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'onboarding.language': 'Idioma do aplicativo',
     'onboarding.next': 'Próximo',
     'onboarding.back': 'Voltar',
-    'onboarding.finish': 'Começar a usar o FlowCRM',
+    'onboarding.finish': 'Começar a usar o Tracktio',
     'onboarding.skip': 'Pular por agora',
     'onboarding.ready_title': 'Tudo pronto!',
     'onboarding.ready_desc': 'Seu espaço está configurado. Comece a gerenciar seus clientes, deals e tarefas.',
@@ -671,7 +671,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'analytics.lost': 'Perdus',
 
     'integrations.title': 'Intégrations',
-    'integrations.subtitle': 'Connectez vos outils préférés avec FlowCRM',
+    'integrations.subtitle': 'Connectez vos outils préférés avec Tracktio',
     'integrations.search': 'Rechercher des intégrations...',
     'integrations.connected': 'Connecté',
     'integrations.off': 'Déconnecté',
@@ -707,7 +707,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'settings.upload_logo': 'Télécharger le logo',
     'settings.language_select': 'Sélectionnez la langue de l\'application',
 
-    'onboarding.welcome': 'Bienvenue sur FlowCRM !',
+    'onboarding.welcome': 'Bienvenue sur Tracktio !',
     'onboarding.subtitle': 'Configurez votre espace en quelques étapes',
     'onboarding.step1_title': 'Votre entreprise',
     'onboarding.step1_desc': 'Parlez-nous de votre entreprise',
@@ -727,7 +727,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'onboarding.language': 'Langue de l\'application',
     'onboarding.next': 'Suivant',
     'onboarding.back': 'Retour',
-    'onboarding.finish': 'Commencer à utiliser FlowCRM',
+    'onboarding.finish': 'Commencer à utiliser Tracktio',
     'onboarding.skip': 'Passer pour l\'instant',
     'onboarding.ready_title': 'Tout est prêt !',
     'onboarding.ready_desc': 'Votre espace est configuré. Commencez à gérer vos clients, deals et tâches.',
@@ -838,7 +838,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'analytics.lost': 'Verloren',
 
     'integrations.title': 'Integrationen',
-    'integrations.subtitle': 'Verbinden Sie Ihre Lieblingstools mit FlowCRM',
+    'integrations.subtitle': 'Verbinden Sie Ihre Lieblingstools mit Tracktio',
     'integrations.search': 'Integrationen suchen...',
     'integrations.connected': 'Verbunden',
     'integrations.off': 'Getrennt',
@@ -874,7 +874,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'settings.upload_logo': 'Logo hochladen',
     'settings.language_select': 'Wählen Sie die Sprache der Anwendung',
 
-    'onboarding.welcome': 'Willkommen bei FlowCRM!',
+    'onboarding.welcome': 'Willkommen bei Tracktio!',
     'onboarding.subtitle': 'Richten Sie Ihren Arbeitsbereich in wenigen Schritten ein',
     'onboarding.step1_title': 'Ihr Unternehmen',
     'onboarding.step1_desc': 'Erzählen Sie uns von Ihrem Unternehmen',
@@ -894,7 +894,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'onboarding.language': 'Anwendungssprache',
     'onboarding.next': 'Weiter',
     'onboarding.back': 'Zurück',
-    'onboarding.finish': 'FlowCRM starten',
+    'onboarding.finish': 'Tracktio starten',
     'onboarding.skip': 'Vorerst überspringen',
     'onboarding.ready_title': 'Alles bereit!',
     'onboarding.ready_desc': 'Ihr Arbeitsbereich ist konfiguriert. Beginnen Sie mit der Verwaltung Ihrer Kunden, Deals und Aufgaben.',

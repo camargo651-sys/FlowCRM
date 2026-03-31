@@ -15,7 +15,7 @@ export default async function Home() {
           <div className="w-8 h-8 bg-brand-600 rounded-xl flex items-center justify-center">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           </div>
-          <span className="font-bold text-lg text-surface-900">FlowCRM</span>
+          <span className="font-bold text-lg text-surface-900">Tracktio</span>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/auth/login" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">Sign in</Link>
@@ -34,7 +34,7 @@ export default async function Home() {
           <span className="text-brand-600">while you sell</span>
         </h1>
         <p className="text-lg text-surface-500 mt-6 max-w-2xl mx-auto leading-relaxed">
-          FlowCRM captures every interaction automatically — emails, WhatsApp, calls, LinkedIn — so you never fill a form again.
+          Tracktio captures every interaction automatically — emails, WhatsApp, calls, LinkedIn — so you never fill a form again.
           AI tells you exactly who to call and what to say, in real time.
         </p>
         <div className="flex items-center justify-center gap-4 mt-10">
@@ -51,7 +51,7 @@ export default async function Home() {
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-surface-900">Not just another CRM</h2>
-          <p className="text-surface-500 mt-3 max-w-xl mx-auto">Three pillars that make FlowCRM fundamentally different</p>
+          <p className="text-surface-500 mt-3 max-w-xl mx-auto">Three pillars that make Tracktio fundamentally different</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -73,7 +73,7 @@ export default async function Home() {
             <div className="w-12 h-12 bg-violet-100 rounded-xl flex items-center justify-center text-2xl mb-5">🧠</div>
             <h3 className="text-lg font-bold text-surface-900 mb-2">Proactive AI</h3>
             <p className="text-sm text-surface-500 leading-relaxed">
-              Instead of showing static dashboards, FlowCRM tells you exactly what to do next. "Client X reviewed your pricing 3 times — call now."
+              Instead of showing static dashboards, Tracktio tells you exactly what to do next. "Client X reviewed your pricing 3 times — call now."
             </p>
             <ul className="mt-4 space-y-2 text-xs text-surface-600">
               <li className="flex items-center gap-2"><span className="text-violet-500">&#10003;</span> Engagement scoring (hot/warm/cold)</li>
@@ -149,9 +149,9 @@ export default async function Home() {
             <div className="w-6 h-6 bg-brand-600 rounded-lg flex items-center justify-center">
               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </div>
-            <span className="text-sm font-semibold text-surface-600">FlowCRM</span>
+            <span className="text-sm font-semibold text-surface-600">Tracktio</span>
           </div>
-          <p className="text-xs text-surface-400">&copy; {new Date().getFullYear()} FlowCRM. All rights reserved.</p>
+          <p className="text-xs text-surface-400">&copy; {new Date().getFullYear()} Tracktio. All rights reserved.</p>
         </div>
       </footer>
     </div>

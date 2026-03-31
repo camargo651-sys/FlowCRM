@@ -44,7 +44,7 @@ export default function SignupPage() {
           <div className="w-8 h-8 bg-brand-600 rounded-xl flex items-center justify-center">
             <Zap className="w-4 h-4 text-white" />
           </div>
-          <span className="text-white font-bold text-lg">FlowCRM</span>
+          <span className="text-white font-bold text-lg">Tracktio</span>
         </div>
 
         <h1 className="text-2xl font-bold text-white mb-1">Create your workspace</h1>
@@ -78,7 +78,7 @@ export default function SignupPage() {
                     className="w-full pl-10 pr-4 py-2.5 bg-surface-900 border border-surface-700 rounded-xl text-white placeholder-surface-600 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" />
                 </div>
                 {workspaceName && (
-                  <p className="text-surface-500 text-xs mt-1.5">URL: flowcrm.app/<span className="text-brand-400">{slugify(workspaceName)}</span></p>
+                  <p className="text-surface-500 text-xs mt-1.5">URL: tracktio.app/<span className="text-brand-400">{slugify(workspaceName)}</span></p>
                 )}
               </div>
               <button type="submit" disabled={!fullName || !workspaceName}

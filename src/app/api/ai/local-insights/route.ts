@@ -255,7 +255,7 @@ export async function POST() {
     ? summaryParts.join('. ') + '.'
     : deals.length > 0
       ? `You have ${deals.length} open ${dealLabelPlural.toLowerCase()} worth $${deals.reduce((s, d) => s + (d.value || 0), 0).toLocaleString()}. Everything looks on track.`
-      : `Welcome to FlowCRM! Start by adding ${contactLabel.toLowerCase()}s and creating your first ${dealLabel.toLowerCase()}.`
+      : `Welcome to Tracktio! Start by adding ${contactLabel.toLowerCase()}s and creating your first ${dealLabel.toLowerCase()}.`
 
   // Sort actions by priority
   const priorityOrder = { high: 0, medium: 1, low: 2 }

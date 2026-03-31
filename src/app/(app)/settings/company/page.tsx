@@ -217,7 +217,7 @@ export default function CompanySettingsPage() {
         <div className="space-y-6">
           <div className="card p-6">
             <h3 className="font-semibold text-surface-900 mb-2 flex items-center gap-2"><Key className="w-4 h-4" /> API Keys</h3>
-            <p className="text-xs text-surface-500 mb-4">Use API keys to access the FlowCRM REST API (v1) from external applications.</p>
+            <p className="text-xs text-surface-500 mb-4">Use API keys to access the Tracktio REST API (v1) from external applications.</p>
 
             {generatedKey && (
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl mb-4">

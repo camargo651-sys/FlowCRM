@@ -24,7 +24,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
   const { template, logoUrl, primaryColor, name: wsName } = useWorkspace()
   const { t } = useI18n()
 
-  const displayName = wsName || workspaceName || 'FlowCRM'
+  const displayName = wsName || workspaceName || 'Tracktio'
 
   const NAV = [
     { href: '/dashboard',     icon: LayoutDashboard, label: t('nav.dashboard') },

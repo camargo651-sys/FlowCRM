@@ -30,7 +30,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
   // === COMMUNICATION ===
   {
     key: 'whatsapp', name: 'WhatsApp Business', category: 'communication', color: '#25D366', icon: '💬', popular: true,
-    description: 'Capture WhatsApp conversations automatically. Contacts are created, messages logged, and you can reply directly from FlowCRM.',
+    description: 'Capture WhatsApp conversations automatically. Contacts are created, messages logged, and you can reply directly from Tracktio.',
     fields: [
       { key: 'phone_number_id', label: 'Phone Number ID', placeholder: '1234567890', help: 'WhatsApp Manager > API Setup > Phone Number ID' },
       { key: 'access_token', label: 'Permanent Access Token', placeholder: 'EAAx...', type: 'password', help: 'Meta Business > System Users > Generate Token' },
@@ -81,7 +81,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     setupSteps: [
       { step: 1, title: 'Open Teams channel', description: 'Go to the channel where you want notifications.' },
       { step: 2, title: 'Add connector', description: 'Click "..." > Connectors > Incoming Webhook > Configure.' },
-      { step: 3, title: 'Copy webhook URL', description: 'Name it "FlowCRM" and copy the generated URL.' },
+      { step: 3, title: 'Copy webhook URL', description: 'Name it "Tracktio" and copy the generated URL.' },
     ],
   },
   {
@@ -107,7 +107,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     fields: [],
     setupSteps: [
       { step: 1, title: 'Click Connect', description: 'Click the button below to sign in with your Google account.' },
-      { step: 2, title: 'Grant permissions', description: 'Allow FlowCRM to read your emails (read-only access).' },
+      { step: 2, title: 'Grant permissions', description: 'Allow Tracktio to read your emails (read-only access).' },
       { step: 3, title: 'Automatic sync', description: 'Emails will sync every 10 minutes. Contacts are created automatically.' },
     ],
   },
@@ -118,7 +118,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     fields: [],
     setupSteps: [
       { step: 1, title: 'Click Connect', description: 'Click the button below to sign in with your Microsoft account.' },
-      { step: 2, title: 'Grant permissions', description: 'Allow FlowCRM to read your emails (read-only access).' },
+      { step: 2, title: 'Grant permissions', description: 'Allow Tracktio to read your emails (read-only access).' },
       { step: 3, title: 'Automatic sync', description: 'Emails will sync every 10 minutes. Contacts are created automatically.' },
     ],
   },
@@ -207,7 +207,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     fields: [],
     setupSteps: [
       { step: 1, title: 'Click Connect', description: 'Click the button below to sign in with your LinkedIn account.' },
-      { step: 2, title: 'Grant permissions', description: 'Allow FlowCRM to access your basic profile and email.' },
+      { step: 2, title: 'Grant permissions', description: 'Allow Tracktio to access your basic profile and email.' },
       { step: 3, title: 'Import contacts', description: 'Your LinkedIn connections will be available to import into the CRM.' },
     ],
   },
@@ -217,24 +217,24 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     key: 'zapier', name: 'Zapier', category: 'automation', color: '#FF4F00', icon: '⚡', popular: true,
     description: 'Connect with 5,000+ apps. Automate any workflow without writing code.',
     fields: [
-      { key: 'api_key', label: 'FlowCRM API Key', placeholder: 'Auto-generated', help: 'Use this key in Zapier' },
+      { key: 'api_key', label: 'Tracktio API Key', placeholder: 'Auto-generated', help: 'Use this key in Zapier' },
       { key: 'webhook_url', label: 'Zapier Webhook URL', placeholder: 'https://hooks.zapier.com/...', help: 'From your Zap configuration' },
     ],
     setupSteps: [
       { step: 1, title: 'Create Zapier account', description: 'Sign up at zapier.com (free plan available).' },
-      { step: 2, title: 'Create a Zap', description: 'Use Webhooks trigger and paste your FlowCRM API endpoint.' },
+      { step: 2, title: 'Create a Zap', description: 'Use Webhooks trigger and paste your Tracktio API endpoint.' },
     ],
   },
   {
     key: 'make', name: 'Make (Integromat)', category: 'automation', color: '#6D00CC', icon: '🔄',
     description: 'Visual automation builder. Create complex workflows with branching logic.',
     fields: [
-      { key: 'api_key', label: 'FlowCRM API Key', placeholder: 'Auto-generated', help: 'Use this key in Make' },
+      { key: 'api_key', label: 'Tracktio API Key', placeholder: 'Auto-generated', help: 'Use this key in Make' },
       { key: 'webhook_url', label: 'Make Webhook URL', placeholder: 'https://hook.make.com/...', help: 'From your Make scenario' },
     ],
     setupSteps: [
       { step: 1, title: 'Create Make account', description: 'Sign up at make.com (free plan available).' },
-      { step: 2, title: 'Create scenario', description: 'Add a Webhook module and paste the FlowCRM endpoint.' },
+      { step: 2, title: 'Create scenario', description: 'Add a Webhook module and paste the Tracktio endpoint.' },
     ],
   },
   {
@@ -242,7 +242,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     description: 'Self-hosted automation. Full control over your data and workflows.',
     fields: [
       { key: 'webhook_url', label: 'n8n Webhook URL', placeholder: 'https://your-n8n.com/webhook/...', help: 'From your n8n workflow' },
-      { key: 'api_key', label: 'FlowCRM API Key', placeholder: 'Auto-generated', help: 'Use in n8n HTTP Request node' },
+      { key: 'api_key', label: 'Tracktio API Key', placeholder: 'Auto-generated', help: 'Use in n8n HTTP Request node' },
     ],
     setupSteps: [
       { step: 1, title: 'Install n8n', description: 'Self-host n8n or use n8n.cloud.' },
@@ -429,7 +429,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     key: 'webhooks', name: 'Custom Webhooks', category: 'developer', color: '#333333', icon: '🔗', popular: true,
     description: 'Send real-time events to any URL. Build custom integrations with any system.',
     fields: [
-      { key: 'url', label: 'Webhook URL', placeholder: 'https://your-app.com/webhooks/flowcrm', help: 'URL that receives POST requests' },
+      { key: 'url', label: 'Webhook URL', placeholder: 'https://your-app.com/webhooks/tracktio', help: 'URL that receives POST requests' },
       { key: 'secret', label: 'Signing Secret', placeholder: 'whsec_...', type: 'password', help: 'Used to verify webhook authenticity' },
       { key: 'events', label: 'Events', placeholder: 'deal.created, deal.updated, contact.created', help: 'Comma-separated list of events' },
     ],
