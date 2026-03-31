@@ -22,9 +22,9 @@ async function getData(userId: string, supabase: any) {
     supabase.from('activities').select('id').eq('workspace_id', ws.id).eq('done', false).lte('due_date', now.toISOString()),
     supabase.from('contacts').select('id, score_label').eq('workspace_id', ws.id),
     supabase.from('quotes').select('id, total, status').eq('workspace_id', ws.id),
-    supabase.from('invoices').select('id, total, balance_due, status').eq('workspace_id', ws.id).catch(() => ({ data: [] })),
-    supabase.from('products').select('id, stock_quantity, min_stock, unit_price, cost_price, status').eq('workspace_id', ws.id).eq('status', 'active').catch(() => ({ data: [] })),
-    supabase.from('employees').select('id, salary, salary_period, status').eq('workspace_id', ws.id).eq('status', 'active').catch(() => ({ data: [] })),
+    supabase.from('invoices').select('id, total, balance_due, status').eq('workspace_id', ws.id),
+    supabase.from('products').select('id, stock_quantity, min_stock, unit_price, cost_price, status').eq('workspace_id', ws.id).eq('status', 'active'),
+    supabase.from('employees').select('id, salary, salary_period, status').eq('workspace_id', ws.id).eq('status', 'active'),
   ])
 
   const deals = dealsRes.data || []
@@ -32,9 +32,9 @@ async function getData(userId: string, supabase: any) {
   const wonDeals = wonRes.data || []
   const contacts = contactsRes.data || []
   const quotes = quotesRes.data || []
-  const invoices = (invoicesRes as any).data || []
-  const products = (productsRes as any).data || []
-  const employees = (employeesRes as any).data || []
+  const invoices = invoicesRes?.data || []
+  const products = productsRes?.data || []
+  const employees = employeesRes?.data || []
   const term = (ws.terminology as any) || {}
 
   // CRM metrics
