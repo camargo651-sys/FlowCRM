@@ -289,6 +289,7 @@ create trigger quotes_updated_at before update on quotes for each row execute fu
 create table if not exists quote_items (
   id            uuid primary key default uuid_generate_v4(),
   quote_id      uuid not null references quotes(id) on delete cascade,
+  product_id    uuid references products(id) on delete set null,
   description   text not null,
   quantity      numeric default 1,
   unit_price    numeric default 0,

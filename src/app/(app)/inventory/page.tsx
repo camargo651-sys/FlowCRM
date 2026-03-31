@@ -3,8 +3,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Package, Plus, Search, Filter, AlertTriangle, ArrowUpDown, X,
-  Edit2, Trash2, ArrowDown, ArrowUp, BarChart2, Tag, Box
+  Edit2, Trash2, ArrowDown, ArrowUp, BarChart2, Tag, Box, TrendingUp
 } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { cn, formatCurrency } from '@/lib/utils'
 
 interface Product {
@@ -52,7 +53,8 @@ export default function InventoryPage() {
   const [showNew, setShowNew] = useState(false)
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [showMovement, setShowMovement] = useState<string | null>(null)
-  const [tab, setTab] = useState<'products' | 'movements' | 'alerts'>('products')
+  const [tab, setTab] = useState<'products' | 'dashboard' | 'movements'>('products')
+  const [movements, setMovements] = useState<StockMovement[]>([])
   const [workspaceId, setWorkspaceId] = useState('')
 
   // New product form
@@ -85,6 +87,15 @@ export default function InventoryPage() {
 
     setProducts(prodsRes.data || [])
     setCategories(catsRes.data || [])
+
+    const { data: movsData } = await supabase
+      .from('stock_movements')
+      .select('*')
+      .eq('workspace_id', ws.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setMovements(movsData || [])
+
     setLoading(false)
   }, [])
 
@@ -193,8 +204,173 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+        {[{ id: 'products', label: 'Products' }, { id: 'dashboard', label: 'Dashboard' }, { id: 'movements', label: 'Movements' }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id as any)}
+            className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ===== DASHBOARD TAB ===== */}
+      {tab === 'dashboard' && (() => {
+        const COLORS = ['#6172f3','#34d399','#f87171','#fbbf24','#a78bfa','#22d3ee']
+        const categoryDist = categories.map((c, i) => ({
+          name: c.name,
+          value: products.filter(p => p.category_id === c.id).length,
+          color: COLORS[i % COLORS.length],
+        })).filter(d => d.value > 0)
+
+        const topByValue = [...products].sort((a, b) => (b.stock_quantity * b.cost_price) - (a.stock_quantity * a.cost_price)).slice(0, 8).map(p => ({
+          name: p.name.slice(0, 20), value: p.stock_quantity * p.cost_price,
+        }))
+
+        const movementsByType = ['purchase', 'sale', 'adjustment', 'return', 'transfer'].map(t => ({
+          name: t.charAt(0).toUpperCase() + t.slice(1),
+          count: movements.filter(m => m.type === t).length,
+        })).filter(d => d.count > 0)
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div className="card p-5">
+              <h3 className="font-semibold text-surface-900 mb-4">Stock Value by Product</h3>
+              {topByValue.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={topByValue} barSize={32}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
+                    <Tooltip formatter={(v: any) => [formatCurrency(v), 'Value']} contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
+                    <Bar dataKey="value" fill="#6172f3" radius={[6,6,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-surface-400 text-sm text-center py-8">No products yet</p>}
+            </div>
+
+            <div className="card p-5">
+              <h3 className="font-semibold text-surface-900 mb-4">Products by Category</h3>
+              {categoryDist.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <PieChart>
+                      <Pie data={categoryDist} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value">
+                        {categoryDist.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-1.5 mt-2">
+                    {categoryDist.map(d => (
+                      <div key={d.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} /><span className="text-xs text-surface-600">{d.name}</span></div>
+                        <span className="text-xs font-bold text-surface-800">{d.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : <p className="text-surface-400 text-sm text-center py-8">No categories yet</p>}
+            </div>
+
+            {movementsByType.length > 0 && (
+              <div className="card p-5">
+                <h3 className="font-semibold text-surface-900 mb-4">Movement Types</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={movementsByType} barSize={40}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
+                    <Bar dataKey="count" fill="#34d399" radius={[6,6,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            <div className="card p-5">
+              <h3 className="font-semibold text-surface-900 mb-4">Restock Forecast</h3>
+              {lowStockProducts.length > 0 ? (
+                <div className="space-y-3">
+                  {lowStockProducts.map(p => {
+                    const urgency = p.stock_quantity === 0 ? 'Out of stock' : p.stock_quantity <= p.min_stock / 2 ? 'Critical' : 'Low'
+                    return (
+                      <div key={p.id} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-surface-800">{p.name}</p>
+                          <p className="text-[10px] text-surface-400">{p.stock_quantity} left / min {p.min_stock}</p>
+                        </div>
+                        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full',
+                          urgency === 'Out of stock' ? 'bg-red-100 text-red-700' :
+                          urgency === 'Critical' ? 'bg-amber-100 text-amber-700' : 'bg-yellow-100 text-yellow-700')}>
+                          {urgency}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <span className="text-2xl">✅</span>
+                  <p className="text-sm text-surface-500 mt-2">All stock levels are healthy</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ===== MOVEMENTS TAB ===== */}
+      {tab === 'movements' && (
+        <div className="card overflow-hidden mb-6">
+          {movements.length === 0 ? (
+            <div className="text-center py-12">
+              <ArrowUpDown className="w-8 h-8 text-surface-300 mx-auto mb-2" />
+              <p className="text-surface-400 text-sm">No stock movements yet</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-surface-100">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Product</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Type</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Qty</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Stock</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map(m => {
+                  const product = products.find(p => p.id === (m as any).product_id)
+                  return (
+                    <tr key={m.id} className="border-b border-surface-50">
+                      <td className="px-4 py-3 text-xs text-surface-500">{new Date(m.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-surface-800">{product?.name || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', MOVEMENT_COLORS[m.type] || 'text-surface-600 bg-surface-100')}>
+                          {m.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold">
+                        <span className={m.type === 'sale' ? 'text-red-600' : 'text-emerald-600'}>
+                          {m.type === 'sale' ? '-' : '+'}{m.quantity}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-surface-500">{m.previous_stock} → {m.new_stock}</td>
+                      <td className="px-4 py-3 text-xs text-surface-400 hidden md:table-cell">{m.notes || '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       {/* Search & Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      {tab === 'products' && <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
           <input className="input pl-9 text-xs" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -209,17 +385,17 @@ export default function InventoryPage() {
           <option value="inactive">Inactive</option>
           <option value="discontinued">Discontinued</option>
         </select>
-      </div>
+      </div>}
 
       {/* Products Table */}
-      {filtered.length === 0 ? (
+      {tab === 'products' && filtered.length === 0 ? (
         <div className="text-center py-20 card p-6">
           <Package className="w-12 h-12 text-surface-300 mx-auto mb-3" />
           <p className="text-surface-600 font-medium mb-1">No products yet</p>
           <p className="text-surface-400 text-sm mb-4">Add your first product to start managing inventory</p>
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Product</button>
         </div>
-      ) : (
+      ) : tab === 'products' ? (
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead>
@@ -274,10 +450,10 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {/* Low Stock Alerts */}
-      {lowStockProducts.length > 0 && (
+      {tab === 'products' && lowStockProducts.length > 0 && (
         <div className="mt-6">
           <h2 className="text-sm font-semibold text-red-600 mb-3 flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4" /> Low Stock Alerts

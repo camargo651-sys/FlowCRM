@@ -13,6 +13,15 @@ interface QuoteItem {
   discount: number
   total: number
   order_index: number
+  product_id?: string | null
+}
+
+interface ProductOption {
+  id: string
+  name: string
+  sku: string
+  unit_price: number
+  stock_quantity: number
 }
 
 interface Quote {
@@ -49,10 +58,11 @@ const STATUS_CONFIG = {
 }
 
 // ==================== QUOTE EDITOR ====================
-function QuoteEditor({ quote, contacts, deals, workspaceId, onClose, onSave }: {
+function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, onSave }: {
   quote: Quote | null
   contacts: { id: string; name: string; email?: string }[]
   deals: { id: string; title: string; contact_id?: string }[]
+  products: ProductOption[]
   workspaceId: string
   onClose: () => void
   onSave: () => void
@@ -81,7 +91,15 @@ function QuoteEditor({ quote, contacts, deals, workspaceId, onClose, onSave }: {
 
   const addItem = () => {
     setItems(prev => [...prev, {
-      id: `temp-${Date.now()}`, description: '', quantity: 1, unit_price: 0, discount: 0, total: 0, order_index: prev.length,
+      id: `temp-${Date.now()}`, description: '', quantity: 1, unit_price: 0, discount: 0, total: 0, order_index: prev.length, product_id: null,
+    }])
+  }
+
+  const addFromProduct = (product: ProductOption) => {
+    setItems(prev => [...prev, {
+      id: `temp-${Date.now()}`, description: product.name, quantity: 1,
+      unit_price: product.unit_price, discount: 0, total: product.unit_price,
+      order_index: prev.length, product_id: product.id,
     }])
   }
 
@@ -128,8 +146,9 @@ function QuoteEditor({ quote, contacts, deals, workspaceId, onClose, onSave }: {
     } else {
       const count = await supabase.from('quotes').select('id', { count: 'exact' }).eq('workspace_id', workspaceId)
       const num = (count.count || 0) + 1
+      const viewToken = crypto.randomUUID()
       const { data } = await supabase.from('quotes').insert([{
-        ...quoteData, quote_number: `Q-${String(num).padStart(4, '0')}`,
+        ...quoteData, quote_number: `Q-${String(num).padStart(4, '0')}`, view_token: viewToken,
       }]).select('id').single()
       quoteId = data?.id
     }
@@ -138,8 +157,30 @@ function QuoteEditor({ quote, contacts, deals, workspaceId, onClose, onSave }: {
       const itemsData = items.map((item, i) => ({
         quote_id: quoteId, description: item.description, quantity: item.quantity,
         unit_price: item.unit_price, discount: item.discount, total: item.total, order_index: i,
+        product_id: item.product_id || null,
       }))
       await supabase.from('quote_items').insert(itemsData)
+    }
+
+    // Auto-deduct stock when quote is accepted
+    if (newStatus === 'accepted' && quoteId) {
+      for (const item of items) {
+        if (!item.product_id) continue
+        const { data: product } = await supabase.from('products').select('stock_quantity').eq('id', item.product_id).single()
+        if (!product) continue
+        const newStock = product.stock_quantity - item.quantity
+        await supabase.from('products').update({ stock_quantity: newStock }).eq('id', item.product_id)
+        await supabase.from('stock_movements').insert({
+          workspace_id: workspaceId,
+          product_id: item.product_id,
+          type: 'sale',
+          quantity: item.quantity,
+          previous_stock: product.stock_quantity,
+          new_stock: newStock,
+          reference: `Quote ${quote?.quote_number || ''}`,
+          notes: `Auto-deducted from accepted quote: ${title}`,
+        })
+      }
     }
 
     setSaving(false)
@@ -258,9 +299,30 @@ function QuoteEditor({ quote, contacts, deals, workspaceId, onClose, onSave }: {
                 ))}
               </div>
 
-              <button onClick={addItem} className="btn-ghost btn-sm w-full justify-center border border-dashed border-surface-200">
-                <Plus className="w-3.5 h-3.5" /> Add Line Item
-              </button>
+              <div className="flex gap-2">
+                <button onClick={addItem} className="btn-ghost btn-sm flex-1 justify-center border border-dashed border-surface-200">
+                  <Plus className="w-3.5 h-3.5" /> Add Line Item
+                </button>
+                {products.length > 0 && (
+                  <div className="relative flex-1">
+                    <select
+                      className="input text-xs w-full"
+                      value=""
+                      onChange={e => {
+                        const prod = products.find(p => p.id === e.target.value)
+                        if (prod) addFromProduct(prod)
+                      }}
+                    >
+                      <option value="">📦 Add from Inventory</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} — {formatCurrency(p.unit_price)} ({p.stock_quantity} in stock)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
 
               {/* Totals */}
               <div className="mt-6 flex justify-end">
@@ -410,6 +472,7 @@ export default function QuotesPage() {
   const { template } = useWorkspace()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [contacts, setContacts] = useState<{ id: string; name: string; email?: string }[]>([])
+  const [inventoryProducts, setInventoryProducts] = useState<ProductOption[]>([])
   const [deals, setDeals] = useState<{ id: string; title: string; contact_id?: string }[]>([])
   const [workspaceId, setWorkspaceId] = useState('')
   const [search, setSearch] = useState('')
@@ -425,15 +488,17 @@ export default function QuotesPage() {
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 
-    const [quotesRes, contactsRes, dealsRes] = await Promise.all([
+    const [quotesRes, contactsRes, dealsRes, productsRes] = await Promise.all([
       supabase.from('quotes').select('*, contacts(name, email), deals(title)').eq('workspace_id', ws.id).order('created_at', { ascending: false }),
       supabase.from('contacts').select('id, name, email').eq('workspace_id', ws.id).order('name'),
       supabase.from('deals').select('id, title, contact_id').eq('workspace_id', ws.id).order('title'),
+      supabase.from('products').select('id, name, sku, unit_price, stock_quantity').eq('workspace_id', ws.id).eq('status', 'active').order('name'),
     ])
 
     setQuotes(quotesRes.data || [])
     setContacts(contactsRes.data || [])
     setDeals(dealsRes.data || [])
+    setInventoryProducts(productsRes.data || [])
     setLoading(false)
   }, [])
 
@@ -579,6 +644,7 @@ export default function QuotesPage() {
           quote={editingQuote}
           contacts={contacts}
           deals={deals}
+          products={inventoryProducts}
           workspaceId={workspaceId}
           onClose={() => { setShowEditor(false); setEditingQuote(null) }}
           onSave={load}
