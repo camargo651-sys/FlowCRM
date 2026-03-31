@@ -2,6 +2,7 @@ import { createCrudHandlers } from '@/lib/api/crud'
 
 export const { GET, POST, PUT, DELETE } = createCrudHandlers({
   table: 'purchase_orders',
+  module: 'purchasing',
   searchFields: ['po_number', 'notes'],
   selectFields: '*, suppliers(name), purchase_order_items(*)',
   allowedFilters: ['status', 'supplier_id'],

@@ -3,10 +3,11 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
-interface ApiContext {
+export interface ApiContext {
   supabase: any
   userId: string
   workspaceId: string
+  role: string
 }
 
 /**
@@ -38,10 +39,14 @@ export async function authenticateRequest(request: NextRequest): Promise<ApiCont
     // Update last_used
     await supabase.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('key_hash', hashApiKey(apiKey))
 
+    // Get user role
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', keyRecord.user_id).single()
+
     return {
       supabase,
       userId: keyRecord.user_id,
       workspaceId: keyRecord.workspace_id,
+      role: profile?.role || 'member',
     }
   }
 
@@ -70,7 +75,10 @@ export async function authenticateRequest(request: NextRequest): Promise<ApiCont
     return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
   }
 
-  return { supabase, userId: user.id, workspaceId: ws.id }
+  // Get user role
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+
+  return { supabase, userId: user.id, workspaceId: ws.id, role: profile?.role || 'admin' }
 }
 
 function hashApiKey(key: string): string {

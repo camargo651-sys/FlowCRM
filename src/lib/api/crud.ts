@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest, apiSuccess, apiError, apiList, parsePagination } from './auth'
 import { checkRateLimit, rateLimitHeaders } from './rate-limit'
+import { hasPermission, type Module } from '@/lib/rbac/permissions'
+import { z } from 'zod'
 
 interface CrudConfig {
   table: string
   module?: string // for RBAC
+  schema?: z.ZodObject<any> // validation for create/update
   searchFields?: string[]
   selectFields?: string
   allowedFilters?: string[]
@@ -14,6 +17,17 @@ interface CrudConfig {
   beforeUpdate?: (data: any, ctx: any) => Promise<any>
   afterUpdate?: (record: any, ctx: any) => Promise<void>
   afterDelete?: (id: string, ctx: any) => Promise<void>
+}
+
+function checkPermission(role: string, module: string | undefined, action: string): NextResponse | null {
+  if (!module) return null // no module = no RBAC check
+  if (!hasPermission(role, module as Module, action as any)) {
+    return NextResponse.json(
+      { error: `Permission denied: ${role} cannot ${action} in ${module}` },
+      { status: 403 }
+    )
+  }
+  return null
 }
 
 export function createCrudHandlers(config: CrudConfig) {
@@ -26,13 +40,17 @@ export function createCrudHandlers(config: CrudConfig) {
   async function GET(request: NextRequest) {
     const auth = await authenticateRequest(request)
     if (auth instanceof Response) return auth
-    const { supabase, workspaceId, userId } = auth
+    const { supabase, workspaceId, userId, role } = auth
 
     // Rate limit
     const rl = checkRateLimit(userId, 'api')
     if (!rl.allowed) {
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: rateLimitHeaders(rl) })
     }
+
+    // RBAC
+    const denied = checkPermission(role, config.module, 'view')
+    if (denied) return denied
 
     const { page, perPage, search, sortBy, sortOrder, offset } = parsePagination(request)
     const url = new URL(request.url)
@@ -70,9 +88,29 @@ export function createCrudHandlers(config: CrudConfig) {
   async function POST(request: NextRequest) {
     const auth = await authenticateRequest(request)
     if (auth instanceof Response) return auth
-    const { supabase, workspaceId, userId } = auth
+    const { supabase, workspaceId, userId, role } = auth
 
-    let body = await request.json()
+    // RBAC
+    const denied = checkPermission(role, config.module, 'create')
+    if (denied) return denied
+
+    let body: any
+    try {
+      body = await request.json()
+    } catch {
+      return apiError('Invalid JSON body', 400)
+    }
+
+    // Zod validation
+    if (config.schema) {
+      const result = config.schema.safeParse(body)
+      if (!result.success) {
+        const errors = result.error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+        return apiError(`Validation failed: ${errors}`, 400)
+      }
+      body = result.data
+    }
+
     body.workspace_id = workspaceId
 
     if (config.beforeCreate) {
@@ -89,19 +127,39 @@ export function createCrudHandlers(config: CrudConfig) {
     return apiSuccess(data)
   }
 
-  // PUT: Update by id (passed as query param or in body)
+  // PUT: Update by id
   async function PUT(request: NextRequest) {
     const auth = await authenticateRequest(request)
     if (auth instanceof Response) return auth
-    const { supabase, workspaceId } = auth
+    const { supabase, workspaceId, role } = auth
+
+    // RBAC
+    const denied = checkPermission(role, config.module, 'edit')
+    if (denied) return denied
 
     const url = new URL(request.url)
-    let body = await request.json()
+    let body: any
+    try {
+      body = await request.json()
+    } catch {
+      return apiError('Invalid JSON body', 400)
+    }
+
     const id = url.searchParams.get('id') || body.id
     if (!id) return apiError('Missing id', 400)
 
     delete body.id
     delete body.workspace_id
+
+    // Zod validation (partial for updates)
+    if (config.schema) {
+      const result = config.schema.partial().safeParse(body)
+      if (!result.success) {
+        const errors = result.error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+        return apiError(`Validation failed: ${errors}`, 400)
+      }
+      body = result.data
+    }
 
     if (config.beforeUpdate) {
       body = await config.beforeUpdate(body, auth)
@@ -122,7 +180,11 @@ export function createCrudHandlers(config: CrudConfig) {
   async function DELETE(request: NextRequest) {
     const auth = await authenticateRequest(request)
     if (auth instanceof Response) return auth
-    const { supabase, workspaceId } = auth
+    const { supabase, workspaceId, role } = auth
+
+    // RBAC
+    const denied = checkPermission(role, config.module, 'delete')
+    if (denied) return denied
 
     const url = new URL(request.url)
     const id = url.searchParams.get('id')

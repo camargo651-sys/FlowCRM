@@ -2,6 +2,7 @@ import { createCrudHandlers } from '@/lib/api/crud'
 
 export const { GET, POST, PUT, DELETE } = createCrudHandlers({
   table: 'payments',
+  module: 'invoicing',
   searchFields: ['reference', 'notes'],
   selectFields: '*, invoices(invoice_number, total, balance_due), contacts(name)',
   allowedFilters: ['status', 'method', 'invoice_id', 'contact_id'],

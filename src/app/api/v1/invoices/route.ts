@@ -1,7 +1,9 @@
 import { createCrudHandlers } from '@/lib/api/crud'
+import { publish } from '@/lib/events/event-bus'
 
 export const { GET, POST, PUT, DELETE } = createCrudHandlers({
   table: 'invoices',
+  module: 'invoicing',
   searchFields: ['invoice_number', 'notes'],
   selectFields: '*, contacts(id, name, email), invoice_items(*)',
   allowedFilters: ['status', 'type', 'contact_id'],
