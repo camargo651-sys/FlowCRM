@@ -27,15 +27,15 @@ export default async function Home() {
       <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-700 rounded-full text-xs font-semibold mb-6">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-          AI-Powered CRM — Zero Data Entry
+          AI-Powered ERP — Zero Configuration
         </div>
         <h1 className="text-5xl sm:text-6xl font-extrabold text-surface-900 leading-tight tracking-tight">
-          The CRM that works<br />
-          <span className="text-brand-600">while you sell</span>
+          The ERP that runs<br />
+          <span className="text-brand-600">your entire business</span>
         </h1>
         <p className="text-lg text-surface-500 mt-6 max-w-2xl mx-auto leading-relaxed">
-          Tracktio captures every interaction automatically — emails, WhatsApp, calls, LinkedIn — so you never fill a form again.
-          AI tells you exactly who to call and what to say, in real time.
+          CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce — all in one platform.
+          AI-powered, zero data entry, ready in 60 seconds. No specialist needed.
         </p>
         <div className="flex items-center justify-center gap-4 mt-10">
           <Link href="/auth/signup" className="px-8 py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors text-sm shadow-lg shadow-brand-600/25">
@@ -50,8 +50,8 @@ export default async function Home() {
       {/* Features */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-surface-900">Not just another CRM</h2>
-          <p className="text-surface-500 mt-3 max-w-xl mx-auto">Three pillars that make Tracktio fundamentally different</p>
+          <h2 className="text-3xl font-bold text-surface-900">Why Tracktio?</h2>
+          <p className="text-surface-500 mt-3 max-w-xl mx-auto">Three pillars that make us fundamentally different from Odoo, SAP, and Zoho</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -103,23 +103,27 @@ export default async function Home() {
       <section className="bg-surface-50 py-20">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-surface-900">Everything you need</h2>
-            <p className="text-surface-500 mt-3">One platform, every tool</p>
+            <h2 className="text-3xl font-bold text-surface-900">27 modules. One platform.</h2>
+            <p className="text-surface-500 mt-3">Replace 10 different tools with Tracktio</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
-              { icon: '📊', name: 'Dashboard', desc: 'AI insights & industry KPIs' },
-              { icon: '🔀', name: 'Pipeline', desc: 'Drag & drop deal management' },
-              { icon: '👥', name: 'Contacts', desc: 'Auto-created from all channels' },
-              { icon: '💬', name: 'WhatsApp', desc: 'Send & receive from CRM' },
-              { icon: '📧', name: 'Email Sync', desc: 'Gmail & Outlook auto-capture' },
-              { icon: '📄', name: 'Quotes', desc: 'Track when clients view them' },
+              { icon: '📊', name: 'Dashboard', desc: 'AI insights & ERP overview' },
+              { icon: '🔀', name: 'CRM / Pipeline', desc: 'Deals, contacts, AI scoring' },
+              { icon: '🧾', name: 'Invoicing', desc: 'Create, send, track payments' },
               { icon: '📦', name: 'Inventory', desc: '5 product types, stock alerts' },
-              { icon: '⚡', name: 'Automations', desc: 'If-this-then-that for sales' },
+              { icon: '🏭', name: 'Manufacturing', desc: 'BOMs, work orders, production' },
+              { icon: '🛒', name: 'E-commerce', desc: 'Online store + order mgmt' },
+              { icon: '💳', name: 'POS', desc: 'Point of sale with barcode' },
+              { icon: '📒', name: 'Accounting', desc: 'Double-entry, P&L, balance sheet' },
+              { icon: '🚛', name: 'Purchasing', desc: 'POs, suppliers, auto-receive' },
+              { icon: '👔', name: 'HR & Payroll', desc: 'Employees, leave, payslips' },
+              { icon: '💬', name: 'WhatsApp', desc: 'Send & receive natively' },
+              { icon: '📧', name: 'Email Sync', desc: 'Gmail & Outlook auto-capture' },
               { icon: '📈', name: 'Analytics', desc: 'Revenue, channels, engagement' },
-              { icon: '🔔', name: 'Notifications', desc: 'Real-time proactive alerts' },
-              { icon: '🔍', name: 'Global Search', desc: 'Cmd+K across everything' },
-              { icon: '👥', name: 'Team', desc: 'Invite members, assign roles' },
+              { icon: '⚡', name: 'Automations', desc: 'If-this-then-that workflows' },
+              { icon: '📄', name: 'Quotes', desc: 'Track when clients view them' },
+              { icon: '💰', name: 'Expenses', desc: 'Reports, approvals, reimburse' },
             ].map(m => (
               <div key={m.name} className="p-4 bg-white rounded-xl border border-surface-100">
                 <span className="text-xl">{m.icon}</span>
@@ -131,11 +135,55 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Comparison */}
+      <section className="max-w-4xl mx-auto px-6 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-surface-900">Tracktio vs. the rest</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-surface-200">
+                <th className="text-left py-3 px-4 text-surface-500 font-semibold">Feature</th>
+                <th className="text-center py-3 px-4 font-bold text-brand-600">Tracktio</th>
+                <th className="text-center py-3 px-4 text-surface-400">Odoo</th>
+                <th className="text-center py-3 px-4 text-surface-400">SAP B1</th>
+                <th className="text-center py-3 px-4 text-surface-400">Zoho</th>
+              </tr>
+            </thead>
+            <tbody className="text-xs">
+              {[
+                ['Setup time', '60 sec', '2-6 weeks', '3-6 months', '1-2 weeks'],
+                ['Specialist needed', 'No', 'Yes', 'Yes', 'Partial'],
+                ['WhatsApp native', 'Yes', 'Addon', 'No', 'No'],
+                ['AI proactive scoring', 'Yes', 'No', 'No', 'Partial'],
+                ['Email auto-sync', 'Yes', 'Addon', 'No', 'Partial'],
+                ['Manufacturing / BOM', 'Yes', 'Yes', 'Yes', 'No'],
+                ['POS included', 'Yes', 'Addon', 'No', 'Addon'],
+                ['E-commerce included', 'Yes', 'Yes', 'No', 'Addon'],
+                ['HR & Payroll', 'Yes', 'Partial', 'No', 'Partial'],
+                ['Proposal tracking', 'Yes', 'No', 'No', 'No'],
+                ['Industry templates', '8+', 'Limited', 'No', 'No'],
+              ].map(([feature, tracktio, odoo, sap, zoho], i) => (
+                <tr key={i} className="border-b border-surface-100">
+                  <td className="py-2.5 px-4 font-medium text-surface-700">{feature}</td>
+                  <td className="py-2.5 px-4 text-center font-bold text-brand-600">{tracktio}</td>
+                  <td className="py-2.5 px-4 text-center text-surface-500">{odoo}</td>
+                  <td className="py-2.5 px-4 text-center text-surface-500">{sap}</td>
+                  <td className="py-2.5 px-4 text-center text-surface-500">{zoho}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 text-center">
-        <h2 className="text-3xl font-bold text-surface-900">Stop filling forms.<br />Start closing deals.</h2>
+        <h2 className="text-3xl font-bold text-surface-900">Stop juggling 10 tools.<br />Run everything from one place.</h2>
         <p className="text-surface-500 mt-4 max-w-lg mx-auto">
-          Join sales teams that let AI handle the admin while they focus on what matters — building relationships and closing revenue.
+          Tracktio replaces Odoo, SAP, Zoho, and Monday.com — at a fraction of the cost, with zero configuration.
+          Ready for your industry in 60 seconds.
         </p>
         <Link href="/auth/signup" className="inline-flex px-8 py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors text-sm shadow-lg shadow-brand-600/25 mt-8">
           Get started for free
