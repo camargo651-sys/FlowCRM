@@ -1,8 +1,10 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest, apiSuccess, apiError, apiList, parsePagination } from './auth'
+import { checkRateLimit, rateLimitHeaders } from './rate-limit'
 
 interface CrudConfig {
   table: string
+  module?: string // for RBAC
   searchFields?: string[]
   selectFields?: string
   allowedFilters?: string[]
@@ -24,7 +26,13 @@ export function createCrudHandlers(config: CrudConfig) {
   async function GET(request: NextRequest) {
     const auth = await authenticateRequest(request)
     if (auth instanceof Response) return auth
-    const { supabase, workspaceId } = auth
+    const { supabase, workspaceId, userId } = auth
+
+    // Rate limit
+    const rl = checkRateLimit(userId, 'api')
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: rateLimitHeaders(rl) })
+    }
 
     const { page, perPage, search, sortBy, sortOrder, offset } = parsePagination(request)
     const url = new URL(request.url)
