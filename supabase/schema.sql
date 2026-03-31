@@ -1227,4 +1227,87 @@ alter table attachments enable row level security;
 create policy "ws owner attachments" on attachments
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 
--- Done! Your FlowCRM database is ready.
+-- ============================================================
+-- APPROVAL WORKFLOWS
+-- ============================================================
+create table if not exists approval_requests (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  entity_type     text not null check (entity_type in ('invoice','purchase_order','leave_request','expense','quote','payment')),
+  entity_id       uuid not null,
+  entity_name     text,
+  requested_by    uuid not null references auth.users(id),
+  assigned_to     uuid references auth.users(id),
+  status          text default 'pending' check (status in ('pending','approved','rejected','cancelled')),
+  notes           text,
+  decided_at      timestamptz,
+  decided_by      uuid references auth.users(id),
+  decision_notes  text,
+  amount          numeric,
+  created_at      timestamptz default now()
+);
+alter table approval_requests enable row level security;
+create policy "ws owner approval_requests" on approval_requests
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- PRODUCT VARIANTS (sizes, colors as separate SKUs)
+-- ============================================================
+create table if not exists product_variants (
+  id              uuid primary key default uuid_generate_v4(),
+  product_id      uuid not null references products(id) on delete cascade,
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  sku             text,
+  name            text not null,
+  attributes      jsonb default '{}',
+  unit_price      numeric,
+  cost_price      numeric,
+  stock_quantity  int default 0,
+  min_stock       int default 0,
+  barcode         text,
+  image_url       text,
+  active          boolean default true,
+  created_at      timestamptz default now()
+);
+alter table product_variants enable row level security;
+create policy "ws owner product_variants" on product_variants
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- EXPENSE REPORTS
+-- ============================================================
+create table if not exists expense_reports (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  employee_id     uuid references employees(id) on delete set null,
+  report_number   text not null,
+  title           text not null,
+  status          text default 'draft' check (status in ('draft','submitted','approved','rejected','reimbursed')),
+  total           numeric default 0,
+  currency        text default 'USD',
+  submitted_at    timestamptz,
+  approved_by     uuid references auth.users(id),
+  approved_at     timestamptz,
+  reimbursed_at   timestamptz,
+  notes           text,
+  created_at      timestamptz default now()
+);
+alter table expense_reports enable row level security;
+create policy "ws owner expense_reports" on expense_reports
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists expense_items (
+  id              uuid primary key default uuid_generate_v4(),
+  report_id       uuid not null references expense_reports(id) on delete cascade,
+  date            date not null,
+  category        text,
+  description     text not null,
+  amount          numeric not null,
+  receipt_url     text,
+  order_index     int default 0
+);
+alter table expense_items enable row level security;
+create policy "ws owner expense_items" on expense_items
+  using (report_id in (select id from expense_reports where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+-- Done! Your Tracktio database is ready.
