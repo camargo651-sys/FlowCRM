@@ -1128,4 +1128,28 @@ create policy "Workspace owner views audit log" on audit_log
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 create index if not exists idx_audit_workspace on audit_log(workspace_id, created_at desc);
 
+-- ============================================================
+-- COMPANY SETTINGS (extend workspaces)
+-- ============================================================
+alter table workspaces add column if not exists company_name text;
+alter table workspaces add column if not exists tax_id text;
+alter table workspaces add column if not exists address text;
+alter table workspaces add column if not exists city text;
+alter table workspaces add column if not exists state text;
+alter table workspaces add column if not exists country text;
+alter table workspaces add column if not exists zip_code text;
+alter table workspaces add column if not exists phone text;
+alter table workspaces add column if not exists email text;
+alter table workspaces add column if not exists website text;
+alter table workspaces add column if not exists default_currency text default 'USD';
+alter table workspaces add column if not exists default_tax_rate numeric default 0;
+alter table workspaces add column if not exists fiscal_year_start int default 1;
+alter table workspaces add column if not exists date_format text default 'MM/DD/YYYY';
+alter table workspaces add column if not exists timezone text default 'America/Bogota';
+alter table workspaces add column if not exists invoice_prefix text default 'INV';
+alter table workspaces add column if not exists quote_prefix text default 'Q';
+alter table workspaces add column if not exists po_prefix text default 'PO';
+alter table workspaces add column if not exists invoice_notes text;
+alter table workspaces add column if not exists invoice_terms text;
+
 -- Done! Your FlowCRM database is ready.
