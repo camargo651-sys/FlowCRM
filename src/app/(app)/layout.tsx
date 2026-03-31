@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/layout/Sidebar'
 import GlobalSearch from '@/components/layout/GlobalSearch'
+import MobileNav from '@/components/layout/MobileNav'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -11,15 +12,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const userName = user.user_metadata?.full_name || ''
   const workspaceName = user.user_metadata?.workspace_name || 'My Workspace'
 
+  const sidebar = (
+    <Sidebar
+      userEmail={user.email || ''}
+      userName={userName}
+      workspaceName={workspaceName}
+    />
+  )
+
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50">
-      <Sidebar
-        userEmail={user.email || ''}
-        userName={userName}
-        workspaceName={workspaceName}
-      />
+      <MobileNav>{sidebar}</MobileNav>
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto p-8">
+        <div className="max-w-7xl mx-auto p-4 lg:p-8 pt-14 lg:pt-8">
           {children}
         </div>
       </main>
