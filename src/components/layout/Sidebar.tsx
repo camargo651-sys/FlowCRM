@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut, ChevronDown, Plug, FileText, Package, UserPlus, Receipt, Truck, BookOpen, Briefcase, PieChart, ShoppingCart, Shield, Code, CreditCard } from 'lucide-react'
+import { Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut, ChevronDown, Plug, FileText, Package, UserPlus, Receipt, Truck, BookOpen, Briefcase, PieChart, ShoppingCart, Shield, Code, CreditCard, Factory } from 'lucide-react'
 import NotificationBell from './NotificationBell'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -41,6 +41,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     { href: '/reports',       icon: PieChart,        label: 'Reports' },
     { href: '/hr',            icon: Briefcase,       label: 'HR' },
     { href: '/expenses',      icon: CreditCard,      label: 'Expenses' },
+    { href: '/manufacturing', icon: Factory,         label: 'Manufacturing' },
     { href: '/pos',           icon: ShoppingCart,    label: 'POS' },
     { href: '/automations',   icon: Zap,             label: 'Automations' },
     { href: '/api-docs',      icon: Code,            label: 'API Docs' },

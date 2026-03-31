@@ -1310,4 +1310,61 @@ alter table expense_items enable row level security;
 create policy "ws owner expense_items" on expense_items
   using (report_id in (select id from expense_reports where workspace_id in (select id from workspaces where owner_id = auth.uid())));
 
+-- ============================================================
+-- MANUFACTURING (BOMs + Work Orders)
+-- ============================================================
+create table if not exists bill_of_materials (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  product_id      uuid not null references products(id) on delete cascade,
+  name            text not null,
+  version         int default 1,
+  yield_quantity  numeric default 1,
+  active          boolean default true,
+  notes           text,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table bill_of_materials enable row level security;
+create policy "ws owner bom" on bill_of_materials
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+create table if not exists bom_lines (
+  id              uuid primary key default uuid_generate_v4(),
+  bom_id          uuid not null references bill_of_materials(id) on delete cascade,
+  material_id     uuid not null references products(id) on delete cascade,
+  quantity        numeric not null default 1,
+  unit            text default 'unit',
+  waste_percent   numeric default 0,
+  notes           text,
+  order_index     int default 0
+);
+alter table bom_lines enable row level security;
+create policy "ws owner bom_lines" on bom_lines
+  using (bom_id in (select id from bill_of_materials where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+create table if not exists work_orders (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  wo_number       text not null,
+  bom_id          uuid references bill_of_materials(id) on delete set null,
+  product_id      uuid not null references products(id) on delete cascade,
+  quantity        numeric not null default 1,
+  status          text default 'draft' check (status in ('draft','confirmed','in_progress','quality_check','completed','cancelled')),
+  priority        text default 'normal' check (priority in ('low','normal','high','urgent')),
+  planned_start   timestamptz,
+  planned_end     timestamptz,
+  actual_start    timestamptz,
+  actual_end      timestamptz,
+  assigned_to     uuid references auth.users(id),
+  notes           text,
+  materials_consumed jsonb default '[]',
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table work_orders enable row level security;
+create policy "ws owner work_orders" on work_orders
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger work_orders_updated_at before update on work_orders for each row execute function update_updated_at();
+
 -- Done! Your Tracktio database is ready.
