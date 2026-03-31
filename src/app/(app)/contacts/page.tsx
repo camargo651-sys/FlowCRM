@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText } from 'lucide-react'
+import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
@@ -166,6 +166,8 @@ export default function ContactsPage() {
   const [filter, setFilter] = useState<'all' | 'person' | 'company'>('all')
   const [showNew, setShowNew] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<string | null>(null)
 
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -205,11 +207,38 @@ export default function ContactsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input className="input pl-9 w-56 text-xs" placeholder={`Search ${template.contactLabel.plural.toLowerCase()}...`} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          <a href="/api/export?type=contacts" className="btn-ghost btn-sm">
+            <Download className="w-3.5 h-3.5" /> Export
+          </a>
+          <label className={cn('btn-secondary btn-sm cursor-pointer', importing && 'opacity-50')}>
+            <Upload className="w-3.5 h-3.5" /> Import CSV
+            <input type="file" accept=".csv" className="sr-only" disabled={importing} onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setImporting(true); setImportResult(null)
+              const form = new FormData()
+              form.append('file', file)
+              form.append('type', 'contacts')
+              const res = await fetch('/api/import', { method: 'POST', body: form })
+              const data = await res.json()
+              setImportResult(`Imported ${data.imported}, skipped ${data.skipped}`)
+              setImporting(false)
+              loadContacts()
+              e.target.value = ''
+            }} />
+          </label>
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm">
             <Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}
           </button>
         </div>
       </div>
+
+      {importResult && (
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+          <span className="text-sm text-emerald-700 font-medium">{importResult}</span>
+          <button onClick={() => setImportResult(null)} className="text-emerald-500 hover:text-emerald-700"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-1 mb-6">

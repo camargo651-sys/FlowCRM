@@ -3,7 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Package, Plus, Search, Filter, AlertTriangle, ArrowUpDown, X,
-  Edit2, Trash2, ArrowDown, ArrowUp, BarChart2, Tag, Box, TrendingUp
+  Edit2, Trash2, ArrowDown, ArrowUp, BarChart2, Tag, Box, TrendingUp,
+  Upload, Download
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { cn, formatCurrency } from '@/lib/utils'
@@ -175,6 +176,22 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <a href="/api/export?type=products" className="btn-ghost btn-sm">
+            <Download className="w-3.5 h-3.5" /> Export
+          </a>
+          <label className="btn-secondary btn-sm cursor-pointer">
+            <Upload className="w-3.5 h-3.5" /> Import CSV
+            <input type="file" accept=".csv" className="sr-only" onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const form = new FormData()
+              form.append('file', file)
+              form.append('type', 'products')
+              await fetch('/api/import', { method: 'POST', body: form })
+              load()
+              e.target.value = ''
+            }} />
+          </label>
           <button onClick={() => setShowNewCategory(true)} className="btn-secondary btn-sm">
             <Tag className="w-3.5 h-3.5" /> Category
           </button>
