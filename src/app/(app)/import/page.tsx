@@ -2,95 +2,65 @@
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Upload, FileText, Table2, CheckCircle2, AlertTriangle, ArrowRight, X, Database } from 'lucide-react'
+import { Upload, CheckCircle2, Database, Loader2, Package, Users, ShoppingCart, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface ParsedData {
+interface DetectedTable {
+  name: string
   rows: Record<string, any>[]
   headers: string[]
-  fileName: string
-  format: string
+  mappedTo: string // contacts, products, deals, skip
+  icon: string
 }
 
-const TARGET_ENTITIES = [
-  { key: 'contacts', label: 'Contacts', fields: ['name', 'email', 'phone', 'company_name', 'job_title', 'website', 'notes', 'type', 'tags'] },
-  { key: 'products', label: 'Products', fields: ['name', 'sku', 'description', 'unit_price', 'cost_price', 'stock_quantity', 'min_stock', 'brand', 'model', 'barcode'] },
-  { key: 'deals', label: 'Deals', fields: ['title', 'value', 'status', 'expected_close_date', 'notes'] },
-  { key: 'companies', label: 'Companies (as contacts)', fields: ['name', 'email', 'phone', 'website', 'notes'] },
-]
+const ENTITY_ICONS: Record<string, any> = {
+  contacts: Users, products: Package, deals: TrendingUp, companies: Users, skip: null
+}
 
 export default function ImportPage() {
   const supabase = createClient()
-  const [parsed, setParsed] = useState<ParsedData | null>(null)
-  const [target, setTarget] = useState('contacts')
-  const [mapping, setMapping] = useState<Record<string, string>>({})
+  const [tables, setTables] = useState<DetectedTable[]>([])
+  const [fileName, setFileName] = useState('')
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<any>(null)
-  const [step, setStep] = useState<'upload' | 'map' | 'preview' | 'done'>('upload')
+  const [step, setStep] = useState<'upload' | 'review' | 'importing' | 'done'>('upload')
+  const [progress, setProgress] = useState({ current: 0, total: 0, table: '' })
 
   const parseFile = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase()
-    let rows: Record<string, any>[] = []
-    let headers: string[] = []
+    setFileName(file.name)
+    const detected: DetectedTable[] = []
 
-    if (ext === 'csv' || ext === 'tsv') {
-      const text = await file.text()
-      const sep = ext === 'tsv' ? '\t' : ','
-      const lines = text.split('\n').filter(l => l.trim())
-      headers = lines[0].split(sep).map(h => h.trim().replace(/^"(.*)"$/, '$1'))
-      rows = lines.slice(1).map(line => {
-        const values: string[] = []
-        let current = ''
-        let inQuotes = false
-        for (const char of line) {
-          if (char === '"') { inQuotes = !inQuotes; continue }
-          if (char === sep && !inQuotes) { values.push(current.trim()); current = ''; continue }
-          current += char
-        }
-        values.push(current.trim())
-        const row: Record<string, any> = {}
-        headers.forEach((h, i) => { if (values[i]) row[h] = values[i] })
-        return row
-      }).filter(r => Object.values(r).some(v => v))
-    } else if (ext === 'json' || ext === 'base') {
-      const text = await file.text()
-      let data = JSON.parse(text)
+    if (ext === 'base') {
+      // Lark/Feishu Bitable
+      try {
+        const text = await file.text()
+        const data = JSON.parse(text)
+        const binary = atob(data.gzipSnapshot)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+        const ds = new DecompressionStream('gzip')
+        const writer = ds.writable.getWriter()
+        writer.write(bytes); writer.close()
+        const reader = ds.readable.getReader()
+        const chunks: Uint8Array[] = []
+        while (true) { const { done, value } = await reader.read(); if (done) break; chunks.push(value) }
+        const total = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0))
+        let offset = 0
+        for (const chunk of chunks) { total.set(chunk, offset); offset += chunk.length }
+        const snapData = JSON.parse(new TextDecoder().decode(total))
+        const items = Array.isArray(snapData) ? snapData : [snapData]
 
-      // Handle .base format (Lark/Feishu Bitable)
-      if (data.gzipSnapshot) {
-        try {
-          const binary = atob(data.gzipSnapshot)
-          const bytes = new Uint8Array(binary.length)
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-          const ds = new DecompressionStream('gzip')
-          const writer = ds.writable.getWriter()
-          writer.write(bytes)
-          writer.close()
-          const reader = ds.readable.getReader()
-          const chunks: Uint8Array[] = []
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            chunks.push(value)
-          }
-          const total = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0))
-          let offset = 0
-          for (const chunk of chunks) { total.set(chunk, offset); offset += chunk.length }
-          const snapData = JSON.parse(new TextDecoder().decode(total))
-
-          // Extract records from last snapshot
-          const lastItem = Array.isArray(snapData) ? snapData[snapData.length - 1] : snapData
-          const schemaData = lastItem?.schema?.data || {}
-          const fieldMap = schemaData.table?.fieldMap || {}
-          const recordMap = schemaData.recordMap || {}
-
+        for (const item of items) {
+          const schema = item?.schema
+          if (!schema?.data) continue
+          const fieldMap = schema.data.table?.fieldMap || {}
+          const recordMap = schema.data.recordMap || {}
           const fidToName: Record<string, string> = {}
-          for (const [fid, f] of Object.entries(fieldMap)) {
-            fidToName[fid] = (f as any).name || fid
-          }
+          for (const [fid, f] of Object.entries(fieldMap)) { fidToName[fid] = (f as any).name || fid }
+          const headers = Object.values(fidToName)
 
-          headers = Object.values(fidToName)
-
+          const rows: Record<string, any>[] = []
           for (const [, rec] of Object.entries(recordMap)) {
             const row: Record<string, any> = {}
             for (const [fid, cell] of Object.entries(rec as any)) {
@@ -100,232 +70,266 @@ export default function ImportPage() {
               if (val === undefined || val === null) continue
               if (Array.isArray(val)) {
                 row[fname] = val.map((v: any) => typeof v === 'object' ? (v.text || v.name || '') : String(v)).filter(Boolean).join('; ')
-              } else {
-                row[fname] = val
-              }
+              } else { row[fname] = val }
             }
             if (Object.keys(row).length > 0) rows.push(row)
           }
-        } catch (e) {
-          toast.error('Failed to parse .base file')
-          return
+
+          if (rows.length === 0) continue
+
+          // Auto-detect entity type
+          const allFields = headers.join(' ').toLowerCase()
+          let mappedTo = 'skip'
+          let tableName = `Table (${rows.length} rows)`
+
+          if (allFields.includes('company name') || allFields.includes('industry') || allFields.includes('client type')) {
+            mappedTo = 'companies'; tableName = 'Companies'
+          } else if (allFields.includes('full name') || allFields.includes('email') || allFields.includes('phone') || allFields.includes('contact')) {
+            mappedTo = 'contacts'; tableName = 'Contacts'
+          } else if (allFields.includes('product') || allFields.includes('price') || allFields.includes('capacity') || allFields.includes('weight')) {
+            mappedTo = 'products'; tableName = 'Products'
+          } else if (allFields.includes('project') || allFields.includes('budget') || allFields.includes('status') || allFields.includes('mwh') || allFields.includes('order')) {
+            mappedTo = 'deals'; tableName = 'Deals / Projects'
+          } else if (allFields.includes('username') || allFields.includes('role') || allFields.includes('permission')) {
+            mappedTo = 'skip'; tableName = 'Users (skipped)'
+          } else if (allFields.includes('config') || allFields.includes('key') || allFields.includes('value')) {
+            mappedTo = 'skip'; tableName = 'Config (skipped)'
+          }
+
+          // Don't add duplicates
+          if (!detected.find(d => d.name === tableName)) {
+            detected.push({ name: tableName, rows, headers, mappedTo, icon: mappedTo })
+          }
         }
-      } else if (Array.isArray(data)) {
-        rows = data
-        if (data[0]) headers = Object.keys(data[0])
-      } else if (data.data && Array.isArray(data.data)) {
-        rows = data.data
-        if (data.data[0]) headers = Object.keys(data.data[0])
-      }
+      } catch (e) { toast.error('Failed to parse .base file'); return }
+    } else if (ext === 'csv') {
+      const text = await file.text()
+      const lines = text.split('\n').filter(l => l.trim())
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"(.*)"$/, '$1'))
+      const rows = lines.slice(1).map(line => {
+        const values: string[] = []; let current = ''; let inQ = false
+        for (const c of line) { if (c === '"') { inQ = !inQ; continue }; if (c === ',' && !inQ) { values.push(current.trim()); current = ''; continue }; current += c }
+        values.push(current.trim())
+        const row: Record<string, any> = {}
+        headers.forEach((h, i) => { if (values[i]) row[h] = values[i] })
+        return row
+      }).filter(r => Object.values(r).some(v => v))
+
+      detected.push({ name: file.name, rows, headers, mappedTo: 'contacts', icon: 'contacts' })
+    } else if (ext === 'json') {
+      const data = JSON.parse(await file.text())
+      const rows = Array.isArray(data) ? data : data.data || [data]
+      const headers = rows[0] ? Object.keys(rows[0]) : []
+      detected.push({ name: file.name, rows, headers, mappedTo: 'contacts', icon: 'contacts' })
     }
 
-    if (!rows.length) { toast.error('No data found in file'); return }
+    if (detected.length === 0) { toast.error('No importable data found'); return }
 
-    setParsed({ rows, headers, fileName: file.name, format: ext || 'unknown' })
+    setTables(detected)
+    setStep('review')
+    toast.success(`Found ${detected.length} tables with ${detected.reduce((s, t) => s + t.rows.length, 0)} total records`)
+  }
 
-    // Auto-map common field names
-    const entity = TARGET_ENTITIES.find(e => e.key === target)
-    if (entity) {
-      const autoMap: Record<string, string> = {}
-      for (const field of entity.fields) {
-        const match = headers.find(h => {
-          const hl = h.toLowerCase().replace(/[_\s-]/g, '')
-          const fl = field.replace(/_/g, '')
-          return hl === fl || hl.includes(fl) || fl.includes(hl)
-            || (fl === 'name' && (hl.includes('name') || hl.includes('nombre')))
-            || (fl === 'email' && (hl.includes('email') || hl.includes('correo')))
-            || (fl === 'phone' && (hl.includes('phone') || hl.includes('tel')))
-            || (fl === 'companyname' && (hl.includes('company') || hl.includes('empresa')))
-            || (fl === 'jobtitle' && (hl.includes('title') || hl.includes('role') || hl.includes('cargo')))
-            || (fl === 'unitprice' && (hl.includes('price') || hl.includes('precio')))
-        })
-        if (match) autoMap[field] = match
-      }
-      setMapping(autoMap)
-    }
-
-    setStep('map')
-    toast.success(`${rows.length} records found`)
+  const updateMapping = (idx: number, mappedTo: string) => {
+    setTables(prev => prev.map((t, i) => i === idx ? { ...t, mappedTo } : t))
   }
 
   const doImport = async () => {
-    if (!parsed) return
+    setStep('importing')
     setImporting(true)
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { toast.error('Not logged in'); setImporting(false); return }
+    if (!user) { toast.error('Not logged in'); return }
     const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
-    if (!ws) { toast.error('No workspace'); setImporting(false); return }
+    if (!ws) { toast.error('No workspace'); return }
 
-    const entity = TARGET_ENTITIES.find(e => e.key === target)
-    if (!entity) return
+    const results: any = {}
+    const companyIdMap = new Map<string, string>() // name -> supabase id
 
-    let imported = 0
-    let skipped = 0
-    const table = target === 'companies' ? 'contacts' : target === 'deals' ? 'deals' : target
+    // Import in order: companies first, then contacts (to link), then products, then deals
+    const order = ['companies', 'contacts', 'products', 'deals']
 
-    for (const row of parsed.rows) {
-      const record: any = { workspace_id: ws.id, owner_id: user.id }
+    for (const entityType of order) {
+      const tablesToImport = tables.filter(t => t.mappedTo === entityType)
+      if (tablesToImport.length === 0) continue
 
-      for (const [field, header] of Object.entries(mapping)) {
-        if (header && row[header] !== undefined) {
-          let val = row[header]
-          if (field === 'unit_price' || field === 'cost_price' || field === 'value' || field === 'stock_quantity' || field === 'min_stock') {
-            val = parseFloat(String(val).replace(/[^0-9.-]/g, '')) || 0
-          }
-          record[field] = val || null
+      let imported = 0
+      let skipped = 0
+
+      for (const table of tablesToImport) {
+        setProgress({ current: 0, total: table.rows.length, table: table.name })
+
+        for (let i = 0; i < table.rows.length; i++) {
+          const row = table.rows[i]
+          if (i % 20 === 0) setProgress({ current: i, total: table.rows.length, table: table.name })
+
+          try {
+            if (entityType === 'companies') {
+              const name = row['Company Name'] || row['Name'] || row['name'] || row['Company'] || ''
+              if (!name) { skipped++; continue }
+              const { data, error } = await supabase.from('contacts').insert({
+                workspace_id: ws.id, name, type: 'company',
+                email: row['Email'] || row['email'] || null,
+                phone: row['Phone'] || row['phone'] || null,
+                website: row['Client Website (if any)'] || row['Website'] || row['website'] || null,
+                notes: [row['Brief Introduction of Client'], row['Country'], row['City'], row['Industry']].filter(Boolean).join(' · ') || null,
+                tags: ['imported'], owner_id: user.id,
+              }).select('id').single()
+              if (!error && data) { imported++; companyIdMap.set(name.toLowerCase(), data.id) }
+              else skipped++
+            } else if (entityType === 'contacts') {
+              const name = row['Full Name'] || row['Name'] || row['name'] || row['Contact Name'] || ''
+              if (!name) { skipped++; continue }
+              const companyName = row['Company Name'] || row['Company'] || ''
+              const { error } = await supabase.from('contacts').insert({
+                workspace_id: ws.id, name, type: 'person',
+                email: row['Email'] || row['email'] || null,
+                phone: row['Phone'] || row['phone'] || null,
+                job_title: row['Role / Title'] || row['Title'] || row['Role'] || null,
+                company_name: companyName || null,
+                tags: ['imported'], owner_id: user.id,
+              })
+              if (!error) imported++; else skipped++
+            } else if (entityType === 'products') {
+              const name = row['Name'] || row['Product Name'] || row['name'] || ''
+              if (!name) { skipped++; continue }
+              const { error } = await supabase.from('products').insert({
+                workspace_id: ws.id, name,
+                sku: row['SKU'] || row['Code'] || null,
+                unit_price: parseFloat(String(row['List Price'] || row['Price'] || row['price'] || 0).replace(/[^0-9.-]/g, '')) || 0,
+                cost_price: parseFloat(String(row['Cost'] || row['cost_price'] || 0).replace(/[^0-9.-]/g, '')) || 0,
+                stock_quantity: parseInt(String(row['Stock'] || row['Quantity'] || 100)) || 100,
+                min_stock: 5, status: 'active', tags: ['imported'],
+              })
+              if (!error) imported++; else skipped++
+            } else if (entityType === 'deals') {
+              const title = row['Project Name'] || row['Name'] || row['Title'] || row['name'] || ''
+              if (!title) { skipped++; continue }
+              const { error } = await supabase.from('deals').insert({
+                workspace_id: ws.id, title,
+                value: parseFloat(String(row['Budget'] || row['Value'] || row['value'] || 0).replace(/[^0-9.-]/g, '')) || null,
+                status: 'open', order_index: 0,
+                notes: [row['Notes'], row['Description'], row['City/location']].filter(Boolean).join(' · ') || null,
+                tags: ['imported'], owner_id: user.id,
+              })
+              if (!error) imported++; else skipped++
+            }
+          } catch { skipped++ }
         }
       }
-
-      // Skip if no name/title
-      const nameField = target === 'deals' ? 'title' : 'name'
-      if (!record[nameField]) { skipped++; continue }
-
-      if (target === 'companies') record.type = 'company'
-      if (target === 'contacts' && !record.type) record.type = 'person'
-      if (target === 'products') { record.status = 'active'; record.stock_quantity = record.stock_quantity || 0 }
-      if (target === 'deals') record.status = record.status || 'open'
-
-      record.tags = ['imported']
-
-      const { error } = await supabase.from(table).insert(record)
-      if (!error) imported++
-      else skipped++
+      results[entityType] = { imported, skipped }
     }
 
-    setResult({ imported, skipped, total: parsed.rows.length })
+    setResult(results)
     setStep('done')
     setImporting(false)
-    toast.success(`${imported} records imported`)
   }
+
+  const totalToImport = tables.filter(t => t.mappedTo !== 'skip').reduce((s, t) => s + t.rows.length, 0)
 
   return (
     <div className="animate-fade-in max-w-3xl mx-auto">
       <div className="page-header">
-        <div><h1 className="page-title">Import Data</h1><p className="text-sm text-surface-500 mt-0.5">Import from any source</p></div>
+        <div><h1 className="page-title">Import Data</h1><p className="text-sm text-surface-500 mt-0.5">Import everything from one file</p></div>
       </div>
 
-      {/* Steps indicator */}
-      <div className="flex items-center gap-2 mb-8">
-        {['Upload', 'Map Fields', 'Import'].map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold',
-              i === ['upload', 'map', 'done'].indexOf(step) ? 'bg-brand-600 text-white' :
-              i < ['upload', 'map', 'done'].indexOf(step) ? 'bg-emerald-500 text-white' : 'bg-surface-200 text-surface-500')}>
-              {i < ['upload', 'map', 'done'].indexOf(step) ? '✓' : i + 1}
-            </div>
-            <span className="text-xs font-medium text-surface-600">{s}</span>
-            {i < 2 && <div className="w-12 h-0.5 bg-surface-200" />}
-          </div>
-        ))}
-      </div>
-
-      {/* Step 1: Upload */}
+      {/* Upload */}
       {step === 'upload' && (
         <div className="card p-8">
           <div className="text-center mb-6">
             <Database className="w-12 h-12 text-brand-400 mx-auto mb-3" />
-            <h2 className="text-lg font-bold text-surface-900">Upload your data</h2>
-            <p className="text-sm text-surface-500 mt-1">Supports CSV, JSON, and Lark/Feishu .base files</p>
+            <h2 className="text-lg font-bold text-surface-900">Upload your database</h2>
+            <p className="text-sm text-surface-500 mt-1">We'll detect all tables and import everything at once</p>
           </div>
-
-          <div className="mb-6">
-            <label className="label">What are you importing?</label>
-            <div className="grid grid-cols-2 gap-2">
-              {TARGET_ENTITIES.map(e => (
-                <button key={e.key} onClick={() => setTarget(e.key)}
-                  className={cn('p-3 rounded-xl text-left border-2 transition-all',
-                    target === e.key ? 'border-brand-500 bg-brand-50' : 'border-surface-100 hover:border-surface-200')}>
-                  <p className="text-sm font-semibold text-surface-800">{e.label}</p>
-                  <p className="text-[10px] text-surface-400">{e.fields.slice(0, 4).join(', ')}...</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <label className="block border-2 border-dashed border-surface-200 rounded-2xl p-12 text-center cursor-pointer hover:border-brand-300 transition-colors">
             <Upload className="w-8 h-8 text-surface-300 mx-auto mb-3" />
             <p className="text-sm font-semibold text-surface-700">Click to upload or drag and drop</p>
-            <p className="text-xs text-surface-400 mt-1">CSV, TSV, JSON, or .base files</p>
-            <input type="file" accept=".csv,.tsv,.json,.base,.xlsx" className="sr-only"
+            <p className="text-xs text-surface-400 mt-1">Supports: Lark .base, CSV, JSON</p>
+            <input type="file" accept=".csv,.tsv,.json,.base" className="sr-only"
               onChange={e => { const f = e.target.files?.[0]; if (f) parseFile(f) }} />
           </label>
         </div>
       )}
 
-      {/* Step 2: Map fields */}
-      {step === 'map' && parsed && (
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-sm font-bold text-surface-900">Map your columns</h2>
-              <p className="text-xs text-surface-500">{parsed.rows.length} records from {parsed.fileName} ({parsed.format})</p>
-            </div>
-            <button onClick={() => { setStep('upload'); setParsed(null) }} className="btn-ghost btn-sm"><X className="w-3.5 h-3.5" /> Start over</button>
-          </div>
+      {/* Review detected tables */}
+      {step === 'review' && (
+        <div className="space-y-4">
+          <div className="card p-5">
+            <h2 className="text-sm font-bold text-surface-900 mb-1">Detected from {fileName}</h2>
+            <p className="text-xs text-surface-500 mb-4">{tables.length} tables, {tables.reduce((s, t) => s + t.rows.length, 0)} total records</p>
 
-          <div className="space-y-2 mb-6">
-            {TARGET_ENTITIES.find(e => e.key === target)?.fields.map(field => (
-              <div key={field} className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-surface-700 w-32 capitalize">{field.replace(/_/g, ' ')}</span>
-                <ArrowRight className="w-3 h-3 text-surface-300" />
-                <select className="input text-xs flex-1" value={mapping[field] || ''}
-                  onChange={e => setMapping(prev => ({ ...prev, [field]: e.target.value }))}>
-                  <option value="">— Skip —</option>
-                  {parsed.headers.map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-                {mapping[field] && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-              </div>
-            ))}
-          </div>
-
-          {/* Preview */}
-          <div className="mb-4">
-            <p className="text-[10px] font-semibold text-surface-400 uppercase mb-2">Preview (first 3 rows)</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-[10px]">
-                <thead><tr className="border-b border-surface-200">
-                  {Object.entries(mapping).filter(([, h]) => h).map(([field]) => (
-                    <th key={field} className="text-left py-1 px-2 text-surface-400 capitalize">{field.replace(/_/g, ' ')}</th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {parsed.rows.slice(0, 3).map((row, i) => (
-                    <tr key={i} className="border-b border-surface-50">
-                      {Object.entries(mapping).filter(([, h]) => h).map(([field, header]) => (
-                        <td key={field} className="py-1 px-2 text-surface-600 truncate max-w-[150px]">{String(row[header] || '—').slice(0, 50)}</td>
+            <div className="space-y-3">
+              {tables.map((table, i) => {
+                const Icon = ENTITY_ICONS[table.mappedTo]
+                return (
+                  <div key={i} className={cn('p-4 rounded-xl border-2 transition-all', table.mappedTo === 'skip' ? 'border-surface-100 opacity-50' : 'border-brand-200 bg-brand-50/30')}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {Icon && <Icon className="w-5 h-5 text-brand-600" />}
+                        <div>
+                          <p className="text-sm font-bold text-surface-900">{table.name}</p>
+                          <p className="text-[10px] text-surface-500">{table.rows.length} records · {table.headers.length} fields</p>
+                        </div>
+                      </div>
+                      <select className="input text-xs w-36" value={table.mappedTo} onChange={e => updateMapping(i, e.target.value)}>
+                        <option value="companies">→ Companies</option>
+                        <option value="contacts">→ Contacts</option>
+                        <option value="products">→ Products</option>
+                        <option value="deals">→ Deals</option>
+                        <option value="skip">Skip</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {table.headers.slice(0, 8).map(h => (
+                        <span key={h} className="text-[9px] px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 rounded text-surface-500">{h}</span>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      {table.headers.length > 8 && <span className="text-[9px] text-surface-400">+{table.headers.length - 8} more</span>}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           <div className="flex gap-2">
-            <button onClick={() => { setStep('upload'); setParsed(null) }} className="btn-secondary flex-1">Back</button>
-            <button onClick={doImport} disabled={importing || !Object.values(mapping).some(v => v)}
-              className="btn-primary flex-1">
-              {importing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Upload className="w-4 h-4" />}
-              Import {parsed.rows.length} records
+            <button onClick={() => { setStep('upload'); setTables([]) }} className="btn-secondary flex-1">Back</button>
+            <button onClick={doImport} disabled={totalToImport === 0} className="btn-primary flex-1">
+              <Upload className="w-4 h-4" /> Import {totalToImport} records
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 3: Done */}
+      {/* Importing */}
+      {step === 'importing' && (
+        <div className="card p-8 text-center">
+          <Loader2 className="w-12 h-12 text-brand-500 mx-auto mb-4 animate-spin" />
+          <h2 className="text-lg font-bold text-surface-900 mb-2">Importing...</h2>
+          <p className="text-sm text-surface-500">{progress.table}</p>
+          <div className="w-full h-2 bg-surface-100 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-brand-600 rounded-full transition-all" style={{ width: `${progress.total ? (progress.current / progress.total) * 100 : 0}%` }} />
+          </div>
+          <p className="text-xs text-surface-400 mt-2">{progress.current} / {progress.total}</p>
+        </div>
+      )}
+
+      {/* Done */}
       {step === 'done' && result && (
         <div className="card p-8 text-center">
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-surface-900 mb-2">Import Complete!</h2>
-          <div className="flex justify-center gap-8 mb-6">
-            <div><p className="text-2xl font-bold text-emerald-600">{result.imported}</p><p className="text-xs text-surface-500">Imported</p></div>
-            <div><p className="text-2xl font-bold text-surface-400">{result.skipped}</p><p className="text-xs text-surface-500">Skipped</p></div>
-            <div><p className="text-2xl font-bold text-surface-900">{result.total}</p><p className="text-xs text-surface-500">Total</p></div>
+          <h2 className="text-xl font-bold text-surface-900 mb-4">Import Complete!</h2>
+          <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-6">
+            {Object.entries(result).map(([entity, data]: any) => (
+              <div key={entity} className="p-3 bg-surface-50 rounded-xl">
+                <p className="text-lg font-bold text-surface-900">{data.imported}</p>
+                <p className="text-[10px] text-surface-500 capitalize">{entity} imported</p>
+                {data.skipped > 0 && <p className="text-[9px] text-surface-400">{data.skipped} skipped</p>}
+              </div>
+            ))}
           </div>
           <div className="flex gap-2 justify-center">
-            <button onClick={() => { setStep('upload'); setParsed(null); setResult(null); setMapping({}) }} className="btn-secondary">Import More</button>
-            <a href={`/${target === 'companies' ? 'contacts' : target}`} className="btn-primary">View {target}</a>
+            <button onClick={() => { setStep('upload'); setTables([]); setResult(null) }} className="btn-secondary">Import More</button>
+            <a href="/contacts" className="btn-primary">View Contacts</a>
           </div>
         </div>
       )}
