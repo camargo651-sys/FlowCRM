@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
 import BulkActions from '@/components/shared/BulkActions'
+import ViewToggle from '@/components/shared/ViewToggle'
+import InlineEdit from '@/components/shared/InlineEdit'
 import { deleteWithUndo } from '@/lib/utils/undo'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
@@ -172,6 +174,7 @@ export default function ContactsPage() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [view, setView] = useState<'table' | 'grid'>('table')
 
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -185,6 +188,12 @@ export default function ContactsPage() {
   }, [])
 
   useEffect(() => { loadContacts() }, [loadContacts])
+
+  const updateField = async (id: string, field: string, value: string) => {
+    await supabase.from('contacts').update({ [field]: value || null }).eq('id', id)
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c))
+    toast.success('Updated')
+  }
 
   const handleCreate = async (contactData: Partial<Contact>) => {
     const { data, error } = await supabase.from('contacts').insert([contactData]).select().single()
@@ -232,6 +241,7 @@ export default function ContactsPage() {
               e.target.value = ''
             }} />
           </label>
+          <ViewToggle view={view} onChange={setView as any} />
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm">
             <Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}
           </button>
@@ -264,7 +274,32 @@ export default function ContactsPage() {
           <p className="text-surface-400 text-sm mb-4">Add your first {template.contactLabel.singular.toLowerCase()} to get started</p>
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}</button>
         </div>
-      ) : (
+      ) : view === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {filtered.map(contact => (
+            <div key={contact.id} onClick={() => router.push(`/contacts/${contact.id}`)}
+              className="card p-4 hover:shadow-card-hover cursor-pointer transition-all">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`avatar-sm ${avatarColor(contact.name)}`}>{getInitials(contact.name)}</div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-surface-800 truncate">{contact.name}</p>
+                  <p className="text-[10px] text-surface-400 truncate">{contact.job_title || contact.company_name || ''}</p>
+                </div>
+              </div>
+              {contact.email && <p className="text-xs text-brand-600 truncate mb-1">{contact.email}</p>}
+              {contact.phone && <p className="text-xs text-surface-500">{contact.phone}</p>}
+              <div className="flex items-center gap-2 mt-2">
+                <span className={cn('badge text-[10px]', contact.type === 'company' ? 'badge-blue' : 'badge-gray')}>{contact.type}</span>
+                {(contact as any).score_label && (contact as any).score_label !== 'cold' && (
+                  <span className={cn('text-[10px] font-bold', (contact as any).score_label === 'hot' ? 'text-red-600' : 'text-amber-600')}>
+                    {(contact as any).score_label}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        ) : (
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead>
@@ -297,19 +332,19 @@ export default function ContactsPage() {
                     <div className="flex items-center gap-3">
                       <div className={`avatar-sm ${avatarColor(contact.name)} flex-shrink-0`}>{getInitials(contact.name)}</div>
                       <div>
-                        <p className="text-sm font-semibold text-surface-800">{contact.name}</p>
+                        <InlineEdit value={contact.name} className="text-sm font-semibold text-surface-800" onSave={v => updateField(contact.id, 'name', v)} />
                         {contact.job_title && <p className="text-xs text-surface-400">{contact.job_title}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    {contact.email ? <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} className="text-xs text-brand-600 hover:underline">{contact.email}</a> : <span className="text-xs text-surface-300">—</span>}
+                  <td className="px-4 py-3 hidden md:table-cell" onClick={e => e.stopPropagation()}>
+                    <InlineEdit value={contact.email || ''} type="email" className="text-xs text-brand-600" placeholder="Add email" onSave={v => updateField(contact.id, 'email', v)} />
                   </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs text-surface-600">{contact.company_name || '—'}</span>
+                  <td className="px-4 py-3 hidden lg:table-cell" onClick={e => e.stopPropagation()}>
+                    <InlineEdit value={contact.company_name || ''} className="text-xs text-surface-600" placeholder="Add company" onSave={v => updateField(contact.id, 'company_name', v)} />
                   </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs text-surface-600">{contact.phone || '—'}</span>
+                  <td className="px-4 py-3 hidden lg:table-cell" onClick={e => e.stopPropagation()}>
+                    <InlineEdit value={contact.phone || ''} type="tel" className="text-xs text-surface-600" placeholder="Add phone" onSave={v => updateField(contact.id, 'phone', v)} />
                   </td>
                   <td className="px-4 py-3 hidden xl:table-cell">
                     {(contact as any).score_label && (contact as any).score_label !== 'cold' ? (
@@ -337,7 +372,7 @@ export default function ContactsPage() {
             </tbody>
           </table>
         </div>
-      )}
+        )}
 
       <BulkActions
         count={selected.size}
