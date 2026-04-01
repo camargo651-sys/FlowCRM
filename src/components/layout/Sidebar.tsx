@@ -102,7 +102,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       {/* Navigation */}
       <nav className="flex-1 px-2 py-2 overflow-y-auto no-scrollbar">
         {SECTIONS.map(section => {
-          const isCollapsed = collapsed[section.key] && !sectionActive(section.items)
+          const isCollapsed = collapsed[section.key] !== undefined ? collapsed[section.key] : false
           return (
             <div key={section.key} className="mb-1">
               {section.label && (
