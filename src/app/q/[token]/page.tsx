@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 async function getQuote(token: string) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!key) return null
+  try {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key)
 
   const { data: quote } = await supabase
@@ -13,6 +14,7 @@ async function getQuote(token: string) {
     .single()
 
   return quote
+  } catch { return null }
 }
 
 export default async function QuoteViewPage({ params }: { params: { token: string } }) {
