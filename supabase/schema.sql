@@ -1535,4 +1535,9 @@ create trigger contracts_updated_at before update on contracts for each row exec
 alter table pipeline_stages add column if not exists required_fields text[];
 alter table pipeline_stages add column if not exists require_approval boolean default false;
 
+-- Branding
+alter table workspaces add column if not exists secondary_color text;
+alter table workspaces add column if not exists login_message text;
+alter table workspaces add column if not exists footer_text text;
+
 -- Done! Your Tracktio database is ready.
