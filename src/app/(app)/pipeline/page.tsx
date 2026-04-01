@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Filter, X, DollarSign, Calendar, User } from 'lucide-react'
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
@@ -344,48 +345,64 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {/* Kanban */}
+      {/* Kanban with drag-drop */}
       {columns.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-4 flex-1 no-scrollbar">
-          {filteredColumns.map(col => {
-            const colValue = col.deals.reduce((s, d) => s + (d.value || 0), 0)
-            return (
-              <div key={col.id} className="flex-shrink-0 w-72 flex flex-col"
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => {
-                  const dealId = e.dataTransfer.getData('dealId')
-                  if (dealId) handleMoveDeal(dealId, col.id)
-                }}>
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || '#6172f3' }} />
-                    <span className="text-xs font-bold text-surface-700 uppercase tracking-wide">{col.name}</span>
-                    <span className="text-[10px] text-surface-400 font-semibold bg-surface-100 px-1.5 py-0.5 rounded-full">{col.deals.length}</span>
+        <DragDropContext onDragEnd={(result: DropResult) => {
+          if (!result.destination) return
+          const dealId = result.draggableId
+          const newStageId = result.destination.droppableId
+          if (result.source.droppableId !== newStageId) {
+            handleMoveDeal(dealId, newStageId)
+          }
+        }}>
+          <div className="flex gap-4 overflow-x-auto pb-4 flex-1 no-scrollbar">
+            {filteredColumns.map(col => {
+              const colValue = col.deals.reduce((s, d) => s + (d.value || 0), 0)
+              return (
+                <div key={col.id} className="flex-shrink-0 w-72 flex flex-col">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || '#6172f3' }} />
+                      <span className="text-xs font-bold text-surface-700 dark:text-surface-300 uppercase tracking-wide">{col.name}</span>
+                      <span className="text-[10px] text-surface-400 font-semibold bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded-full">{col.deals.length}</span>
+                    </div>
+                    {colValue > 0 && <span className="text-xs font-semibold text-surface-500">{formatCurrency(colValue)}</span>}
                   </div>
-                  {colValue > 0 && <span className="text-xs font-semibold text-surface-500">{formatCurrency(colValue)}</span>}
-                </div>
 
-                <div className="flex-1 space-y-2 min-h-20 p-2 bg-surface-100/50 rounded-xl">
-                  {col.deals.map(deal => (
-                    <div key={deal.id} draggable onDragStart={e => e.dataTransfer.setData('dealId', deal.id)}>
-                      <DealCard deal={deal} onClick={() => {}} />
-                    </div>
-                  ))}
-                  {col.deals.length === 0 && (
-                    <div className="h-16 flex items-center justify-center text-xs text-surface-400 border-2 border-dashed border-surface-200 rounded-xl">
-                      Drop here
-                    </div>
-                  )}
-                </div>
+                  <Droppable droppableId={col.id}>
+                    {(provided, snapshot) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps}
+                        className={cn('flex-1 space-y-2 min-h-20 p-2 rounded-xl transition-colors',
+                          snapshot.isDraggingOver ? 'bg-brand-50 dark:bg-brand-950 border-2 border-brand-200' : 'bg-surface-100/50 dark:bg-surface-800/50')}>
+                        {col.deals.map((deal, index) => (
+                          <Draggable key={deal.id} draggableId={deal.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
+                                className={cn(snapshot.isDragging && 'opacity-80 rotate-1 scale-105')}>
+                                <DealCard deal={deal} onClick={() => {}} />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {col.deals.length === 0 && !snapshot.isDraggingOver && (
+                          <div className="h-16 flex items-center justify-center text-xs text-surface-400 border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-xl">
+                            Drop here
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
 
-                <button onClick={() => setShowNewDeal(true)}
-                  className="mt-2 w-full flex items-center gap-1.5 p-2 rounded-xl text-xs text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors">
-                  <Plus className="w-3.5 h-3.5" /> Add {template.dealLabel.singular.toLowerCase()}
-                </button>
-              </div>
-            )
-          })}
-        </div>
+                  <button onClick={() => setShowNewDeal(true)}
+                    className="mt-2 w-full flex items-center gap-1.5 p-2 rounded-xl text-xs text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Add {template.dealLabel.singular.toLowerCase()}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </DragDropContext>
       )}
 
       {showNewDeal && (

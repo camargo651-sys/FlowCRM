@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
+import BulkActions from '@/components/shared/BulkActions'
+import { deleteWithUndo } from '@/lib/utils/undo'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
 import type { Contact } from '@/types'
@@ -169,6 +171,7 @@ export default function ContactsPage() {
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -266,6 +269,11 @@ export default function ContactsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-100">
+                <th className="px-4 py-3 w-8">
+                  <input type="checkbox" className="rounded border-surface-300"
+                    checked={selected.size === filtered.length && filtered.length > 0}
+                    onChange={e => setSelected(e.target.checked ? new Set(filtered.map(c => c.id)) : new Set())} />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide">Name</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden md:table-cell">Email</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden lg:table-cell">Company</th>
@@ -277,9 +285,14 @@ export default function ContactsPage() {
             <tbody>
               {filtered.map((contact, i) => (
                 <tr key={contact.id}
-                  onClick={() => router.push(`/contacts/${contact.id}`)}
+                  onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'INPUT') router.push(`/contacts/${contact.id}`) }}
                   className="border-b border-surface-50 last:border-0 hover:bg-surface-50 cursor-pointer transition-colors animate-fade-in"
                   style={{ animationDelay: `${i * 30}ms` }}>
+                  <td className="px-4 py-3 w-8" onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" className="rounded border-surface-300"
+                      checked={selected.has(contact.id)}
+                      onChange={e => setSelected(prev => { const next = new Set(prev); e.target.checked ? next.add(contact.id) : next.delete(contact.id); return next })} />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`avatar-sm ${avatarColor(contact.name)} flex-shrink-0`}>{getInitials(contact.name)}</div>
@@ -325,6 +338,29 @@ export default function ContactsPage() {
           </table>
         </div>
       )}
+
+      <BulkActions
+        count={selected.size}
+        onClear={() => setSelected(new Set())}
+        onExport={() => window.open('/api/export?type=contacts')}
+        onDelete={async () => {
+          if (!confirm(`Delete ${selected.size} contacts?`)) return
+          for (const id of Array.from(selected)) { await supabase.from('contacts').delete().eq('id', id) }
+          toast.success(`${selected.size} contacts deleted`)
+          setSelected(new Set())
+          loadContacts()
+        }}
+        onTag={async (tag) => {
+          for (const id of Array.from(selected)) {
+            const { data: c } = await supabase.from('contacts').select('tags').eq('id', id).single()
+            const tags = Array.from(new Set([...(c?.tags || []), tag]))
+            await supabase.from('contacts').update({ tags }).eq('id', id)
+          }
+          toast.success(`Tagged ${selected.size} contacts with "${tag}"`)
+          setSelected(new Set())
+          loadContacts()
+        }}
+      />
 
       {showNew && (
         <NewContactModal
