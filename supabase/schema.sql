@@ -1440,4 +1440,25 @@ alter table profiles add column if not exists custom_role_id uuid references cus
 -- Module configuration per workspace
 alter table workspaces add column if not exists enabled_modules jsonb;
 
+-- Stage SLA thresholds (stagnation detection)
+alter table pipeline_stages add column if not exists max_days int;
+
+-- Payment milestones for deals
+create table if not exists payment_milestones (
+  id              uuid primary key default uuid_generate_v4(),
+  deal_id         uuid not null references deals(id) on delete cascade,
+  name            text not null,
+  percentage      numeric,
+  amount          numeric,
+  due_date        date,
+  due_description text,
+  status          text default 'pending' check (status in ('pending','invoiced','paid')),
+  invoice_id      uuid references invoices(id) on delete set null,
+  order_index     int default 0,
+  created_at      timestamptz default now()
+);
+alter table payment_milestones enable row level security;
+create policy "ws owner payment_milestones" on payment_milestones
+  using (deal_id in (select id from deals where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
 -- Done! Your Tracktio database is ready.

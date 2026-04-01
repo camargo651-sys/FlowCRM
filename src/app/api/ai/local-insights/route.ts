@@ -40,7 +40,7 @@ export async function POST() {
   const contactLabel = term.contact?.singular || 'Contact'
 
   const [dealsRes, activitiesRes, quotesRes, contactsRes] = await Promise.all([
-    supabase.from('deals').select('id, title, value, status, expected_close_date, updated_at, contacts(name, email)').eq('workspace_id', ws.id).eq('status', 'open').order('updated_at', { ascending: false }),
+    supabase.from('deals').select('id, title, value, status, stage_id, expected_close_date, updated_at, contacts(name, email)').eq('workspace_id', ws.id).eq('status', 'open').order('updated_at', { ascending: false }),
     supabase.from('activities').select('id, title, type, done, due_date, contacts(name), deals(title)').eq('workspace_id', ws.id).eq('done', false).order('due_date', { ascending: true }),
     supabase.from('quotes').select('id, title, total, status, created_at, contacts(name)').eq('workspace_id', ws.id).order('created_at', { ascending: false }).limit(10),
     supabase.from('contacts').select('id, name, created_at').eq('workspace_id', ws.id).order('created_at', { ascending: false }).limit(5),
@@ -70,7 +70,32 @@ export async function POST() {
     })
   })
 
-  // 2. Stale deals — no activity in 7+ days
+  // 2. Stagnation detection — deals exceeding stage SLA
+  const { data: stagesWithSLA } = await supabase
+    .from('pipeline_stages')
+    .select('id, name, max_days')
+    .eq('workspace_id', ws.id)
+    .not('max_days', 'is', null)
+  const slaMap = new Map((stagesWithSLA || []).map(s => [s.id, { name: s.name, maxDays: s.max_days }]))
+
+  deals.filter(d => d.status === 'open' && slaMap.has(d.stage_id)).forEach(d => {
+    const sla = slaMap.get(d.stage_id)!
+    const daysInStage = Math.floor((now.getTime() - new Date(d.updated_at).getTime()) / (1000 * 60 * 60 * 24))
+    if (daysInStage > sla.maxDays) {
+      const contactName = (d as any).contacts?.name
+      actions.push({
+        id: String(actionId++),
+        priority: daysInStage > sla.maxDays * 2 ? 'high' as const : 'medium' as const,
+        icon: 'alert',
+        title: `"${d.title}" stagnant in ${sla.name}`,
+        description: `${daysInStage} days in stage (SLA: ${sla.maxDays} days).${contactName ? ` Contact: ${contactName}.` : ''} Move it forward or close it.`,
+        entity_type: 'deal',
+        entity_name: d.title,
+      })
+    }
+  })
+
+  // 3. Stale deals — no activity in 7+ days
   const staleDeals = deals.filter(d => {
     const daysSince = (now.getTime() - new Date(d.updated_at).getTime()) / (1000 * 60 * 60 * 24)
     return daysSince > 7
