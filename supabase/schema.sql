@@ -1415,4 +1415,26 @@ alter table store_order_items enable row level security;
 create policy "ws owner store_order_items" on store_order_items
   using (order_id in (select id from store_orders where workspace_id in (select id from workspaces where owner_id = auth.uid())));
 
+-- ============================================================
+-- CUSTOM ROLES (configurable by admin)
+-- ============================================================
+create table if not exists custom_roles (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  name            text not null,
+  description     text,
+  color           text default '#6172f3',
+  is_system       boolean default false,
+  permissions     jsonb default '{}',
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now(),
+  unique(workspace_id, name)
+);
+alter table custom_roles enable row level security;
+create policy "ws owner custom_roles" on custom_roles
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- Update profiles to support custom role reference
+alter table profiles add column if not exists custom_role_id uuid references custom_roles(id) on delete set null;
+
 -- Done! Your Tracktio database is ready.

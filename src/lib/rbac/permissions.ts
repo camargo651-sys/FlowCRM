@@ -1,124 +1,78 @@
 // ============================================================
-// RBAC — Role-Based Access Control for ERP modules
+// RBAC — Role-Based Access Control (configurable by admin)
 // ============================================================
 
-export type Module = 'crm' | 'inventory' | 'invoicing' | 'purchasing' | 'accounting' | 'hr' | 'reports' | 'automations' | 'settings' | 'team'
+export type Module = 'crm' | 'inventory' | 'invoicing' | 'purchasing' | 'accounting' | 'hr' | 'reports' | 'automations' | 'settings' | 'team' | 'manufacturing' | 'ecommerce' | 'pos' | 'expenses'
 export type Action = 'view' | 'create' | 'edit' | 'delete' | 'export' | 'approve'
-export type Role = 'admin' | 'manager' | 'member' | 'viewer' | 'accountant' | 'sales' | 'warehouse' | 'hr_manager'
 
-interface Permission {
-  module: Module
-  actions: Action[]
+export const ALL_MODULES: { key: Module; label: string; icon: string }[] = [
+  { key: 'crm', label: 'CRM / Sales', icon: '🔀' },
+  { key: 'invoicing', label: 'Invoicing', icon: '🧾' },
+  { key: 'inventory', label: 'Inventory', icon: '📦' },
+  { key: 'manufacturing', label: 'Manufacturing', icon: '🏭' },
+  { key: 'purchasing', label: 'Purchasing', icon: '🚛' },
+  { key: 'accounting', label: 'Accounting', icon: '📒' },
+  { key: 'hr', label: 'HR & Payroll', icon: '👔' },
+  { key: 'expenses', label: 'Expenses', icon: '💰' },
+  { key: 'ecommerce', label: 'E-commerce', icon: '🛒' },
+  { key: 'pos', label: 'POS', icon: '💳' },
+  { key: 'reports', label: 'Reports', icon: '📈' },
+  { key: 'automations', label: 'Automations', icon: '⚡' },
+  { key: 'settings', label: 'Settings', icon: '⚙️' },
+  { key: 'team', label: 'Team', icon: '👥' },
+]
+
+export const ALL_ACTIONS: { key: Action; label: string }[] = [
+  { key: 'view', label: 'View' },
+  { key: 'create', label: 'Create' },
+  { key: 'edit', label: 'Edit' },
+  { key: 'delete', label: 'Delete' },
+  { key: 'export', label: 'Export' },
+  { key: 'approve', label: 'Approve' },
+]
+
+export const ROLE_TEMPLATES: Record<string, { label: string; description: string; permissions: Record<string, string[]> }> = {
+  admin: {
+    label: 'Administrator', description: 'Full access to all modules',
+    permissions: Object.fromEntries(ALL_MODULES.map(m => [m.key, ALL_ACTIONS.map(a => a.key)])),
+  },
+  manager: {
+    label: 'Manager', description: 'Manage sales, inventory, invoicing, and purchasing',
+    permissions: { crm: ['view','create','edit','delete','export'], inventory: ['view','create','edit','export'], invoicing: ['view','create','edit','export','approve'], purchasing: ['view','create','edit','approve'], accounting: ['view','export'], hr: ['view','approve'], reports: ['view','export'], automations: ['view','create','edit'], manufacturing: ['view','create','edit'], ecommerce: ['view','edit'], pos: ['view','create'], expenses: ['view','approve'] },
+  },
+  sales: {
+    label: 'Sales', description: 'CRM, quotes, and invoices',
+    permissions: { crm: ['view','create','edit','export'], invoicing: ['view','create'], inventory: ['view'], pos: ['view','create'], reports: ['view'] },
+  },
+  accountant: {
+    label: 'Accountant', description: 'Invoicing, accounting, and reports',
+    permissions: { invoicing: ['view','create','edit','export','approve'], accounting: ['view','create','edit','export','approve'], purchasing: ['view','approve'], reports: ['view','export'], hr: ['view'], expenses: ['view','approve','export'] },
+  },
+  warehouse: {
+    label: 'Warehouse', description: 'Inventory and purchasing',
+    permissions: { inventory: ['view','create','edit','export'], purchasing: ['view','edit'], manufacturing: ['view','create','edit'] },
+  },
+  hr_manager: {
+    label: 'HR Manager', description: 'Employee management and payroll',
+    permissions: { hr: ['view','create','edit','delete','approve','export'], expenses: ['view','approve'], reports: ['view'] },
+  },
+  viewer: {
+    label: 'Viewer', description: 'Read-only access',
+    permissions: { crm: ['view'], inventory: ['view'], invoicing: ['view'], reports: ['view'] },
+  },
 }
 
-// Role → Permission mappings
-const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  admin: [
-    { module: 'crm', actions: ['view', 'create', 'edit', 'delete', 'export', 'approve'] },
-    { module: 'inventory', actions: ['view', 'create', 'edit', 'delete', 'export', 'approve'] },
-    { module: 'invoicing', actions: ['view', 'create', 'edit', 'delete', 'export', 'approve'] },
-    { module: 'purchasing', actions: ['view', 'create', 'edit', 'delete', 'export', 'approve'] },
-    { module: 'accounting', actions: ['view', 'create', 'edit', 'delete', 'export', 'approve'] },
-    { module: 'hr', actions: ['view', 'create', 'edit', 'delete', 'export', 'approve'] },
-    { module: 'reports', actions: ['view', 'export'] },
-    { module: 'automations', actions: ['view', 'create', 'edit', 'delete'] },
-    { module: 'settings', actions: ['view', 'edit'] },
-    { module: 'team', actions: ['view', 'create', 'edit', 'delete'] },
-  ],
-  manager: [
-    { module: 'crm', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-    { module: 'inventory', actions: ['view', 'create', 'edit', 'export'] },
-    { module: 'invoicing', actions: ['view', 'create', 'edit', 'export', 'approve'] },
-    { module: 'purchasing', actions: ['view', 'create', 'edit', 'approve'] },
-    { module: 'accounting', actions: ['view', 'export'] },
-    { module: 'hr', actions: ['view', 'approve'] },
-    { module: 'reports', actions: ['view', 'export'] },
-    { module: 'automations', actions: ['view', 'create', 'edit'] },
-    { module: 'settings', actions: ['view'] },
-    { module: 'team', actions: ['view'] },
-  ],
-  sales: [
-    { module: 'crm', actions: ['view', 'create', 'edit', 'export'] },
-    { module: 'inventory', actions: ['view'] },
-    { module: 'invoicing', actions: ['view', 'create'] },
-    { module: 'reports', actions: ['view'] },
-  ],
-  accountant: [
-    { module: 'invoicing', actions: ['view', 'create', 'edit', 'export', 'approve'] },
-    { module: 'accounting', actions: ['view', 'create', 'edit', 'export', 'approve'] },
-    { module: 'purchasing', actions: ['view', 'approve'] },
-    { module: 'reports', actions: ['view', 'export'] },
-    { module: 'hr', actions: ['view'] },
-  ],
-  warehouse: [
-    { module: 'inventory', actions: ['view', 'create', 'edit', 'export'] },
-    { module: 'purchasing', actions: ['view', 'edit'] },
-  ],
-  hr_manager: [
-    { module: 'hr', actions: ['view', 'create', 'edit', 'delete', 'approve', 'export'] },
-    { module: 'reports', actions: ['view'] },
-  ],
-  member: [
-    { module: 'crm', actions: ['view', 'create', 'edit'] },
-    { module: 'inventory', actions: ['view'] },
-    { module: 'invoicing', actions: ['view'] },
-    { module: 'reports', actions: ['view'] },
-  ],
-  viewer: [
-    { module: 'crm', actions: ['view'] },
-    { module: 'inventory', actions: ['view'] },
-    { module: 'invoicing', actions: ['view'] },
-    { module: 'reports', actions: ['view'] },
-  ],
-}
-
-/**
- * Check if a role has permission for a specific module+action
- */
-export function hasPermission(role: string, module: Module, action: Action): boolean {
-  const perms = ROLE_PERMISSIONS[role as Role]
-  if (!perms) return false
-  const modulePerm = perms.find(p => p.module === module)
-  if (!modulePerm) return false
-  return modulePerm.actions.includes(action)
-}
-
-/**
- * Get all permissions for a role
- */
-export function getRolePermissions(role: string): Permission[] {
-  return ROLE_PERMISSIONS[role as Role] || []
-}
-
-/**
- * Get all modules a role can access
- */
-export function getAccessibleModules(role: string): Module[] {
-  return getRolePermissions(role).map(p => p.module)
-}
-
-/**
- * Get all available roles
- */
-export function getAllRoles(): { key: Role; label: string; description: string }[] {
-  return [
-    { key: 'admin', label: 'Administrator', description: 'Full access to all modules' },
-    { key: 'manager', label: 'Manager', description: 'Manage CRM, inventory, invoicing, and purchasing' },
-    { key: 'sales', label: 'Sales', description: 'CRM, quotes, and invoices' },
-    { key: 'accountant', label: 'Accountant', description: 'Invoicing, accounting, and reports' },
-    { key: 'warehouse', label: 'Warehouse', description: 'Inventory and purchasing' },
-    { key: 'hr_manager', label: 'HR Manager', description: 'Employee management and payroll' },
-    { key: 'member', label: 'Team Member', description: 'Basic CRM and view access' },
-    { key: 'viewer', label: 'Viewer', description: 'Read-only access' },
-  ]
-}
-
-/**
- * Middleware-style permission check for API routes
- */
-export function requirePermission(role: string, module: Module, action: Action): { allowed: boolean; error?: string } {
-  if (hasPermission(role, module, action)) {
-    return { allowed: true }
+export function hasPermission(role: string, module: Module, action: Action, customPermissions?: Record<string, string[]>): boolean {
+  if (customPermissions) {
+    return customPermissions[module]?.includes(action) || false
   }
-  return { allowed: false, error: `Permission denied: ${role} cannot ${action} in ${module}` }
+  return ROLE_TEMPLATES[role]?.permissions[module]?.includes(action) || false
+}
+
+export function getAccessibleModules(permissions: Record<string, string[]>): Module[] {
+  return Object.keys(permissions).filter(m => permissions[m]?.includes('view')) as Module[]
+}
+
+export function getAllRoles(): { key: string; label: string; description: string }[] {
+  return Object.entries(ROLE_TEMPLATES).map(([key, val]) => ({ key, label: val.label, description: val.description }))
 }

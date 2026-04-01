@@ -13,6 +13,10 @@ interface Member {
   created_at: string
 }
 
+interface CustomRole {
+  id: string; name: string; color: string;
+}
+
 interface Invitation {
   id: string
   email: string
@@ -30,6 +34,7 @@ export default function TeamPage() {
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('member')
+  const [customRoles, setCustomRoles] = useState<CustomRole[]>([])
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
 
@@ -39,13 +44,15 @@ export default function TeamPage() {
     const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
     if (!ws) { setLoading(false); return }
 
-    const [membersRes, invitesRes] = await Promise.all([
+    const [membersRes, invitesRes, rolesRes] = await Promise.all([
       supabase.from('profiles').select('id, full_name, email, role, avatar_url, created_at').eq('workspace_id', ws.id),
       supabase.from('team_invitations').select('*').eq('workspace_id', ws.id).eq('status', 'pending').order('created_at', { ascending: false }),
+      supabase.from('custom_roles').select('id, name, color').eq('workspace_id', ws.id).order('name'),
     ])
 
     setMembers(membersRes.data || [])
     setInvitations(invitesRes.data || [])
+    setCustomRoles(rolesRes.data || [])
     setLoading(false)
   }, [])
 
@@ -195,9 +202,15 @@ export default function TeamPage() {
               <div>
                 <label className="label">Role</label>
                 <select className="input" value={inviteRole} onChange={e => setInviteRole(e.target.value)}>
-                  <option value="admin">Admin — Full access</option>
-                  <option value="manager">Manager — Can manage deals & contacts</option>
-                  <option value="member">Member — View & edit assigned items</option>
+                  {customRoles.length > 0 ? (
+                    customRoles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)
+                  ) : (
+                    <>
+                      <option value="admin">Admin — Full access</option>
+                      <option value="manager">Manager — Can manage deals & contacts</option>
+                      <option value="member">Member — View & edit assigned items</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div className="flex gap-2">

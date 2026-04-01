@@ -48,6 +48,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     { href: '/automations',   icon: Zap,             label: 'Automations' },
     { href: '/api-docs',      icon: Code,            label: 'API Docs' },
     { href: '/audit-log',     icon: Shield,          label: 'Audit Log' },
+    { href: '/roles',         icon: Shield,          label: 'Roles' },
     { href: '/team',          icon: UserPlus,        label: 'Team' },
   ]
 
