@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Users, Building2, Calendar, DollarSign, X, Search, Clock, CheckCircle2 } from 'lucide-react'
@@ -48,14 +49,14 @@ export default function HRPage() {
       ...empForm, department_id: empForm.department_id || null, salary: parseFloat(empForm.salary) || 0,
     })
     setEmpForm({ first_name: '', last_name: '', email: '', phone: '', department_id: '', position: '', employment_type: 'full_time', start_date: '', salary: 0, salary_period: 'monthly' })
-    setShowNewEmployee(false); setSaving(false); load()
+    setShowNewEmployee(false); setSaving(false); toast.success("Saved"); load()
   }
 
   const createDepartment = async () => {
     if (!deptForm.name) return
     setSaving(true)
     await supabase.from('departments').insert({ workspace_id: workspaceId, name: deptForm.name })
-    setDeptForm({ name: '' }); setShowNewDept(false); setSaving(false); load()
+    setDeptForm({ name: '' }); setShowNewDept(false); setSaving(false); toast.success("Saved"); load()
   }
 
   const updateLeaveStatus = async (id: string, status: string) => {

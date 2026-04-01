@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -183,8 +184,9 @@ export default function ContactsPage() {
   useEffect(() => { loadContacts() }, [loadContacts])
 
   const handleCreate = async (contactData: Partial<Contact>) => {
-    const { data } = await supabase.from('contacts').insert([contactData]).select().single()
-    if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+    const { data, error } = await supabase.from('contacts').insert([contactData]).select().single()
+    if (error) { toast.error('Failed to create contact'); return }
+    if (data) { setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name))); toast.success(`${data.name} created`) }
   }
 
   const filtered = contacts.filter(c => {

@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, FileText, Send, DollarSign, CheckCircle2, X, Clock, AlertTriangle, Download } from 'lucide-react'
@@ -86,6 +87,7 @@ export default function InvoicesPage() {
     setForm({ contact_id: '', due_date: '', notes: '', items: [] })
     setShowNew(false)
     setSaving(false)
+    toast.success('Invoice created')
     load()
   }
 

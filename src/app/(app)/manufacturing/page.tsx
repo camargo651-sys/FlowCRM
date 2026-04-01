@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Factory, X, Play, CheckCircle2, Clock, AlertTriangle, Package } from 'lucide-react'
@@ -64,7 +65,7 @@ export default function ManufacturingPage() {
       )
     }
     setBomName(''); setBomProductId(''); setBomYield(1); setBomLines([])
-    setShowNewBOM(false); setSaving(false); load()
+    setShowNewBOM(false); setSaving(false); toast.success("Saved"); load()
   }
 
   const createWO = async () => {
@@ -77,7 +78,7 @@ export default function ManufacturingPage() {
       quantity: woQty, priority: woPriority, status: 'draft',
     })
     setWoProductId(''); setWoBomId(''); setWoQty(1); setWoPriority('normal')
-    setShowNewWO(false); setSaving(false); load()
+    setShowNewWO(false); setSaving(false); toast.success("Saved"); load()
   }
 
   const updateWOStatus = async (id: string, status: string) => {

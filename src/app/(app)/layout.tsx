@@ -5,6 +5,7 @@ import GlobalSearch from '@/components/layout/GlobalSearch'
 import MobileNav from '@/components/layout/MobileNav'
 import Breadcrumbs from '@/components/shared/Breadcrumbs'
 import { Toaster } from 'sonner'
+import KeyboardShortcuts from '@/components/shared/KeyboardShortcuts'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -33,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </main>
       <GlobalSearch />
       <Toaster position="bottom-right" richColors closeButton />
+      <KeyboardShortcuts />
     </div>
   )
 }
