@@ -1437,4 +1437,7 @@ create policy "ws owner custom_roles" on custom_roles
 -- Update profiles to support custom role reference
 alter table profiles add column if not exists custom_role_id uuid references custom_roles(id) on delete set null;
 
+-- Module configuration per workspace
+alter table workspaces add column if not exists enabled_modules jsonb;
+
 -- Done! Your Tracktio database is ready.

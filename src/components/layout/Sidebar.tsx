@@ -55,10 +55,11 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         }
 
         // Load workspace enabled modules
-        const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
-        if (ws) {
-          // Check if workspace has module config (future feature)
-          // For now, all modules enabled
+        const { data: ws } = await supabase.from('workspaces').select('id, enabled_modules').eq('owner_id', user.id).single()
+        if (ws?.enabled_modules && typeof ws.enabled_modules === 'object') {
+          const mods = Object.entries(ws.enabled_modules as Record<string, boolean>)
+            .filter(([_, v]) => v).map(([k]) => k)
+          if (mods.length > 0) setEnabledModules(mods)
         }
       } catch {}
     }
@@ -84,10 +85,16 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
   }
 
   const canAccess = (href: string) => {
-    if (!userPermissions) return true // null = admin, sees everything
     const mod = ROUTE_MODULE[href]
-    if (!mod) return true // no module = always visible (dashboard)
-    return userPermissions[mod]?.includes('view') || false
+    if (!mod) return true // dashboard always visible
+
+    // Check workspace enabled modules
+    if (enabledModules && !enabledModules.includes(mod) && mod !== 'settings') return false
+
+    // Check user role permissions
+    if (userPermissions && !userPermissions[mod]?.includes('view')) return false
+
+    return true
   }
 
   const SECTIONS = [
@@ -120,6 +127,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     { key: 'config', label: 'Configuration', items: [
       { href: '/settings', icon: Settings, label: 'General' },
       { href: '/settings/company', icon: Briefcase, label: 'Company' },
+      { href: '/settings/modules', icon: Package, label: 'Modules' },
       { href: '/roles', icon: Shield, label: 'Roles' },
       { href: '/team', icon: UserPlus, label: 'Team' },
       { href: '/integrations', icon: Plug, label: 'Integrations' },
