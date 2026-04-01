@@ -18,6 +18,8 @@ export default async function Home() {
           <span className="font-bold text-lg text-surface-900">Tracktio</span>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/features" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">Features</Link>
+          <Link href="/pricing" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">Pricing</Link>
           <Link href="/auth/login" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">Sign in</Link>
           <Link href="/auth/signup" className="btn-primary btn-sm">Get started free</Link>
         </div>
