@@ -230,6 +230,59 @@ const translations: Record<Locale, Record<string, string>> = {
     'reports.balance_sheet': 'Balance General',
     'reports.cashflow': 'Flujo de Caja',
 
+    // Sidebar sections
+    'section.sales': 'Ventas',
+    'section.operations': 'Operaciones',
+    'section.finance': 'Finanzas',
+    'section.people': 'Personas',
+    'section.config': 'Configuración',
+
+    // Additional nav items
+    'nav.quotes': 'Cotizaciones',
+    'nav.ecommerce': 'E-commerce',
+    'nav.leads': 'Leads Sociales',
+    'nav.contracts': 'Contratos',
+    'nav.tickets': 'Tickets',
+    'nav.manufacturing': 'Manufactura',
+    'nav.expenses': 'Gastos',
+    'nav.calendar': 'Calendario',
+    'nav.roles': 'Roles',
+    'nav.general': 'General',
+    'nav.company': 'Empresa',
+    'nav.modules': 'Módulos',
+    'nav.form_builder': 'Constructor de Formularios',
+    'nav.templates': 'Plantillas',
+    'nav.ai_setup': 'Configurar con IA',
+
+    // Tickets
+    'tickets.title': 'Tickets de Servicio',
+    'tickets.new': 'Nuevo Ticket',
+    'tickets.open': 'Abiertos',
+    'tickets.in_progress': 'En Progreso',
+    'tickets.resolved': 'Resueltos',
+
+    // Contracts
+    'contracts.title': 'Contratos',
+    'contracts.new': 'Nuevo Contrato',
+    'contracts.active': 'Activos',
+    'contracts.expiring': 'Por vencer',
+
+    // Calendar
+    'calendar.title': 'Calendario',
+    'calendar.new_event': 'Nuevo Evento',
+    'calendar.today': 'Hoy',
+
+    // Leads
+    'leads.title': 'Leads Sociales',
+    'leads.new': 'Nuevo Lead',
+    'leads.converted': 'Convertidos',
+    'leads.convert_contact': 'Convertir a Contacto',
+
+    // Manufacturing
+    'manufacturing.title': 'Manufactura',
+    'manufacturing.work_orders': 'Órdenes de Trabajo',
+    'manufacturing.bom': 'Lista de Materiales',
+
     // Common
     'common.save': 'Guardar',
     'common.cancel': 'Cancelar',
@@ -254,6 +307,37 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.settings': 'Settings',
     'nav.signout': 'Sign out',
     'nav.free_plan': 'Free plan',
+    'nav.invoices': 'Invoices',
+    'nav.inventory': 'Inventory',
+    'nav.purchasing': 'Purchasing',
+    'nav.accounting': 'Accounting',
+    'nav.reports': 'Reports',
+    'nav.hr': 'HR',
+    'nav.pos': 'POS',
+    'nav.automations': 'Automations',
+    'nav.team': 'Team',
+    'nav.audit_log': 'Audit Log',
+    'nav.api_docs': 'API Docs',
+    'nav.quotes': 'Quotes',
+    'nav.ecommerce': 'E-commerce',
+    'nav.leads': 'Social Leads',
+    'nav.contracts': 'Contracts',
+    'nav.tickets': 'Tickets',
+    'nav.manufacturing': 'Manufacturing',
+    'nav.expenses': 'Expenses',
+    'nav.calendar': 'Calendar',
+    'nav.roles': 'Roles',
+    'nav.general': 'General',
+    'nav.company': 'Company',
+    'nav.modules': 'Modules',
+    'nav.form_builder': 'Form Builder',
+    'nav.templates': 'Templates',
+    'nav.ai_setup': 'AI Setup',
+    'section.sales': 'Sales',
+    'section.operations': 'Operations',
+    'section.finance': 'Finance',
+    'section.people': 'People',
+    'section.config': 'Configuration',
 
     'dashboard.welcome': 'Welcome back',
     'dashboard.open_deals': 'Open Deals',

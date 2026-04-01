@@ -1,0 +1,46 @@
+Capacity (MWh),Category,Cooling,DataSheet,Lead Time,List Price,Manufacturer,Name,O&M Price,PCS (QTY/UNIT),Power (MW),Sales Projects Management,Sales Projects Management 2,Status,Technology,Voltage (V),Weight (Kg)
+0,optozUkeFs,,,23,152000,MARS,"STS5200MV – 0,69/20 kV",0,0,5.2,,,,,20,0
+0,optozUkeFs,,,23,147500,MARS,"STS3600MV – 0,69/30 kV",0,0,0,,,,,30,0
+0.836,opt558231909,,,20,117860,MARS,SOCRATES 690 0.396/0.836MWh 10ft (Copy) (Copy),1300,4,0.326,,,,,690,16000
+0.20833,opt156393591,,,0,0,MARS,STRING PCS 2.5MW +MV SKID,0,12,2.5,,,,,0,0
+1.254,opt558231909,,,0,232000,MARS,SOCRATES 690V 0.625/1.254 10ft,1300,3,0.625,recvcvU1m9NJHN; recvaaksZfihUZ; recvaakqsAmZfj; recva9SD8XZX44; recvaQ3K2zGvZs; recvaQ3K2zAMJJ; recvcdIu8VXXbO,,,,690,0
+1.672,opt558231909,,,20,117860,MARS,SOCRATES 690 0.83/1.672MWh 10ft,1300,4,0.83,recvaQ3K2zRWSB; recvb6WsjFJzA5; recvcvJBmr1173; recvcvSHLSyZXY; recvaaksZfihUZ; recvcxTBGo2lyy; recvaQ3K2zRzsg; recva5LrNRGV31; recvcy9tfTo6a6; recvaQ3K2zTqHA; recvcyFcziatkQ; recvaQ3K2z1RDm; recvcIP3EzkLqp; recvand84dijD0; recvaQ3K2zSADA; recvcdIu8VXXbO; recvaQ3FAt1tsV; recva5LkrtwoxK; recvd06vN5gm3H; recvej70i35nKq; recveYVDY3J39l; recvflbaxbI8FU,,,,690,16000
+0,optozUkeFs,Liquid,,0,152788,MARS,STS 690V/35 6800KVA 2YW,0,0,0,,,opt1316843505,LFP,0,0
+0,optE12MorU,Liquid,,,4810,Renesys, Renesys 215kWh Basico horario + Econo,0,0,0,,recvcIYT95nl8i; recvf4KCWWcKpf,opt1316843505,LFP,,
+0,opt1877182032,,,0,0,Unknown,Trafo 400/800V,0,0,0,,,opt1316843505,,0,0
+1.672,opt558231909,,,20,117860,MARS,SOCRATES 690 0.652/1.672MWh 10ft (Copy),1300,4,0.652,recvd0F0D1vzlt; recvd05gBGkojF,,,,690,16000
+0,optozUkeFs,,,0,153000,MARS,"STS4800MV-0,69/30kV",0,0,0,,,,,0,0
+5.015,opt558231909,,,0,549550,Unknown,ARQUMIDES  5.015MWh 20ft,1300,0,0,recvcqUabQXUZV; recvcvE6BO8O8k; recva5LWy4UnIS; recvakkhtWSOzp; recva5wgTob7Oq; recvd0c75wNwNP; recvdnioMHsaZh; recvcONPj3nHkV; recvbtrCUbWSu1; recvammjYEP17n; recveHSGmkTADa; recveYVEDdt9ZG,,,,1500,0
+0.261,opt558231909,,,16,38548,MARS,ARISTOTELES 3.0 Cabinet,900,1,0.125,recvcIYT95nl8i; recvcOxB2vE4c0; recvaQ3K2z807y; recvd0dcyd1396; recvf4KCWWcKpf,,opt1316843505,,400,3000
+0.233,opt558231909,,,16,37280,MARS,ARISTOTELES 2.0 Cabinet - 115,900,1,0.115,recvaIzBXeh8Qu; recva5LmWX4MG8,,opt1316843505,,400,3000
+0,optE12MorU,,,,38550,ComAp,ComAp EMS,,,0,,recvaQ3K2zRWSB; recvcvFJZd4rTe; recvcw2blqOwPd; recvaakn9FF76P; recvcxPyfFeHDx; recvcyjKCUlb6C; recvdK94eJtZxi,,,,
+0,optE12MorU,,,,0,ComAP,Recovered Item (recv9U),,,0,,recvbtrCUbWSu1,,,,
+0,optE12MorU,,,,8546,RENESYS,Renesys 600kWh Basico horario + Econo,,,0,,recvb69vhQP5gb; recvcw5bDkcmgT; recva5LtEej35P; recvcOxB2vE4c0,,,,
+0,optozUkeFs,,,,139688,MARS,STS 690V 4800KVA 2YW,,,0,,,,,,
+1.672,opt558231909,,,20,225720,MARS,SOCRATES 690 0.417/1.672MWh 10ft,1300,2,0.417,recvd057KdJW20; recvd05ybHarGJ; recvcZjsvIg4ET,,opt1316843505,,690,16000
+0.836,opt558231909,,,20,117860,MARS,SOCRATES 690 0.417/0.836MWh 10ft ,1300,2,0.417,recvd07aQNMH6G,,,,690,12000
+0,optozUkeFs,Liquid,,,139688,MARS,STS 690V/35 1600KVA 2YW,0,0,0,,,opt1316843505,LFP,,
+0,opt978507468,,,0,1600,MARS,Commisioning,0,0,0,,,,,0,0
+0,opt1877182032,Liquid,,,60000,,"trafo  MV  aislador  1,3MVA-Dyn11 2   690/400V",0,0,0,,,opt1316843505,LFP,,
+0,optozUkeFs,Liquid,,0,139688,MARS,STS 690V/35 4800KVA,0,0,0,,,opt1316843505,LFP,0,0
+0,optE12MorU,,,,4316,RENESYS,Renesys 430kWh Basico horario,,,0,,recvaJB6N11b7b; recvaQ3K2zVIdu; recvaQ3K2z807y; recvd0dcyd1396,,,,
+0,optozUkeFs,Liquid,,,138000,MARS,STS 690V/35 3600KVA 2YW,0,0,0,,,opt1316843505,LFP,,
+0,optozUkeFs,,,0,99870,MARS,STS 1600/20 kV,0,0,0,,recvaQ3K2zSADA,,,0,0
+0,optozUkeFs,Liquid,,0,126550,MARS,STS 690V/35 2800KVA 2YW,0,0,0,,,opt1316843505,LFP,0,0
+0,optE12MorU,,,0,10523400,ISEMAREN,ISEMAREN Hibridación BESS hasta 20Mwh a 50 MWh Sin redundancia,0,0,0,,recva5LWy4UnIS; recvaQ3K2z1RDm; recvand84dijD0,,,0,0
+0,opt156393591,,,0,0,Unknown,CENTRAL PCS 5MW + MV SKID,0,0,5,,,,,0,0
+0,optE12MorU,,,,12376,RENESYS,Renesys 1MWh Basico horario + Econo,,,0,,recvaQ3K2z4FW7; recvaQ3K2z63U6; recvcl6YPr2LYH; recvcZ3hmFXiaS; recvbBaulOjwVt; recvaQ3K2ztk99; recvf4jH4fP9LP,,,,
+0,optE12MorU,Liquid,,0,105234,ISEMAREN ,ISEMAREN Hibridación BESS hasta 20Mwh a 50 MWh Sin redundancia,0,0,0,,recvcqUabQXUZV; recvej70i35nKq,opt1316843505,LFP,0,0
+0,optE12MorU,,,0,76550,ISEMAREN,ISEMAREN PPC+EMS LITE,0,0,0,,recvcy9tfTo6a6; recva5LXLwwnsf; recvcyFcziatkQ; recvcONPj3nHkV,,,0,0
+0,optE12MorU,,,0,26750,ISEMAREN,ISEMAREN Hibridación BESS hasta 10Mwh,0,0,0,,recvaQ3K2zAMJJ; recvcvSHLSyZXY; recvcvU1m9NJHN; recvcxK8PqZF7X; recvcxOSsDjz9L; recvcxTBGo2lyy; recva5LvtRASjp; recva5LuS3pP6y; recvaQ3K2zRzsg; recva5LrNRGV31; recvaJB6N1TJed; recvaQ3K2zSvhe; recvaQ3K2zPjBo; recvaQ3K2z0oAB; recvaQ3K2zTqHA; recva5LmWX4MG8; recvaQ3K2zv9so; recvcgeQBcX5be; recvcdIu8VXXbO; recva5wgTob7Oq; recvcl8rGIgan9; recvcOUEYeuJM4; recvaQ3FAt1tsV; recvd0c75wNwNP; recvd05gBGkojF; recvdzpHUE73gb; recvdnioMHsaZh; recvcJjk48csQH; recvcZjsvIg4ET; recvedhNjfR5kf; recveHSGmkTADa; recveYVEDdt9ZG; recveYVDY3J39l; recvflbaxbI8FU,,,0,0
+0,optE12MorU,,,,6822,RENESYS,Renesys 430kWh Basico horario + Econo,,,0,,recvaQ3K2zwq63; recvepBXLx0bLE; recvf48nCaOGaS,,,,
+0.233,opt558231909,,,16,37280,MARS,ARISTOTELES 2.0 Cabinet,900,1,0.1,recvaJB6N11b7b; recvaJB6N1TJed; recvaQ3K2zBGxU; recvbT28bLBela; recvb69vhQP5gb; recvaQ3K2z8Ga3; recvcxUL0pHSJE; recvdK94eJtZxi; recvepBXLx0bLE,,,,400,3000
+0,opt156393591,,,0,0,MARS,CENTRAL PCS 5MW + MV SKID,0,0,0,,,,,0,0
+0,optE12MorU,,,,4316,RENESYS,Renesys 430kWh Basico horario,,,0,,recvaQ3K2z8Ga3,,,,
+0,optE12MorU,,,0,77550,ISEMAREN,ISEMAREN PPC+EMS,0,0,0,,recvcvJBmr1173; recvakkhtWSOzp; recvd057KdJW20; recvd0F0D1vzlt; recveTh5Urrmop,,,0,0
+0,optE12MorU,,,,4316,RENESYS,Renesys 430kWh Basico horario,,,0,,recva9SCgW4a1j; recvcxSzTa0OCp; recvcy7Iy7xAin; recvaQ3K2zPqL8; recvaQ3K2zBGxU; recvaQ3K2zFbdW; recvbT28bLBela,,,,
+1.045,opt558231909,,,20,151125,MARS,ZENO 0.5/1.045MWh 10ft,1300,4,0.5,recvaaWlXnji0D; recvaQ3K2z5Kke; recvcvFJZd4rTe; recvaakn9FF76P; recvcxK8PqZF7X; recva5LvtRASjp; recva5LuS3pP6y; recva5LXLwwnsf; recvaQ3K2z4FW7; recvcyjKCUlb6C; recvaQ3K2zSvhe; recvaQ3K2zPjBo; recvaQ3K2z0oAB; recvaQ3K2zv9so; recvcl6YPr2LYH; recvcgeQBcX5be; recvcl8rGIgan9; recvcOUEYeuJM4; recvcZ3hmFXiaS; recvdzpHUE73gb; recvcJjk48csQH; recvbBaulOjwVt; recvaQ3K2ztk99; recvedhNjfR5kf; recveTh5Urrmop; recvf4jH4fP9LP,,,,400,12000
+0.105,opt558231909,,,0,27000,MARS,Erasmus 50kW/105kWh Cabinet,900,1,0.05,recvf48nCaOGaS,,,,400,0
+1.045,opt558231909,,,20,151125,MARS,ZENO 0.25/1.045MWh 10ft,1300,2,0.25,recvd0478eBN3C,,opt1316843505,,400,12000
+0,opt156382586,,,0,3500,MARS,DTS-210 kVA-AC-690/400V,0,0,0,,,,,0,0
+0,optozUkeFs,,,0,145000,MARS,"STS4000MV-0,69/30kV",0,0,0,,,,,0,0
