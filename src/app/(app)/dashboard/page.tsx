@@ -3,6 +3,7 @@ import { formatCurrency } from '@/lib/utils'
 import Link from 'next/link'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import AICommandCenter from '@/components/dashboard/AICommandCenter'
+import GettingStarted from '@/components/dashboard/GettingStarted'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
 
 async function getData(userId: string, supabase: any) {
@@ -114,6 +115,7 @@ export default async function DashboardPage() {
   return (
     <div className="animate-fade-in">
       <DashboardClient />
+      <GettingStarted />
 
       {/* Industry KPIs */}
       {data.industryKPIs.length > 0 && (
