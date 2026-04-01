@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/layout/Sidebar'
 import GlobalSearch from '@/components/layout/GlobalSearch'
 import MobileNav from '@/components/layout/MobileNav'
+import Breadcrumbs from '@/components/shared/Breadcrumbs'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <MobileNav>{sidebar}</MobileNav>
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-4 lg:p-8 pt-14 lg:pt-8">
+          <Breadcrumbs />
           {children}
         </div>
       </main>
