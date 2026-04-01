@@ -63,17 +63,17 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     ]},
     { key: 'people', label: 'People', items: [
       { href: '/hr', icon: Briefcase, label: 'HR' },
-      { href: '/team', icon: UserPlus, label: 'Team' },
-      { href: '/roles', icon: Shield, label: 'Roles' },
-    ]},
-    { key: 'tools', label: 'Tools', items: [
       { href: '/tasks', icon: CheckSquare, label: t('nav.tasks') },
       { href: '/analytics', icon: BarChart2, label: t('nav.analytics') },
-      { href: '/automations', icon: Zap, label: 'Automations' },
-      { href: '/integrations', icon: Plug, label: t('nav.integrations') },
     ]},
-    { key: 'admin', label: 'Admin', items: [
-      { href: '/api-docs', icon: Code, label: 'API Docs' },
+    { key: 'config', label: 'Configuration', items: [
+      { href: '/settings', icon: Settings, label: 'General' },
+      { href: '/settings/company', icon: Briefcase, label: 'Company' },
+      { href: '/roles', icon: Shield, label: 'Roles' },
+      { href: '/team', icon: UserPlus, label: 'Team' },
+      { href: '/integrations', icon: Plug, label: 'Integrations' },
+      { href: '/automations', icon: Zap, label: 'Automations' },
+      { href: '/api-docs', icon: Code, label: 'API' },
       { href: '/audit-log', icon: Shield, label: 'Audit Log' },
     ]},
   ]
@@ -135,10 +135,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
 
       {/* Bottom */}
       <div className="p-2 border-t border-surface-100">
-        <div className="flex items-center justify-between mb-1">
-          <Link href="/settings" className={cn('flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all flex-1', pathname.startsWith('/settings') ? 'text-brand-600 bg-brand-50' : 'text-surface-500 hover:bg-surface-50')}>
-            <Settings className="w-3.5 h-3.5" /> Settings
-          </Link>
+        <div className="flex items-center justify-end mb-1 px-1">
           <NotificationBell />
         </div>
 

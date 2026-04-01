@@ -310,22 +310,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Quick links to other settings */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-        {[
-          { href: '/settings/company', icon: '🏢', label: 'Company Info', desc: 'Tax, currency, fiscal' },
-          { href: '/roles', icon: '🛡️', label: 'Roles & Permissions', desc: 'Configure access' },
-          { href: '/team', icon: '👥', label: 'Team Members', desc: 'Invite & manage' },
-          { href: '/integrations', icon: '🔌', label: 'Integrations', desc: 'Gmail, WhatsApp, etc.' },
-        ].map(link => (
-          <a key={link.href} href={link.href} className="card p-3 hover:shadow-card-hover transition-all">
-            <span className="text-lg">{link.icon}</span>
-            <p className="text-xs font-semibold text-surface-800 mt-1">{link.label}</p>
-            <p className="text-[10px] text-surface-400">{link.desc}</p>
-          </a>
-        ))}
-      </div>
-
       {/* Tabs */}
       <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
