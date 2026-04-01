@@ -25,22 +25,10 @@ export default function WorkspaceSwitcher({ currentName, currentColor }: { curre
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Get all workspaces where user is owner or member
+      // Get workspaces owned by user
       const { data: owned } = await supabase.from('workspaces').select('id, name, industry, primary_color').eq('owner_id', user.id)
-      const { data: memberOf } = await supabase.from('profiles').select('workspace_id, workspaces(id, name, industry, primary_color)').eq('id', user.id)
-
-      const all = new Map<string, Workspace>()
-      for (const ws of owned || []) all.set(ws.id, ws)
-      for (const p of memberOf || []) {
-        const ws = (p as any).workspaces
-        if (ws) all.set(ws.id, ws)
-      }
-
-      setWorkspaces(Array.from(all.values()))
-
-      // Current workspace
-      const { data: current } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
-      if (current) setCurrentId(current.id)
+      setWorkspaces(owned || [])
+      if (owned?.[0]) setCurrentId(owned[0].id)
     }
     load()
   }, [])
