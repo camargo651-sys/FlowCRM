@@ -109,6 +109,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/invoices', icon: Receipt, label: 'Invoices' },
       { href: '/pos', icon: ShoppingCart, label: 'POS' },
       { href: '/store-orders', icon: ShoppingBag, label: 'E-commerce' },
+      { href: '/leads', icon: Users, label: 'Social Leads' },
       { href: '/contracts', icon: FileSignature, label: 'Contracts' },
       { href: '/tickets', icon: Ticket, label: 'Tickets' },
     ]},

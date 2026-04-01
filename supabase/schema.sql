@@ -1575,4 +1575,30 @@ alter table document_templates enable row level security;
 create policy "ws owner doc_templates" on document_templates
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 
+-- ============================================================
+-- SOCIAL MEDIA LEADS
+-- ============================================================
+create table if not exists social_leads (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  platform        text not null check (platform in ('instagram','facebook','tiktok','linkedin','twitter','youtube','other')),
+  source_type     text default 'comment' check (source_type in ('comment','dm','mention','form','ad','manual')),
+  post_url        text,
+  author_name     text,
+  author_username text,
+  author_avatar   text,
+  message         text,
+  status          text default 'new' check (status in ('new','contacted','qualified','converted','discarded')),
+  contact_id      uuid references contacts(id) on delete set null,
+  deal_id         uuid references deals(id) on delete set null,
+  assigned_to     uuid references auth.users(id),
+  notes           text,
+  metadata        jsonb default '{}',
+  captured_at     timestamptz default now(),
+  created_at      timestamptz default now()
+);
+alter table social_leads enable row level security;
+create policy "ws owner social_leads" on social_leads
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
 -- Done! Your Tracktio database is ready.
