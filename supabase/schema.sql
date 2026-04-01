@@ -1461,4 +1461,78 @@ alter table payment_milestones enable row level security;
 create policy "ws owner payment_milestones" on payment_milestones
   using (deal_id in (select id from deals where workspace_id in (select id from workspaces where owner_id = auth.uid())));
 
+-- ============================================================
+-- SERVICE TICKETS (helpdesk)
+-- ============================================================
+create table if not exists tickets (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  ticket_number   text not null,
+  subject         text not null,
+  description     text,
+  status          text default 'open' check (status in ('open','in_progress','waiting','resolved','closed')),
+  priority        text default 'medium' check (priority in ('low','medium','high','urgent')),
+  category        text,
+  contact_id      uuid references contacts(id) on delete set null,
+  assigned_to     uuid references auth.users(id),
+  deal_id         uuid references deals(id) on delete set null,
+  resolution      text,
+  resolved_at     timestamptz,
+  first_response_at timestamptz,
+  tags            text[],
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table tickets enable row level security;
+create policy "ws owner tickets" on tickets
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger tickets_updated_at before update on tickets for each row execute function update_updated_at();
+
+create table if not exists ticket_comments (
+  id              uuid primary key default uuid_generate_v4(),
+  ticket_id       uuid not null references tickets(id) on delete cascade,
+  author_id       uuid references auth.users(id),
+  body            text not null,
+  is_internal     boolean default false,
+  created_at      timestamptz default now()
+);
+alter table ticket_comments enable row level security;
+create policy "ws owner ticket_comments" on ticket_comments
+  using (ticket_id in (select id from tickets where workspace_id in (select id from workspaces where owner_id = auth.uid())));
+
+-- ============================================================
+-- CONTRACTS
+-- ============================================================
+create table if not exists contracts (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  contract_number text not null,
+  title           text not null,
+  contact_id      uuid references contacts(id) on delete set null,
+  deal_id         uuid references deals(id) on delete set null,
+  status          text default 'draft' check (status in ('draft','active','expired','cancelled','renewed')),
+  type            text,
+  start_date      date,
+  end_date        date,
+  value           numeric default 0,
+  currency        text default 'USD',
+  renewal_type    text default 'manual' check (renewal_type in ('manual','auto','notify')),
+  renewal_days_before int default 30,
+  document_url    text,
+  notes           text,
+  signed_at       timestamptz,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table contracts enable row level security;
+create policy "ws owner contracts" on contracts
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+create trigger contracts_updated_at before update on contracts for each row execute function update_updated_at();
+
+-- ============================================================
+-- STAGE TRANSITION CONDITIONS
+-- ============================================================
+alter table pipeline_stages add column if not exists required_fields text[];
+alter table pipeline_stages add column if not exists require_approval boolean default false;
+
 -- Done! Your Tracktio database is ready.

@@ -5,6 +5,7 @@ import {
   Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut,
   ChevronDown, ChevronRight, Plug, FileText, Package, UserPlus, Receipt, Truck,
   BookOpen, Briefcase, PieChart, ShoppingCart, Shield, Code, CreditCard, Factory,
+  Ticket, FileSignature,
   ShoppingBag
 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
@@ -108,6 +109,8 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/invoices', icon: Receipt, label: 'Invoices' },
       { href: '/pos', icon: ShoppingCart, label: 'POS' },
       { href: '/store-orders', icon: ShoppingBag, label: 'E-commerce' },
+      { href: '/contracts', icon: FileSignature, label: 'Contracts' },
+      { href: '/tickets', icon: Ticket, label: 'Tickets' },
     ]},
     { key: 'operations', label: 'Operations', items: [
       { href: '/inventory', icon: Package, label: 'Inventory' },
