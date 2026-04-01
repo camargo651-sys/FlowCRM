@@ -140,6 +140,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/roles', icon: Shield, label: t('nav.roles') },
       { href: '/team', icon: UserPlus, label: t('nav.team') },
       { href: '/integrations', icon: Plug, label: t('nav.integrations') },
+      { href: '/import', icon: Package, label: 'Import' },
       { href: '/automations', icon: Zap, label: t('nav.automations') },
       { href: '/api-docs', icon: Code, label: t('nav.api_docs') },
       { href: '/audit-log', icon: Shield, label: t('nav.audit_log') },
