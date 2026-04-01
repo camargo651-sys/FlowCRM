@@ -47,6 +47,9 @@ export default async function Home() {
             Sign in
           </Link>
         </div>
+        <p className="text-xs text-surface-400 mt-4">
+          Want to try first? <Link href="/auth/login?demo=true" className="text-brand-600 font-semibold hover:underline">Launch demo</Link> — no signup needed
+        </p>
       </section>
 
       {/* Features */}
@@ -193,6 +196,20 @@ export default async function Home() {
       </section>
 
       {/* Footer */}
+      {/* Contact */}
+      <section className="bg-surface-50 py-16">
+        <div className="max-w-md mx-auto px-6 text-center">
+          <h2 className="text-2xl font-bold text-surface-900 mb-2">Questions?</h2>
+          <p className="text-surface-500 text-sm mb-6">We'd love to hear from you. Drop us a message.</p>
+          <form action="https://formspree.io/f/placeholder" method="POST" className="space-y-3">
+            <input type="text" name="name" required placeholder="Your name" className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm outline-none focus:border-brand-500" />
+            <input type="email" name="email" required placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm outline-none focus:border-brand-500" />
+            <textarea name="message" required rows={3} placeholder="Your message" className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm outline-none focus:border-brand-500 resize-none" />
+            <button type="submit" className="w-full py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors text-sm">Send Message</button>
+          </form>
+        </div>
+      </section>
+
       <footer className="border-t border-surface-100 py-8 px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
