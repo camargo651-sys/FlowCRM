@@ -9,6 +9,7 @@ import {
   ShoppingBag
 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
+import ThemeToggle from '@/components/shared/ThemeToggle'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -207,6 +208,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       {/* Bottom */}
       <div className="p-2 border-t border-surface-100">
         <div className="flex items-center justify-end mb-1 px-1">
+          <ThemeToggle />
           <NotificationBell />
         </div>
 
