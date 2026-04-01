@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut, ChevronDown, Plug, FileText, Package, UserPlus, Receipt, Truck, BookOpen, Briefcase, PieChart, ShoppingCart, Shield, Code, CreditCard, Factory, ShoppingBag } from 'lucide-react'
 import NotificationBell from './NotificationBell'
+import WorkspaceSwitcher from './WorkspaceSwitcher'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, getInitials } from '@/lib/utils'
@@ -70,7 +71,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
           </div>
           <div className="min-w-0">
             <p className="font-bold text-surface-900 text-sm truncate">{displayName}</p>
-            <p className="text-[10px] text-surface-400 font-medium">{t('nav.free_plan')}</p>
+            <WorkspaceSwitcher currentName={displayName} currentColor={primaryColor || '#6172f3'} />
           </div>
         </div>
       </div>

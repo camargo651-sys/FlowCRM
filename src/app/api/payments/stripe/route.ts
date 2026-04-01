@@ -1,0 +1,68 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
+
+function getSupabase() {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
+        },
+      },
+    }
+  )
+}
+
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) return null
+  return new Stripe(key, { apiVersion: '2025-04-30.basil' as any })
+}
+
+// POST: Create a Stripe checkout session for an invoice
+export async function POST(request: NextRequest) {
+  const supabase = getSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const stripe = getStripe()
+  if (!stripe) return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
+
+  const { invoice_id, success_url, cancel_url } = await request.json()
+  if (!invoice_id) return NextResponse.json({ error: 'Missing invoice_id' }, { status: 400 })
+
+  // Get invoice
+  const { data: invoice } = await supabase.from('invoices')
+    .select('*, contacts(name, email), invoice_items(*)')
+    .eq('id', invoice_id).single()
+
+  if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+
+  // Create Stripe checkout session
+  const lineItems = (invoice.invoice_items || []).map((item: any) => ({
+    price_data: {
+      currency: (invoice.currency || 'usd').toLowerCase(),
+      product_data: { name: item.description },
+      unit_amount: Math.round(item.unit_price * 100),
+    },
+    quantity: item.quantity,
+  }))
+
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: lineItems,
+    mode: 'payment',
+    success_url: success_url || `${request.headers.get('origin')}/invoices?paid=${invoice_id}`,
+    cancel_url: cancel_url || `${request.headers.get('origin')}/invoices`,
+    customer_email: (invoice as any).contacts?.email || undefined,
+    metadata: { invoice_id, workspace_id: invoice.workspace_id },
+  })
+
+  return NextResponse.json({ url: session.url, session_id: session.id })
+}
