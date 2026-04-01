@@ -1540,4 +1540,39 @@ alter table workspaces add column if not exists secondary_color text;
 alter table workspaces add column if not exists login_message text;
 alter table workspaces add column if not exists footer_text text;
 
+-- ============================================================
+-- CLIENT PORTALS
+-- ============================================================
+create table if not exists portal_tokens (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  contact_id      uuid not null references contacts(id) on delete cascade,
+  token           text unique not null,
+  active          boolean default true,
+  last_accessed   timestamptz,
+  created_at      timestamptz default now(),
+  unique(workspace_id, contact_id)
+);
+alter table portal_tokens enable row level security;
+create policy "ws owner portal_tokens" on portal_tokens
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- DOCUMENT TEMPLATES
+-- ============================================================
+create table if not exists document_templates (
+  id              uuid primary key default uuid_generate_v4(),
+  workspace_id    uuid not null references workspaces(id) on delete cascade,
+  name            text not null,
+  type            text not null check (type in ('invoice','quote','contract','receipt','report','custom')),
+  html_content    text not null,
+  variables       text[],
+  is_default      boolean default false,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+alter table document_templates enable row level security;
+create policy "ws owner doc_templates" on document_templates
+  using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
 -- Done! Your Tracktio database is ready.

@@ -133,6 +133,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/settings/company', icon: Briefcase, label: 'Company' },
       { href: '/settings/modules', icon: Package, label: 'Modules' },
       { href: '/settings/form-builder', icon: FileText, label: 'Form Builder' },
+      { href: '/settings/templates', icon: FileText, label: 'Templates' },
       { href: '/ai-setup', icon: Sparkles, label: 'AI Setup' },
       { href: '/roles', icon: Shield, label: 'Roles' },
       { href: '/team', icon: UserPlus, label: 'Team' },

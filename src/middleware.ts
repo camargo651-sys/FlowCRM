@@ -32,6 +32,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/webhooks/.*|api/payments/webhook|api/quotes/track|api/v1/.*|api/store|q/.*|store/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/webhooks/.*|api/payments/webhook|api/quotes/track|api/v1/.*|api/store|api/portal|q/.*|store/.*|portal/.*|pricing|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
