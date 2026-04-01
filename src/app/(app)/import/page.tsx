@@ -136,7 +136,7 @@ export default function ImportPage() {
               if (!error) imported++; else skipped++
             } else if (entityType === 'deals') {
               const title = g('title') || ''; if (!title) { skipped++; continue }
-              const { error } = await supabase.from('deals').insert({ workspace_id: ws.id, title, value: parseFloat(String(g('value') || 0).replace(/[^0-9.-]/g, '')) || null, status: 'open', order_index: 0, notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, tags: ['imported'], owner_id: user.id })
+              const { error } = await supabase.from('deals').insert({ workspace_id: ws.id, title, value: parseFloat(String(g('value') || 0).replace(/[^0-9.-]/g, '')) || null, status: 'open', order_index: 0, notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, owner_id: user.id })
               if (!error) imported++; else skipped++
             }
           } catch { skipped++ }
