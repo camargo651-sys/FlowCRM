@@ -30,11 +30,32 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
 
   const selectedTemplate = industryKey ? getTemplate(industryKey) : null
 
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
+    crm: true, invoicing: true, inventory: true, purchasing: false,
+    manufacturing: false, accounting: false, hr: false, expenses: false,
+    ecommerce: false, pos: false, automations: true,
+  })
+
+  const MODULES_LIST = [
+    { key: 'crm', label: 'CRM / Sales', icon: '🔀', locked: true },
+    { key: 'invoicing', label: 'Invoicing', icon: '🧾' },
+    { key: 'inventory', label: 'Inventory', icon: '📦' },
+    { key: 'pos', label: 'Point of Sale', icon: '💳' },
+    { key: 'ecommerce', label: 'E-commerce', icon: '🛒' },
+    { key: 'purchasing', label: 'Purchasing', icon: '🚛' },
+    { key: 'manufacturing', label: 'Manufacturing', icon: '🏭' },
+    { key: 'accounting', label: 'Accounting', icon: '📒' },
+    { key: 'hr', label: 'HR & Payroll', icon: '👔' },
+    { key: 'expenses', label: 'Expenses', icon: '💰' },
+    { key: 'automations', label: 'Automations', icon: '⚡' },
+  ]
+
   const steps = [
     { num: 1, title: t('onboarding.step1_title'), icon: Building2 },
-    { num: 2, title: t('onboarding.step2_title'), icon: Palette },
-    { num: 3, title: t('onboarding.step3_title'), icon: Globe },
-    { num: 4, title: t('onboarding.step4_title'), icon: CheckCircle2 },
+    { num: 2, title: 'Modules', icon: Sparkles },
+    { num: 3, title: t('onboarding.step2_title'), icon: Palette },
+    { num: 4, title: t('onboarding.step3_title'), icon: Globe },
+    { num: 5, title: t('onboarding.step4_title'), icon: CheckCircle2 },
   ]
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,6 +143,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
         deal: template.dealLabel,
         contact: template.contactLabel,
       },
+      enabled_modules: enabledModules,
       onboarding_completed: true,
     }).eq('id', workspaceId)
 
@@ -213,8 +235,38 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
             </div>
           )}
 
-          {/* Step 2: Brand */}
+          {/* Step 2: Modules */}
           {step === 2 && (
+            <div className="space-y-4 animate-fade-in">
+              <p className="text-sm text-surface-500">Choose which modules you need. You can change this later in Settings.</p>
+              <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto">
+                {MODULES_LIST.map(mod => {
+                  const isOn = enabledModules[mod.key] || false
+                  return (
+                    <button key={mod.key} onClick={() => !mod.locked && setEnabledModules(prev => ({ ...prev, [mod.key]: !prev[mod.key] }))}
+                      disabled={mod.locked}
+                      className={cn('p-3 rounded-xl text-left transition-all border-2',
+                        isOn ? 'border-brand-500 bg-brand-50/30' : 'border-surface-100 hover:border-surface-200',
+                        mod.locked && 'opacity-60')}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{mod.icon}</span>
+                        <span className="text-xs font-semibold text-surface-800">{mod.label}</span>
+                        {mod.locked && <span className="text-[8px] px-1 py-0.5 bg-surface-200 rounded-full text-surface-500">Required</span>}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              <button onClick={() => setEnabledModules(prev => {
+                const all: Record<string, boolean> = {}
+                MODULES_LIST.forEach(m => { all[m.key] = true })
+                return all
+              })} className="text-xs text-brand-600 font-semibold hover:underline">Enable all modules</button>
+            </div>
+          )}
+
+          {/* Step 3: Brand */}
+          {step === 3 && (
             <div className="space-y-6 animate-fade-in">
               <div>
                 <label className="label">{t('onboarding.logo')}</label>
@@ -261,8 +313,8 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
             </div>
           )}
 
-          {/* Step 3: Language */}
-          {step === 3 && (
+          {/* Step 4: Language */}
+          {step === 4 && (
             <div className="space-y-4 animate-fade-in">
               <p className="text-sm text-surface-500">{t('settings.language_select')}</p>
               <div className="space-y-2">
@@ -285,8 +337,8 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
             </div>
           )}
 
-          {/* Step 4: Summary */}
-          {step === 4 && (
+          {/* Step 5: Summary */}
+          {step === 5 && (
             <div className="animate-fade-in">
               <div className="text-center mb-6">
                 <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
@@ -368,7 +420,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
             )}
           </div>
           <div>
-            {step < 4 ? (
+            {step < 5 ? (
               <button onClick={() => setStep(step + 1)}
                 disabled={step === 1 && !companyName}
                 className="btn-primary">
