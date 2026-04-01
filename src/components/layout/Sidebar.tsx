@@ -5,7 +5,7 @@ import {
   Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut,
   ChevronDown, ChevronRight, Plug, FileText, Package, UserPlus, Receipt, Truck,
   BookOpen, Briefcase, PieChart, ShoppingCart, Shield, Code, CreditCard, Factory,
-  Ticket, FileSignature,
+  Ticket, FileSignature, CalendarDays, Sparkles,
   ShoppingBag
 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
@@ -125,12 +125,14 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     { key: 'people', label: 'People', items: [
       { href: '/hr', icon: Briefcase, label: 'HR' },
       { href: '/tasks', icon: CheckSquare, label: t('nav.tasks') },
+      { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
       { href: '/analytics', icon: BarChart2, label: t('nav.analytics') },
     ]},
     { key: 'config', label: 'Configuration', items: [
       { href: '/settings', icon: Settings, label: 'General' },
       { href: '/settings/company', icon: Briefcase, label: 'Company' },
       { href: '/settings/modules', icon: Package, label: 'Modules' },
+      { href: '/ai-setup', icon: Sparkles, label: 'AI Setup' },
       { href: '/roles', icon: Shield, label: 'Roles' },
       { href: '/team', icon: UserPlus, label: 'Team' },
       { href: '/integrations', icon: Plug, label: 'Integrations' },
