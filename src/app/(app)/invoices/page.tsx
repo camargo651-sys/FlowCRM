@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -19,6 +20,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function InvoicesPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [contacts, setContacts] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -111,7 +113,7 @@ export default function InvoicesPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Invoices</h1>
+          <h1 className="page-title">{t('invoices.title')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{invoices.length} total · {formatCurrency(totalOutstanding)} outstanding</p>
         </div>
         <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Invoice</button>

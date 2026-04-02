@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -11,6 +12,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function ContractsPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [contracts, setContracts] = useState<any[]>([])
   const [contacts, setContacts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,7 +69,7 @@ export default function ContractsPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Contracts</h1><p className="text-sm text-surface-500 mt-0.5">{contracts.length} contracts</p></div>
+        <div><h1 className="page-title">{t('contracts.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{contracts.length} contracts</p></div>
         <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Contract</button>
       </div>
 

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -7,6 +8,7 @@ import { formatCurrency, cn, getInitials } from '@/lib/utils'
 
 export default function HRPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [employees, setEmployees] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [leaveRequests, setLeaveRequests] = useState<any[]>([])
@@ -78,7 +80,7 @@ export default function HRPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Human Resources</h1><p className="text-sm text-surface-500 mt-0.5">{activeEmployees.length} active employees</p></div>
+        <div><h1 className="page-title">{t('hr.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{activeEmployees.length} active employees</p></div>
         <div className="flex gap-2">
           <button onClick={() => setShowNewDept(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Department</button>
           <button onClick={() => setShowNewEmployee(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Employee</button>

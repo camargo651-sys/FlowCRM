@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -12,6 +13,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function PurchasingPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [orders, setOrders] = useState<any[]>([])
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -95,7 +97,7 @@ export default function PurchasingPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Purchasing</h1>
+          <h1 className="page-title">{t('nav.purchasing')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{orders.length} orders · {suppliers.length} suppliers</p>
         </div>
         <div className="flex gap-2">

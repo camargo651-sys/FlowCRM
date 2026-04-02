@@ -1,10 +1,12 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { FileText, TrendingUp, TrendingDown, DollarSign, Download, Calendar } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 
 export default function ReportsPage() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<'pnl'|'balance'|'cashflow'>('pnl')
   const [pnl, setPnl] = useState<any>(null)
   const [balance, setBalance] = useState<any>(null)
@@ -34,7 +36,7 @@ export default function ReportsPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Financial Reports</h1><p className="text-sm text-surface-500 mt-0.5">Real-time financial overview</p></div>
+        <div><h1 className="page-title">{t('reports.title')}</h1><p className="text-sm text-surface-500 mt-0.5">Real-time financial overview</p></div>
         <div className="flex items-center gap-2">
           <input type="date" className="input text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} />
           <span className="text-surface-400 text-xs">to</span>

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -14,6 +15,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function LeadsPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -83,7 +85,7 @@ export default function LeadsPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Social Leads</h1><p className="text-sm text-surface-500 mt-0.5">{leads.length} leads · {newCount} new</p></div>
+        <div><h1 className="page-title">{t('leads.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{leads.length} leads · {newCount} new</p></div>
         <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Lead</button>
       </div>
 

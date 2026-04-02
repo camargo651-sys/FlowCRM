@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -12,6 +13,7 @@ interface CalendarEvent {
 
 export default function CalendarPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -92,7 +94,7 @@ export default function CalendarPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div className="flex items-center gap-4">
-          <h1 className="page-title">Calendar</h1>
+          <h1 className="page-title">{t('calendar.title')}</h1>
           <div className="flex items-center gap-1">
             <button onClick={prevMonth} className="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
             <span className="text-sm font-semibold text-surface-700 min-w-[160px] text-center">{monthName}</span>

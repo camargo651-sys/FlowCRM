@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -7,6 +8,7 @@ import { formatCurrency, cn } from '@/lib/utils'
 
 export default function ManufacturingPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [boms, setBoms] = useState<any[]>([])
   const [workOrders, setWorkOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -102,7 +104,7 @@ export default function ManufacturingPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Manufacturing</h1><p className="text-sm text-surface-500 mt-0.5">{workOrders.length} work orders · {boms.length} BOMs</p></div>
+        <div><h1 className="page-title">{t('manufacturing.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{workOrders.length} work orders · {boms.length} BOMs</p></div>
         <div className="flex gap-2">
           <button onClick={() => setShowNewBOM(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> BOM</button>
           <button onClick={() => setShowNewWO(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Work Order</button>

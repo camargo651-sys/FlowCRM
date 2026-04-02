@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Shield, Search, Clock } from 'lucide-react'
@@ -16,6 +17,7 @@ const ACTION_COLORS: Record<string, string> = {
 
 export default function AuditLogPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -50,7 +52,7 @@ export default function AuditLogPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Audit Log</h1><p className="text-sm text-surface-500 mt-0.5">{logs.length} events tracked</p></div>
+        <div><h1 className="page-title">{t('nav.audit_log')}</h1><p className="text-sm text-surface-500 mt-0.5">{logs.length} events tracked</p></div>
       </div>
 
       <div className="flex gap-3 mb-6">

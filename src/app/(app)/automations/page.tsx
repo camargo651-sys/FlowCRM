@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Zap, Plus, Trash2, ToggleLeft, ToggleRight, Clock, ArrowRight, X } from 'lucide-react'
@@ -58,6 +59,7 @@ const TRIGGER_ICONS: Record<string, string> = {
 
 export default function AutomationsPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [automations, setAutomations] = useState<Automation[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
@@ -119,7 +121,7 @@ export default function AutomationsPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Automations</h1>
+          <h1 className="page-title">{t('nav.automations')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">
             {automations.length} automation{automations.length !== 1 ? 's' : ''} · {automations.filter(a => a.enabled).length} active
           </p>

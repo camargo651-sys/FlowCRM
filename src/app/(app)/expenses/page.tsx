@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +10,7 @@ const CATEGORIES = ['Travel', 'Meals', 'Office Supplies', 'Software', 'Transport
 
 export default function ExpensesPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
@@ -74,7 +76,7 @@ export default function ExpensesPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Expense Reports</h1><p className="text-sm text-surface-500 mt-0.5">{reports.length} reports</p></div>
+        <div><h1 className="page-title">{t('nav.expenses')}</h1><p className="text-sm text-surface-500 mt-0.5">{reports.length} reports</p></div>
         <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Report</button>
       </div>
 

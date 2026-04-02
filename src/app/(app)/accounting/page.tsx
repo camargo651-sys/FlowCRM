@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, BookOpen, TrendingUp, TrendingDown, DollarSign, FileText } from 'lucide-react'
@@ -13,6 +14,7 @@ const ACCOUNT_TYPE_COLORS: Record<string, string> = {
 
 export default function AccountingPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [accounts, setAccounts] = useState<any[]>([])
   const [entries, setEntries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -111,7 +113,7 @@ export default function AccountingPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Accounting</h1><p className="text-sm text-surface-500 mt-0.5">{accounts.length} accounts · {entries.length} entries</p></div>
+        <div><h1 className="page-title">{t('accounting.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{accounts.length} accounts · {entries.length} entries</p></div>
         <div className="flex gap-2">
           <button onClick={() => setShowNewAccount(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Account</button>
           <button onClick={() => setShowNewEntry(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Journal Entry</button>

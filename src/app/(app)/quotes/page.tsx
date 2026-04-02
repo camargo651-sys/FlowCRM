@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, FileText, Send, CheckCircle2, XCircle, Clock, Eye, Trash2, X, DollarSign, Percent, Calendar, Save } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
+import { useI18n } from '@/lib/i18n/context'
 
 interface QuoteItem {
   id: string
@@ -470,6 +471,7 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
 export default function QuotesPage() {
   const supabase = createClient()
   const { template } = useWorkspace()
+  const { t } = useI18n()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [contacts, setContacts] = useState<{ id: string; name: string; email?: string }[]>([])
   const [inventoryProducts, setInventoryProducts] = useState<ProductOption[]>([])
@@ -535,7 +537,7 @@ export default function QuotesPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Quotes</h1>
+          <h1 className="page-title">{t('nav.quotes')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{quotes.length} total · {formatCurrency(stats.total_value)} accepted</p>
         </div>
         <button onClick={() => { setEditingQuote(null); setShowEditor(true) }} className="btn-primary btn-sm">

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -46,6 +47,7 @@ const MOVEMENT_COLORS: Record<string, string> = {
 
 export default function InventoryPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -171,7 +173,7 @@ export default function InventoryPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Inventory</h1>
+          <h1 className="page-title">{t('inventory.title')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">
             {products.length} product{products.length !== 1 ? 's' : ''} · {formatCurrency(totalValue)} total value
           </p>
