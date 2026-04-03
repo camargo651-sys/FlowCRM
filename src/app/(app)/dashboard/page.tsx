@@ -21,7 +21,7 @@ async function getData(userId: string, supabase: any) {
   }
 
   const [deals, wonDeals, overdueTasks, contacts, quotes, invoices, products, employees] = await Promise.all([
-    safeQuery(supabase.from('deals').select('id, value, status, ai_risk').eq('workspace_id', ws.id)),
+    safeQuery(supabase.from('deals').select('id, value, status').eq('workspace_id', ws.id)),
     safeQuery(supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('status', 'won').gte('updated_at', firstOfMonth)),
     safeQuery(supabase.from('activities').select('id').eq('workspace_id', ws.id).eq('done', false).lte('due_date', now.toISOString())),
     safeQuery(supabase.from('contacts').select('id, score_label').eq('workspace_id', ws.id)),
@@ -36,7 +36,7 @@ async function getData(userId: string, supabase: any) {
 
   // CRM metrics
   const hotContacts = (contacts as any[]).filter((c: any) => c.score_label === 'hot').length
-  const atRiskDeals = (deals as any[]).filter((d: any) => d.ai_risk === 'critical' || d.ai_risk === 'at_risk').length
+  const atRiskDeals = 0
 
   // Finance metrics
   const outstandingInvoices = (invoices as any[]).filter((i: any) => ['sent', 'partial', 'overdue'].includes(i.status))

@@ -21,7 +21,7 @@ export async function getIndustryKPIs(
 
   // Common data
   const [dealsRes, contactsRes, activitiesRes, quotesRes] = await Promise.all([
-    supabase.from('deals').select('id, value, status, updated_at, expected_close_date, stage_id, pipeline_stages(name)').eq('workspace_id', workspaceId),
+    supabase.from('deals').select('id, value, status, updated_at, expected_close_date').eq('workspace_id', workspaceId),
     supabase.from('contacts').select('id, engagement_score, score_label, created_at').eq('workspace_id', workspaceId),
     supabase.from('activities').select('id, done, due_date, type').eq('workspace_id', workspaceId),
     supabase.from('quotes').select('id, total, status, view_count').eq('workspace_id', workspaceId),
