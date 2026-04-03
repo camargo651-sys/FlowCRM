@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Upload, CheckCircle2, Database, Loader2, Package, Users, TrendingUp, Sparkles, Brain } from 'lucide-react'
+import { sanitizeForInsert } from '@/lib/db/safe-query'
 import { cn } from '@/lib/utils'
 
 interface DetectedTable {
@@ -124,19 +125,23 @@ export default function ImportPage() {
           try {
             if (entityType === 'companies') {
               const name = g('name') || ''; if (!name) { skipped++; continue }
-              const { error } = await supabase.from('contacts').insert({ workspace_id: ws.id, name, type: 'company', email: g('email'), phone: g('phone'), website: g('website'), notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, tags: ['imported'], owner_id: user.id })
+              const record = await sanitizeForInsert(supabase, 'contacts', { workspace_id: ws.id, name, type: 'company', email: g('email'), phone: g('phone'), website: g('website'), notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, tags: ['imported'], owner_id: user.id })
+              const { error } = await supabase.from('contacts').insert(record)
               if (!error) imported++; else skipped++
             } else if (entityType === 'contacts') {
               const name = g('name') || ''; if (!name) { skipped++; continue }
-              const { error } = await supabase.from('contacts').insert({ workspace_id: ws.id, name, type: 'person', email: g('email'), phone: g('phone'), job_title: g('job_title'), company_name: g('company_name'), notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, tags: ['imported'], owner_id: user.id })
+              const record = await sanitizeForInsert(supabase, 'contacts', { workspace_id: ws.id, name, type: 'person', email: g('email'), phone: g('phone'), job_title: g('job_title'), company_name: g('company_name'), notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, tags: ['imported'], owner_id: user.id })
+              const { error } = await supabase.from('contacts').insert(record)
               if (!error) imported++; else skipped++
             } else if (entityType === 'products') {
               const name = g('name') || ''; if (!name) { skipped++; continue }
-              const { error } = await supabase.from('products').insert({ workspace_id: ws.id, name, sku: g('sku'), description: [g('description'), extra].filter(Boolean).join(' · ') || null, unit_price: parseFloat(String(g('unit_price') || 0).replace(/[^0-9.-]/g, '')) || 0, cost_price: parseFloat(String(g('cost_price') || 0).replace(/[^0-9.-]/g, '')) || 0, stock_quantity: parseInt(String(g('stock_quantity') || 100)) || 100, brand: g('brand'), model: g('model'), min_stock: 5, status: 'active', tags: ['imported'] })
+              const record = await sanitizeForInsert(supabase, 'products', { workspace_id: ws.id, name, sku: g('sku'), description: [g('description'), extra].filter(Boolean).join(' · ') || null, unit_price: parseFloat(String(g('unit_price') || 0).replace(/[^0-9.-]/g, '')) || 0, cost_price: parseFloat(String(g('cost_price') || 0).replace(/[^0-9.-]/g, '')) || 0, stock_quantity: parseInt(String(g('stock_quantity') || 100)) || 100, brand: g('brand'), model: g('model'), min_stock: 5, status: 'active', tags: ['imported'] })
+              const { error } = await supabase.from('products').insert(record)
               if (!error) imported++; else skipped++
             } else if (entityType === 'deals') {
               const title = g('title') || ''; if (!title) { skipped++; continue }
-              const { error } = await supabase.from('deals').insert({ workspace_id: ws.id, title, value: parseFloat(String(g('value') || 0).replace(/[^0-9.-]/g, '')) || null, status: 'open', order_index: 0, notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, owner_id: user.id })
+              const record = await sanitizeForInsert(supabase, 'deals', { workspace_id: ws.id, title, value: parseFloat(String(g('value') || 0).replace(/[^0-9.-]/g, '')) || null, status: 'open', order_index: 0, notes: [g('notes'), extra].filter(Boolean).join(' · ') || null, owner_id: user.id })
+              const { error } = await supabase.from('deals').insert(record)
               if (!error) imported++; else skipped++
             }
           } catch { skipped++ }
