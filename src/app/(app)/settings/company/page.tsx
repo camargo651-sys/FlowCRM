@@ -13,7 +13,7 @@ export default function CompanySettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [tab, setTab] = useState<'company'|'billing'|'api'>('company')
+  const [tab, setTab] = useState<'company'|'billing'|'api'|'danger'>('company')
   const [form, setForm] = useState<any>({})
   const [apiKeys, setApiKeys] = useState<any[]>([])
   const [newKeyName, setNewKeyName] = useState('')
@@ -69,6 +69,21 @@ export default function CompanySettingsPage() {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  const [resetting, setResetting] = useState(false)
+  const resetDatabase = async () => {
+    const input = prompt('Type RESET to confirm. This will delete ALL data in your workspace.')
+    if (input !== 'RESET') return
+    setResetting(true)
+    const res = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'RESET' }) })
+    if (res.ok) {
+      alert('Database reset complete. The page will reload.')
+      window.location.href = '/dashboard'
+    } else {
+      alert('Reset failed')
+    }
+    setResetting(false)
+  }
+
   const createApiKey = async () => {
     if (!newKeyName) return
     const res = await fetch('/api/v1/api-keys', {
@@ -104,7 +119,7 @@ export default function CompanySettingsPage() {
       </div>
 
       <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
-        {[{ id: 'company', label: 'Company Info' }, { id: 'billing', label: 'Billing & Tax' }, { id: 'api', label: 'API Keys' }].map(t => (
+        {[{ id: 'company', label: 'Company Info' }, { id: 'billing', label: 'Billing & Tax' }, { id: 'api', label: 'API Keys' }, { id: 'danger', label: 'Danger Zone' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
             {t.label}
@@ -272,6 +287,23 @@ export default function CompanySettingsPage() {
               ))}
             </div>
             <p className="text-[10px] text-surface-400 mt-3">All endpoints also support POST, PUT, DELETE. Use <code className="bg-surface-100 px-1 rounded">Authorization: Bearer flw_...</code> header.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'danger' && (
+        <div className="space-y-6">
+          <div className="card p-6 border-red-200">
+            <h3 className="font-semibold text-red-700 mb-2">Reset Database</h3>
+            <p className="text-xs text-surface-500 mb-4">
+              This will permanently delete ALL data in your workspace: contacts, deals, products, invoices, employees, and everything else.
+              Your account and workspace settings will be preserved. You'll go through onboarding again.
+            </p>
+            <p className="text-xs text-red-500 font-semibold mb-4">This action cannot be undone.</p>
+            <button onClick={resetDatabase} disabled={resetting}
+              className="px-6 py-2.5 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors text-sm">
+              {resetting ? 'Resetting...' : 'Reset All Data'}
+            </button>
           </div>
         </div>
       )}
