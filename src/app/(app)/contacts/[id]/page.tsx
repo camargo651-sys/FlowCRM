@@ -101,7 +101,7 @@ export default function ContactDetailPage() {
   const load = useCallback(async () => {
     const [contactRes, dealsRes, quotesRes, activitiesRes] = await Promise.all([
       supabase.from('contacts').select('*').eq('id', id).single(),
-      supabase.from('deals').select('id, title, value, status, created_at, pipeline_stages(name, color)').eq('contact_id', id).order('created_at', { ascending: false }),
+      supabase.from('deals').select('id, title, value, status, created_at').eq('contact_id', id).order('created_at', { ascending: false }),
       supabase.from('quotes').select('id, quote_number, title, total, status, created_at').eq('contact_id', id).order('created_at', { ascending: false }),
       supabase.from('activities').select('*').eq('contact_id', id).order('created_at', { ascending: false }),
     ])
@@ -181,7 +181,7 @@ export default function ContactDetailPage() {
       workspace_id: contact.workspace_id, contact_id: id, title: dealTitle,
       value: dealValue ? parseFloat(dealValue) : null, stage_id: dealStageId,
       status: 'open', currency: 'USD', order_index: 0,
-    }]).select('id, title, value, status, created_at, pipeline_stages(name, color)').single()
+    }]).select('id, title, value, status, created_at').single()
     if (data) setDeals(prev => [data, ...prev])
     setDealTitle(''); setDealValue(''); setShowNewDeal(false)
   }

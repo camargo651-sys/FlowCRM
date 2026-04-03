@@ -37,14 +37,13 @@ export async function POST() {
     .order('engagement_score', { ascending: false })
     .limit(10)
 
-  // Fetch at-risk deals
+  // Fetch stale deals (no ai_risk column — use time-based)
   const { data: riskyDeals } = await supabase
     .from('deals')
-    .select('id, title, value, ai_score, ai_risk, updated_at, expected_close_date, contacts(name)')
+    .select('id, title, value, updated_at, expected_close_date')
     .eq('workspace_id', ws.id)
     .eq('status', 'open')
-    .in('ai_risk', ['at_risk', 'critical'])
-    .order('ai_score', { ascending: true })
+    .order('updated_at', { ascending: true })
     .limit(10)
 
   // Fetch recent signals for context
@@ -89,21 +88,21 @@ export async function POST() {
     }
   }
 
-  // At-risk deals
+  // At-risk deals (time-based)
   for (const deal of riskyDeals || []) {
-    const contactName = (deal as any).contacts?.name || 'Unknown'
     const daysSinceUpdate = Math.floor((now.getTime() - new Date(deal.updated_at).getTime()) / (1000 * 60 * 60 * 24))
+    if (daysSinceUpdate < 7) continue
     proactiveActions.push({
-      type: deal.ai_risk === 'critical' ? 'deal_critical' : 'deal_at_risk',
-      priority: deal.ai_risk === 'critical' ? 'high' : 'medium',
+      type: daysSinceUpdate > 21 ? 'deal_critical' : 'deal_at_risk',
+      priority: daysSinceUpdate > 21 ? 'high' : 'medium',
       dealId: deal.id,
       dealTitle: deal.title,
-      contactName,
+      contactName: 'Unknown',
       value: deal.value,
-      score: deal.ai_score,
-      message: deal.ai_risk === 'critical'
-        ? `"${deal.title}" is critical (score: ${deal.ai_score}). No activity for ${daysSinceUpdate} days. ${deal.value ? `$${deal.value} at risk.` : ''} Take action now.`
-        : `"${deal.title}" needs attention (score: ${deal.ai_score}). Last touched ${daysSinceUpdate} days ago.`,
+      score: 0,
+      message: daysSinceUpdate > 21
+        ? `"${deal.title}" has had no activity for ${daysSinceUpdate} days. ${deal.value ? `$${deal.value} at risk.` : ''} Take action now.`
+        : `"${deal.title}" needs attention. Last touched ${daysSinceUpdate} days ago.`,
     })
   }
 

@@ -239,20 +239,17 @@ export async function POST() {
     })
   }
 
-  const { data: atRiskDeals } = await supabase
-    .from('deals')
-    .select('id, title, value, ai_risk, ai_score')
-    .eq('workspace_id', ws.id)
-    .eq('status', 'open')
-    .eq('ai_risk', 'critical')
-    .limit(3)
-
-  if (atRiskDeals && atRiskDeals.length > 0) {
-    const totalAtRisk = atRiskDeals.reduce((s, d) => s + (d.value || 0), 0)
+  // At-risk deals based on stale updated_at (simplified — no ai_risk column needed)
+  const staleOpenDeals = deals.filter(d => {
+    const days = (now.getTime() - new Date(d.updated_at).getTime()) / (1000 * 60 * 60 * 24)
+    return d.status === 'open' && days > 21
+  })
+  if (staleOpenDeals.length > 0) {
+    const totalAtRisk = staleOpenDeals.reduce((s: number, d: any) => s + (d.value || 0), 0)
     insights.push({
       id: '6', type: 'risk',
-      title: `$${totalAtRisk.toLocaleString()} in critical ${dealLabelPlural.toLowerCase()}`,
-      description: `${atRiskDeals.length} ${dealLabelPlural.toLowerCase()} are at critical risk of being lost. Immediate action required.`,
+      title: `$${totalAtRisk.toLocaleString()} in stale ${dealLabelPlural.toLowerCase()}`,
+      description: `${staleOpenDeals.length} ${dealLabelPlural.toLowerCase()} have had no activity for 3+ weeks.`,
     })
   }
 

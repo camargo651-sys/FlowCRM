@@ -30,7 +30,7 @@ export default function AnalyticsPage() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
       const [dealsRes, stagesRes, contactsRes, signalsRes] = await Promise.all([
-        supabase.from('deals').select('*').eq('workspace_id', ws.id),
+        supabase.from('deals').select('id, title, value, status, stage_id, updated_at, created_at').eq('workspace_id', ws.id),
         supabase.from('pipeline_stages').select('*').eq('workspace_id', ws.id).order('order_index'),
         supabase.from('contacts').select('id, name, engagement_score, score_label, created_at, interaction_count').eq('workspace_id', ws.id),
         supabase.from('engagement_signals').select('signal_type, created_at').eq('workspace_id', ws.id).gte('created_at', thirtyDaysAgo),

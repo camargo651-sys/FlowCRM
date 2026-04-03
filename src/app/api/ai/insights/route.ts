@@ -45,7 +45,7 @@ export async function POST() {
 
   // Gather CRM data in parallel
   const [dealsRes, contactsRes, activitiesRes, quotesRes, stagesRes] = await Promise.all([
-    supabase.from('deals').select('id, title, value, status, expected_close_date, updated_at, created_at, contacts(name, email), pipeline_stages(name)').eq('workspace_id', ws.id).order('updated_at', { ascending: false }).limit(30),
+    supabase.from('deals').select('id, title, value, status, expected_close_date, updated_at, created_at').eq('workspace_id', ws.id).order('updated_at', { ascending: false }).limit(30),
     supabase.from('contacts').select('id, name, email, phone, type, created_at, updated_at').eq('workspace_id', ws.id).order('updated_at', { ascending: false }).limit(30),
     supabase.from('activities').select('id, title, type, done, due_date, notes, contacts(name), deals(title)').eq('workspace_id', ws.id).order('due_date', { ascending: true }).limit(30),
     supabase.from('quotes').select('id, title, total, status, created_at, contacts(name)').eq('workspace_id', ws.id).order('created_at', { ascending: false }).limit(15),

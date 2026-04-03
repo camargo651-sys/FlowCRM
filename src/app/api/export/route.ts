@@ -72,14 +72,13 @@ export async function GET(request: NextRequest) {
 
   if (type === 'deals') {
     const { data } = await supabase.from('deals')
-      .select('title, value, currency, status, probability, expected_close_date, ai_score, ai_risk, created_at, contacts(name)')
+      .select('title, value, currency, status, probability, expected_close_date, created_at')
       .eq('workspace_id', ws.id).order('created_at', { ascending: false })
 
     const csv = toCSV((data || []).map(d => ({
       title: d.title, value: d.value, currency: d.currency, status: d.status,
       probability: d.probability, expected_close_date: d.expected_close_date,
-      ai_score: d.ai_score, ai_risk: d.ai_risk,
-      contact: (d as any).contacts?.name || '', created_at: d.created_at,
+      created_at: d.created_at,
     })))
     return new NextResponse(csv, {
       headers: {
