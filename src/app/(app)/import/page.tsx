@@ -243,28 +243,51 @@ export default function ImportPage() {
 
     const cleanRecord = async (table: string, data: Record<string, any>) => {
       const cols = await getColumns(table)
-      if (cols.size === 0) return data
+
+      // Extract overflow before processing
+      const overflowText = data._overflow || ''
+      delete data._overflow
+
+      // If we can't discover columns (empty table), only use the safest fields
+      if (cols.size === 0) {
+        // Remove potentially problematic fields
+        const safe = { ...data }
+        delete safe.notes  // might not exist
+        delete safe.tags   // might not exist
+        return safe
+      }
+
       const clean: Record<string, any> = {}
       const overflow: string[] = []
+
+      // Only include fields that exist in the table
       for (const [k, v] of Object.entries(data)) {
         if (cols.has(k)) { clean[k] = v }
         else if (v && String(v).length > 1 && !['workspace_id', 'owner_id'].includes(k)) {
           overflow.push(`${k}: ${String(v).slice(0, 150)}`)
         }
       }
+
+      // Add the overflow text
+      if (overflowText) overflow.unshift(overflowText)
+
+      // Store overflow in the best available field
       if (overflow.length > 0) {
+        const overflowStr = overflow.join(' · ')
         if (cols.has('custom_fields')) {
-          const cf = typeof clean.custom_fields === 'object' ? clean.custom_fields : {}
-          overflow.forEach(s => { const [k, ...v] = s.split(': '); cf[k] = v.join(': ') })
+          const cf = typeof clean.custom_fields === 'object' && clean.custom_fields ? { ...clean.custom_fields } : {}
+          cf._imported_data = overflowStr
           clean.custom_fields = cf
         } else if (cols.has('notes')) {
-          clean.notes = [clean.notes, overflow.join(' · ')].filter(Boolean).join(' · ')
+          clean.notes = [clean.notes, overflowStr].filter(Boolean).join(' · ')
         } else if (cols.has('metadata')) {
-          const md = typeof clean.metadata === 'object' ? clean.metadata : {}
-          overflow.forEach(s => { const [k, ...v] = s.split(': '); md[k] = v.join(': ') })
+          const md = typeof clean.metadata === 'object' && clean.metadata ? { ...clean.metadata } : {}
+          md._imported_data = overflowStr
           clean.metadata = md
         }
+        // If none of these exist, data is lost but insert won't fail
       }
+
       return clean
     }
 
@@ -304,31 +327,38 @@ export default function ImportPage() {
           // Build base record
           let baseRecord: Record<string, any> = { workspace_id: ws.id, owner_id: user.id }
 
+          // Build only fields that we KNOW exist in the base schema
+          // All extra/unmapped data goes through cleanRecord which handles overflow
           if (entityType === 'companies') {
             const name = get('name'); if (!name) { skipped++; continue }
-            baseRecord = { ...baseRecord, name, type: 'company', email: get('email'), phone: get('phone'), website: get('website'), notes: get('notes') }
+            baseRecord = { ...baseRecord, name, type: 'company', email: get('email'), phone: get('phone'), website: get('website') }
           } else if (entityType === 'contacts') {
             const name = get('name'); if (!name) { skipped++; continue }
-            baseRecord = { ...baseRecord, name, type: 'person', email: get('email'), phone: get('phone'), job_title: get('job_title'), company_name: get('company_name'), notes: get('notes') }
+            baseRecord = { ...baseRecord, name, type: 'person', email: get('email'), phone: get('phone'), job_title: get('job_title'), company_name: get('company_name') }
           } else if (entityType === 'products') {
             const name = get('name'); if (!name) { skipped++; continue }
             baseRecord = { ...baseRecord, name, sku: get('sku'), description: get('description'), unit_price: parseFloat(String(get('unit_price') || 0).replace(/[^0-9.-]/g, '')) || 0, cost_price: parseFloat(String(get('cost_price') || 0).replace(/[^0-9.-]/g, '')) || 0, stock_quantity: parseInt(String(get('stock_quantity') || 100)) || 100, min_stock: 5, status: 'active' }
           } else if (entityType === 'deals') {
             const title = get('title'); if (!title) { skipped++; continue }
-            baseRecord = { ...baseRecord, title, value: parseFloat(String(get('value') || 0).replace(/[^0-9.-]/g, '')) || null, status: 'open', order_index: 0, notes: get('notes') }
+            baseRecord = { ...baseRecord, title, value: parseFloat(String(get('value') || 0).replace(/[^0-9.-]/g, '')) || null, status: 'open', order_index: 0 }
           }
 
-          // Add unmapped fields as extra data
+          // Collect ALL unmapped fields + mapped notes as overflow
           const mappedSources = new Set(Object.values(fm))
-          const extras = Object.entries(row)
+          const allExtras: string[] = []
+          const mappedNotes = get('notes')
+          if (mappedNotes) allExtras.push(String(mappedNotes))
+          Object.entries(row)
             .filter(([k, v]) => !mappedSources.has(k) && v && String(v).length > 1 && String(v).length < 300)
-            .map(([k, v]) => `${k}: ${v}`)
-            .slice(0, 10).join(' · ')
-          if (extras) {
-            baseRecord.notes = [baseRecord.notes, extras].filter(Boolean).join(' · ')
+            .slice(0, 15)
+            .forEach(([k, v]) => allExtras.push(`${k}: ${v}`))
+
+          // Add overflow as a special key that cleanRecord will handle
+          if (allExtras.length > 0) {
+            baseRecord._overflow = allExtras.join(' · ')
           }
 
-          // Clean record (remove non-existent columns, save overflow)
+          // Clean record — removes unknown columns, distributes overflow
           const record = await cleanRecord(config.table, baseRecord)
 
           // Check duplicates
