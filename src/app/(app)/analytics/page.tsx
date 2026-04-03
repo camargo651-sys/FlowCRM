@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts'
@@ -9,6 +10,7 @@ const COLORS = ['#6172f3','#a78bfa','#34d399','#fbbf24','#f87171','#22d3ee','#f9
 
 export default function AnalyticsPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [deals, setDeals] = useState<any[]>([])
   const [stages, setStages] = useState<any[]>([])
   const [contacts, setContacts] = useState<any[]>([])
@@ -139,7 +141,7 @@ export default function AnalyticsPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Analytics</h1>
+          <h1 className="page-title">{t('nav.analytics')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">Performance across all channels</p>
         </div>
       </div>

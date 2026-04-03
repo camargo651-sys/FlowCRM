@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ShoppingCart, Plus, Minus, Trash2, Search, DollarSign, CreditCard, X, Receipt, Banknote } from 'lucide-react'

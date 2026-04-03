@@ -1,4 +1,6 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
+import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle2, XCircle, ExternalLink, ChevronRight, Search, Shield, Save, X, Star, RefreshCw, Mail, Trash2, Zap } from 'lucide-react'
@@ -22,6 +24,7 @@ interface EmailAccount {
 
 export default function IntegrationsPage() {
   const supabase = createClient()
+  const { t } = useI18n()
   const [workspaceId, setWorkspaceId] = useState('')
   const [saved, setSaved] = useState<Map<string, SavedIntegration>>(new Map())
   const [selected, setSelected] = useState<IntegrationDef | null>(null)
@@ -178,7 +181,7 @@ export default function IntegrationsPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Integrations</h1>
+          <h1 className="page-title">{t('nav.integrations')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">
             {INTEGRATIONS_CATALOG.length} available · {connectedCount} connected
           </p>

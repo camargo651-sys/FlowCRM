@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n/context'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Copy, Check, ChevronDown, ChevronRight, Lock, Globe } from 'lucide-react'
@@ -99,6 +100,7 @@ const METHOD_COLORS: Record<string, string> = {
 }
 
 export default function ApiDocsPage() {
+  const { t } = useI18n()
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
   const modules = Array.from(new Set(ENDPOINTS.map(e => e.module)))
@@ -113,7 +115,7 @@ export default function ApiDocsPage() {
     <div className="animate-fade-in max-w-5xl">
       <div className="page-header">
         <div>
-          <h1 className="page-title">API Documentation</h1>
+          <h1 className="page-title">{t('nav.api_docs')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">REST API v1 — {ENDPOINTS.length} endpoints</p>
         </div>
       </div>
