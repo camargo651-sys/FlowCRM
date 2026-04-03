@@ -30,6 +30,7 @@ export async function getTableColumns(supabase: SupabaseClient, table: string): 
 
 /**
  * Filter an object to only include keys that exist as columns in the table.
+ * Unknown fields are saved into 'notes' or 'custom_fields' to preserve data.
  * Prevents 400 errors from inserting non-existent columns.
  */
 export async function sanitizeForInsert(
@@ -41,11 +42,40 @@ export async function sanitizeForInsert(
   if (columns.size === 0) return data // Can't validate, pass through
 
   const clean: Record<string, any> = {}
+  const overflow: string[] = []
+
   for (const [key, value] of Object.entries(data)) {
     if (columns.has(key)) {
       clean[key] = value
+    } else if (value && String(value).length > 0 && key !== 'workspace_id' && key !== 'owner_id') {
+      // Save unknown fields as extra info
+      overflow.push(`${key}: ${String(value).slice(0, 200)}`)
     }
   }
+
+  // Append overflow data to notes or custom_fields
+  if (overflow.length > 0) {
+    if (columns.has('custom_fields')) {
+      const existing = (clean.custom_fields && typeof clean.custom_fields === 'object') ? clean.custom_fields : {}
+      for (const item of overflow) {
+        const [k, ...v] = item.split(': ')
+        existing[k] = v.join(': ')
+      }
+      clean.custom_fields = existing
+    } else if (columns.has('notes')) {
+      const existingNotes = clean.notes || ''
+      const overflowText = overflow.join(' · ')
+      clean.notes = existingNotes ? `${existingNotes} · ${overflowText}` : overflowText
+    } else if (columns.has('metadata')) {
+      const existing = (clean.metadata && typeof clean.metadata === 'object') ? clean.metadata : {}
+      for (const item of overflow) {
+        const [k, ...v] = item.split(': ')
+        existing[k] = v.join(': ')
+      }
+      clean.metadata = existing
+    }
+  }
+
   return clean
 }
 
