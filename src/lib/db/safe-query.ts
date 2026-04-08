@@ -36,12 +36,12 @@ export async function getTableColumns(supabase: SupabaseClient, table: string): 
 export async function sanitizeForInsert(
   supabase: SupabaseClient,
   table: string,
-  data: Record<string, any>,
-): Promise<Record<string, any>> {
+  data: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const columns = await getTableColumns(supabase, table)
   if (columns.size === 0) return data // Can't validate, pass through
 
-  const clean: Record<string, any> = {}
+  const clean: Record<string, unknown> = {}
   const overflow: string[] = []
 
   for (const [key, value] of Object.entries(data)) {
@@ -56,7 +56,7 @@ export async function sanitizeForInsert(
   // Append overflow data to notes or custom_fields
   if (overflow.length > 0) {
     if (columns.has('custom_fields')) {
-      const existing = (clean.custom_fields && typeof clean.custom_fields === 'object') ? clean.custom_fields : {}
+      const existing: Record<string, any> = (clean.custom_fields && typeof clean.custom_fields === 'object') ? clean.custom_fields as Record<string, any> : {}
       for (const item of overflow) {
         const [k, ...v] = item.split(': ')
         existing[k] = v.join(': ')
@@ -67,7 +67,7 @@ export async function sanitizeForInsert(
       const overflowText = overflow.join(' · ')
       clean.notes = existingNotes ? `${existingNotes} · ${overflowText}` : overflowText
     } else if (columns.has('metadata')) {
-      const existing = (clean.metadata && typeof clean.metadata === 'object') ? clean.metadata : {}
+      const existing: Record<string, any> = (clean.metadata && typeof clean.metadata === 'object') ? clean.metadata as Record<string, any> : {}
       for (const item of overflow) {
         const [k, ...v] = item.split(': ')
         existing[k] = v.join(': ')

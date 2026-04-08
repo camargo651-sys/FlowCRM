@@ -11,7 +11,7 @@ import InlineEdit from '@/components/shared/InlineEdit'
 import { deleteWithUndo } from '@/lib/utils/undo'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
-import type { Contact } from '@/types'
+import type { Contact, DbRow } from '@/types'
 
 const AVATAR_COLORS = ['bg-brand-500','bg-violet-500','bg-emerald-500','bg-amber-500','bg-rose-500','bg-cyan-500']
 const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
@@ -19,7 +19,7 @@ const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_
 function NewContactModal({ onClose, onSave, workspaceId, customFields, template }: {
   onClose: () => void; onSave: (c: Partial<Contact>) => void; workspaceId: string;
   customFields: { entity: string; label: string; key: string; type: string; options?: string[] }[];
-  template: any;
+  template: { name?: string; contactLabel: { singular: string; plural: string } };
 }) {
   const [type, setType] = useState<'person' | 'company'>('person')
   const [name, setName] = useState('')
@@ -29,7 +29,7 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
   const [jobTitle, setJobTitle] = useState('')
   const [website, setWebsite] = useState('')
   const [notes, setNotes] = useState('')
-  const [customValues, setCustomValues] = useState<Record<string, any>>({})
+  const [customValues, setCustomValues] = useState<DbRow>({})
 
   const contactFields = customFields.filter(f => f.entity === 'contact')
 
@@ -46,15 +46,15 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
-          <h2 className="font-semibold text-surface-900">New {template.contactLabel.singular}</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100 transition-colors">
-            <X className="w-4 h-4 text-surface-500" />
+    <div className="modal-overlay">
+      <div className="modal-panel max-w-lg">
+        <div className="modal-header">
+          <h2>New {template.contactLabel.singular}</h2>
+          <button onClick={onClose} className="modal-close">
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="modal-body space-y-4">
           {/* Type toggle */}
           <div className="flex gap-2 p-1 bg-surface-100 rounded-xl">
             {(['person', 'company'] as const).map(t => (
@@ -174,7 +174,7 @@ export default function ContactsPage() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [view, setView] = useState<'table' | 'grid'>('table')
+  const [view, setView] = useState<'table' | 'grid' | 'kanban'>('table')
 
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -214,7 +214,7 @@ export default function ContactsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{template.contactLabel.plural}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">{contacts.length} total</p>
+          <p className="page-subtitle">{contacts.length} total</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -241,7 +241,7 @@ export default function ContactsPage() {
               e.target.value = ''
             }} />
           </label>
-          <ViewToggle view={view} onChange={setView as any} />
+          <ViewToggle view={view} onChange={setView} />
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm">
             <Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}
           </button>
@@ -256,23 +256,24 @@ export default function ContactsPage() {
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-1 mb-6">
+      <div className="segmented-control mb-6">
         {(['all', 'person', 'company'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize', filter === f ? 'bg-brand-600 text-white' : 'text-surface-500 hover:bg-surface-100')}>
+            data-active={filter === f}
+            className={cn(filter === f && 'active')}>
             {f === 'all' ? `All (${contacts.length})` : f === 'person' ? `People (${contacts.filter(c => c.type === 'person').length})` : `Companies (${contacts.filter(c => c.type === 'company').length})`}
           </button>
         ))}
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-14 h-14 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <User className="w-7 h-7 text-surface-400" />
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <User className="w-7 h-7 text-surface-300" />
           </div>
-          <p className="text-surface-600 font-medium mb-1">No {template.contactLabel.plural.toLowerCase()} yet</p>
-          <p className="text-surface-400 text-sm mb-4">Add your first {template.contactLabel.singular.toLowerCase()} to get started</p>
-          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}</button>
+          <p className="empty-state-title">No {template.contactLabel.plural.toLowerCase()} yet</p>
+          <p className="empty-state-desc">Add your first {template.contactLabel.singular.toLowerCase()} to get started</p>
+          <button onClick={() => setShowNew(true)} className="btn-primary"><Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}</button>
         </div>
       ) : view === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -290,9 +291,9 @@ export default function ContactsPage() {
               {contact.phone && <p className="text-xs text-surface-500">{contact.phone}</p>}
               <div className="flex items-center gap-2 mt-2">
                 <span className={cn('badge text-[10px]', contact.type === 'company' ? 'badge-blue' : 'badge-gray')}>{contact.type}</span>
-                {(contact as any).score_label && (contact as any).score_label !== 'cold' && (
-                  <span className={cn('text-[10px] font-bold', (contact as any).score_label === 'hot' ? 'text-red-600' : 'text-amber-600')}>
-                    {(contact as any).score_label}
+                {(contact as { score_label?: string }).score_label && (contact as { score_label?: string }).score_label !== 'cold' && (
+                  <span className={cn('text-[10px] font-bold', (contact as { score_label?: string }).score_label === 'hot' ? 'text-red-600' : 'text-amber-600')}>
+                    {(contact as { score_label?: string }).score_label}
                   </span>
                 )}
               </div>
@@ -347,15 +348,15 @@ export default function ContactsPage() {
                     <InlineEdit value={contact.phone || ''} type="tel" className="text-xs text-surface-600" placeholder="Add phone" onSave={v => updateField(contact.id, 'phone', v)} />
                   </td>
                   <td className="px-4 py-3 hidden xl:table-cell">
-                    {(contact as any).score_label && (contact as any).score_label !== 'cold' ? (
+                    {(contact as { score_label?: string }).score_label && (contact as { score_label?: string }).score_label !== 'cold' ? (
                       <div className="flex items-center gap-1.5">
                         <div className={cn('w-2 h-2 rounded-full',
-                          (contact as any).score_label === 'hot' ? 'bg-red-500' :
-                          (contact as any).score_label === 'warm' ? 'bg-amber-500' : 'bg-surface-300')} />
+                          (contact as { score_label?: string }).score_label === 'hot' ? 'bg-red-500' :
+                          (contact as { score_label?: string }).score_label === 'warm' ? 'bg-amber-500' : 'bg-surface-300')} />
                         <span className={cn('text-[10px] font-semibold capitalize',
-                          (contact as any).score_label === 'hot' ? 'text-red-600' :
-                          (contact as any).score_label === 'warm' ? 'text-amber-600' : 'text-surface-400')}>
-                          {(contact as any).score_label} ({(contact as any).engagement_score || 0})
+                          (contact as { score_label?: string }).score_label === 'hot' ? 'text-red-600' :
+                          (contact as { score_label?: string }).score_label === 'warm' ? 'text-amber-600' : 'text-surface-400')}>
+                          {(contact as { score_label?: string }).score_label} ({(contact as { engagement_score?: number }).engagement_score || 0})
                         </span>
                       </div>
                     ) : (

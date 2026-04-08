@@ -11,9 +11,9 @@ interface Automation {
   name: string
   enabled: boolean
   trigger_type: string
-  trigger_config: any
+  trigger_config: Record<string, string | number | boolean>
   action_type: string
-  action_config: any
+  action_config: Record<string, string | number | boolean>
   last_triggered: string | null
   trigger_count: number
 }
@@ -69,7 +69,7 @@ export default function AutomationsPage() {
   const [newName, setNewName] = useState('')
   const [newTrigger, setNewTrigger] = useState('deal_stage_changed')
   const [newAction, setNewAction] = useState('create_task')
-  const [newActionConfig, setNewActionConfig] = useState<any>({})
+  const [newActionConfig, setNewActionConfig] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -189,7 +189,7 @@ export default function AutomationsPage() {
 
       {/* New Automation Modal */}
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Automation</h2>
@@ -224,7 +224,7 @@ export default function AutomationsPage() {
                   <label className="label">Task title</label>
                   <input className="input" placeholder="Follow up with {{contact_name}}"
                     value={newActionConfig.title || ''}
-                    onChange={e => setNewActionConfig((p: any) => ({ ...p, title: e.target.value }))} />
+                    onChange={e => setNewActionConfig((p: Record<string, string>) => ({ ...p, title: e.target.value }))} />
                   <p className="text-[10px] text-surface-400 mt-1">Use {'{{contact_name}}'}, {'{{deal_title}}'}, {'{{deal_value}}'}</p>
                 </div>
               )}
@@ -233,7 +233,7 @@ export default function AutomationsPage() {
                   <label className="label">Message</label>
                   <textarea className="input resize-none" rows={3} placeholder="Hi {{contact_name}}..."
                     value={newActionConfig.message || ''}
-                    onChange={e => setNewActionConfig((p: any) => ({ ...p, message: e.target.value }))} />
+                    onChange={e => setNewActionConfig((p: Record<string, string>) => ({ ...p, message: e.target.value }))} />
                 </div>
               )}
               {newAction === 'notify_team' && (
@@ -241,7 +241,7 @@ export default function AutomationsPage() {
                   <label className="label">Notification message</label>
                   <input className="input" placeholder="New deal: {{deal_title}}"
                     value={newActionConfig.message || ''}
-                    onChange={e => setNewActionConfig((p: any) => ({ ...p, message: e.target.value }))} />
+                    onChange={e => setNewActionConfig((p: Record<string, string>) => ({ ...p, message: e.target.value }))} />
                 </div>
               )}
               <div className="flex gap-2">

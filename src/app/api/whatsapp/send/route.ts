@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { sendWhatsAppMessage, decryptToken } from '@/lib/whatsapp/client'
@@ -11,7 +11,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -89,8 +89,9 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ success: true, message: stored })
-  } catch (err: any) {
-    console.error('WhatsApp send error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('WhatsApp send error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

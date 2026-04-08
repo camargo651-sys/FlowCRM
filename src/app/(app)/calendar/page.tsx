@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 interface CalendarEvent {
   id: string; title: string; type: string; due_date: string; done: boolean; contact_id?: string;
-  contacts?: any;
+  contacts?: { name: string } | null;
 }
 
 export default function CalendarPage() {
@@ -46,7 +46,7 @@ export default function CalendarPage() {
       .lte('due_date', endOfMonth + 'T23:59:59')
       .order('due_date')
 
-    setEvents(data || [])
+    setEvents((data || []) as unknown as CalendarEvent[])
     setLoading(false)
   }, [year, month, daysInMonth])
 
@@ -175,7 +175,7 @@ export default function CalendarPage() {
 
       {/* New event modal */}
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-sm animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Event</h2>

@@ -11,7 +11,7 @@ interface ViewToggleProps {
 }
 
 export default function ViewToggle({ view, onChange, options = ['table', 'grid'] }: ViewToggleProps) {
-  const ICONS: Record<ViewMode, any> = { table: List, grid: LayoutGrid, kanban: Table2 }
+  const ICONS: Record<ViewMode, typeof List> = { table: List, grid: LayoutGrid, kanban: Table2 }
 
   return (
     <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">

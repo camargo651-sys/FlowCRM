@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -9,16 +10,17 @@ import { formatCurrency, cn, getInitials } from '@/lib/utils'
 export default function HRPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [employees, setEmployees] = useState<any[]>([])
-  const [departments, setDepartments] = useState<any[]>([])
-  const [leaveRequests, setLeaveRequests] = useState<any[]>([])
+  interface EmpForm { first_name: string; last_name: string; email: string; phone: string; department_id: string; position: string; employment_type: string; start_date: string; salary: number | string; salary_period: string }
+  const [employees, setEmployees] = useState<DbRow[]>([])
+  const [departments, setDepartments] = useState<DbRow[]>([])
+  const [leaveRequests, setLeaveRequests] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'employees'|'departments'|'leave'|'payroll'>('employees')
   const [showNewEmployee, setShowNewEmployee] = useState(false)
   const [showNewDept, setShowNewDept] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
 
-  const [empForm, setEmpForm] = useState<any>({ first_name: '', last_name: '', email: '', phone: '', department_id: '', position: '', employment_type: 'full_time', start_date: '', salary: 0, salary_period: 'monthly' })
+  const [empForm, setEmpForm] = useState<EmpForm>({ first_name: '', last_name: '', email: '', phone: '', department_id: '', position: '', employment_type: 'full_time', start_date: '', salary: 0, salary_period: 'monthly' })
   const [deptForm, setDeptForm] = useState({ name: '' })
   const [saving, setSaving] = useState(false)
 
@@ -48,7 +50,7 @@ export default function HRPage() {
     const num = employees.length + 1
     await supabase.from('employees').insert({
       workspace_id: workspaceId, employee_number: `EMP-${String(num).padStart(4, '0')}`,
-      ...empForm, department_id: empForm.department_id || null, salary: parseFloat(empForm.salary) || 0,
+      ...empForm, department_id: empForm.department_id || null, salary: parseFloat(String(empForm.salary)) || 0,
     })
     setEmpForm({ first_name: '', last_name: '', email: '', phone: '', department_id: '', position: '', employment_type: 'full_time', start_date: '', salary: 0, salary_period: 'monthly' })
     setShowNewEmployee(false); setSaving(false); toast.success("Saved"); load()
@@ -94,9 +96,9 @@ export default function HRPage() {
         <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center"><Calendar className="w-4 h-4 text-amber-600" /></div><div><p className="text-lg font-bold">{leaveRequests.filter(l => l.status === 'pending').length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Pending Leave</p></div></div>
       </div>
 
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[{ id: 'employees', label: 'Employees' }, { id: 'departments', label: 'Departments' }, { id: 'leave', label: 'Leave Requests' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as 'employees'|'departments'|'leave'|'payroll')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>{t.label}</button>
         ))}
       </div>
@@ -182,7 +184,7 @@ export default function HRPage() {
 
       {/* New Employee Modal */}
       {showNewEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg max-h-[85vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">New Employee</h2>
@@ -190,35 +192,35 @@ export default function HRPage() {
             </div>
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">First Name *</label><input className="input" value={empForm.first_name} onChange={e => setEmpForm((f: any) => ({ ...f, first_name: e.target.value }))} /></div>
-                <div><label className="label">Last Name *</label><input className="input" value={empForm.last_name} onChange={e => setEmpForm((f: any) => ({ ...f, last_name: e.target.value }))} /></div>
+                <div><label className="label">First Name *</label><input className="input" value={empForm.first_name} onChange={e => setEmpForm((f) => ({ ...f, first_name: e.target.value }))} /></div>
+                <div><label className="label">Last Name *</label><input className="input" value={empForm.last_name} onChange={e => setEmpForm((f) => ({ ...f, last_name: e.target.value }))} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Email</label><input className="input" type="email" value={empForm.email} onChange={e => setEmpForm((f: any) => ({ ...f, email: e.target.value }))} /></div>
-                <div><label className="label">Phone</label><input className="input" value={empForm.phone} onChange={e => setEmpForm((f: any) => ({ ...f, phone: e.target.value }))} /></div>
+                <div><label className="label">Email</label><input className="input" type="email" value={empForm.email} onChange={e => setEmpForm((f) => ({ ...f, email: e.target.value }))} /></div>
+                <div><label className="label">Phone</label><input className="input" value={empForm.phone} onChange={e => setEmpForm((f) => ({ ...f, phone: e.target.value }))} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="label">Department</label>
-                  <select className="input" value={empForm.department_id} onChange={e => setEmpForm((f: any) => ({ ...f, department_id: e.target.value }))}>
+                  <select className="input" value={empForm.department_id} onChange={e => setEmpForm((f) => ({ ...f, department_id: e.target.value }))}>
                     <option value="">None</option>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
-                <div><label className="label">Position</label><input className="input" value={empForm.position} onChange={e => setEmpForm((f: any) => ({ ...f, position: e.target.value }))} /></div>
+                <div><label className="label">Position</label><input className="input" value={empForm.position} onChange={e => setEmpForm((f) => ({ ...f, position: e.target.value }))} /></div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div><label className="label">Type</label>
-                  <select className="input" value={empForm.employment_type} onChange={e => setEmpForm((f: any) => ({ ...f, employment_type: e.target.value }))}>
+                  <select className="input" value={empForm.employment_type} onChange={e => setEmpForm((f) => ({ ...f, employment_type: e.target.value }))}>
                     <option value="full_time">Full Time</option><option value="part_time">Part Time</option><option value="contractor">Contractor</option><option value="intern">Intern</option>
                   </select>
                 </div>
-                <div><label className="label">Salary</label><input className="input" type="number" value={empForm.salary} onChange={e => setEmpForm((f: any) => ({ ...f, salary: e.target.value }))} /></div>
+                <div><label className="label">Salary</label><input className="input" type="number" value={empForm.salary} onChange={e => setEmpForm((f) => ({ ...f, salary: e.target.value }))} /></div>
                 <div><label className="label">Period</label>
-                  <select className="input" value={empForm.salary_period} onChange={e => setEmpForm((f: any) => ({ ...f, salary_period: e.target.value }))}>
+                  <select className="input" value={empForm.salary_period} onChange={e => setEmpForm((f) => ({ ...f, salary_period: e.target.value }))}>
                     <option value="hourly">Hourly</option><option value="monthly">Monthly</option><option value="annual">Annual</option>
                   </select>
                 </div>
               </div>
-              <div><label className="label">Start Date</label><input type="date" className="input" value={empForm.start_date} onChange={e => setEmpForm((f: any) => ({ ...f, start_date: e.target.value }))} /></div>
+              <div><label className="label">Start Date</label><input type="date" className="input" value={empForm.start_date} onChange={e => setEmpForm((f) => ({ ...f, start_date: e.target.value }))} /></div>
             </div>
             <div className="flex gap-2 p-5 border-t border-surface-100 flex-shrink-0">
               <button onClick={() => setShowNewEmployee(false)} className="btn-secondary flex-1">Cancel</button>
@@ -230,7 +232,7 @@ export default function HRPage() {
 
       {/* New Department Modal */}
       {showNewDept && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-sm animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Department</h2>

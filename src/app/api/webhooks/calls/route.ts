@@ -16,12 +16,12 @@ function getServiceSupabase() {
 // POST: Twilio recording/transcription callback
 export async function POST(request: NextRequest) {
   const contentType = request.headers.get('content-type') || ''
-  let body: any
+  let body: Record<string, string>
 
   if (contentType.includes('application/x-www-form-urlencoded')) {
     // Twilio sends form-encoded data
     const formData = await request.formData()
-    body = Object.fromEntries(formData.entries())
+    body = Object.fromEntries(formData.entries()) as Record<string, string>
   } else {
     body = await request.json()
   }

@@ -1,11 +1,12 @@
 import { toast } from 'sonner'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Delete with undo — shows toast with undo button.
  * If user clicks undo within 5 seconds, restores the record.
  */
 export async function deleteWithUndo(
-  supabase: any,
+  supabase: SupabaseClient,
   table: string,
   id: string,
   label: string,

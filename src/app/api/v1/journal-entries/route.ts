@@ -10,9 +10,9 @@ const crud = createCrudHandlers({
   defaultSort: 'date',
   beforeCreate: async (data, ctx) => {
     // Validate debits = credits
-    const lines = data.lines || []
-    const totalDebit = lines.reduce((s: number, l: any) => s + (l.debit || 0), 0)
-    const totalCredit = lines.reduce((s: number, l: any) => s + (l.credit || 0), 0)
+    const lines = (data.lines || []) as { account_id: string; description?: string; debit?: number; credit?: number }[]
+    const totalDebit = lines.reduce((s: number, l) => s + (l.debit || 0), 0)
+    const totalCredit = lines.reduce((s: number, l) => s + (l.credit || 0), 0)
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
       throw new Error(`Debits ($${totalDebit}) must equal credits ($${totalCredit})`)
     }
@@ -25,7 +25,7 @@ const crud = createCrudHandlers({
     const lines = record._lines || []
     if (lines.length) {
       await ctx.supabase.from('journal_lines').insert(
-        lines.map((l: any, i: number) => ({
+        (lines as { account_id: string; description?: string; debit?: number; credit?: number }[]).map((l, i: number) => ({
           journal_entry_id: record.id,
           account_id: l.account_id,
           description: l.description || null,
@@ -62,12 +62,12 @@ export async function POST(request: NextRequest) {
   if (auth instanceof Response) return auth
 
   const body = await request.json()
-  const lines = body.lines || []
+  const lines = (body.lines || []) as { account_id: string; description?: string; debit?: number; credit?: number }[]
   delete body.lines
 
   // Validate
-  const totalDebit = lines.reduce((s: number, l: any) => s + (l.debit || 0), 0)
-  const totalCredit = lines.reduce((s: number, l: any) => s + (l.credit || 0), 0)
+  const totalDebit = lines.reduce((s: number, l) => s + (l.debit || 0), 0)
+  const totalCredit = lines.reduce((s: number, l) => s + (l.credit || 0), 0)
   if (lines.length && Math.abs(totalDebit - totalCredit) > 0.01) {
     return apiError(`Debits ($${totalDebit}) must equal credits ($${totalCredit})`)
   }
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
   // Insert lines
   if (lines.length) {
     await auth.supabase.from('journal_lines').insert(
-      lines.map((l: any, i: number) => ({
+      lines.map((l, i: number) => ({
         journal_entry_id: data.id,
         account_id: l.account_id,
         description: l.description || null,

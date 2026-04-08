@@ -28,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen overflow-hidden bg-surface-50">
       <MobileNav>{sidebar}</MobileNav>
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto p-4 lg:p-8 pt-14 lg:pt-8">
+        <div className="max-w-7xl mx-auto px-4 lg:px-10 py-6 lg:py-8 pt-14 lg:pt-8">
           <Breadcrumbs />
           {children}
         </div>

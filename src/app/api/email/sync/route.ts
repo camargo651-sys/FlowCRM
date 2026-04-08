@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { syncGmailMessages } from '@/lib/email/gmail-sync'
@@ -13,7 +13,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -111,11 +111,11 @@ export async function POST(request: NextRequest) {
         provider: account.provider,
         ...extractResult,
       })
-    } catch (err: any) {
-      console.error(`Email sync failed for ${account.email_address}:`, err.message)
+    } catch (err: unknown) {
+      console.error(`Email sync failed for ${account.email_address}:`, err instanceof Error ? err.message : err)
 
       // Mark account as error if token refresh failed
-      if (err.message.includes('token refresh failed')) {
+      if (err instanceof Error && err.message.includes('token refresh failed')) {
         await supabase.from('email_accounts').update({ status: 'expired' }).eq('id', account.id)
       }
 
@@ -124,14 +124,14 @@ export async function POST(request: NextRequest) {
         await supabase.from('email_sync_log').update({
           status: 'failed',
           completed_at: new Date().toISOString(),
-          error: err.message.slice(0, 500),
+          error: (err instanceof Error ? err.message : String(err)).slice(0, 500),
         }).eq('id', logEntry.id)
       }
 
       results.push({
         account: account.email_address,
         provider: account.provider,
-        error: err.message,
+        error: err instanceof Error ? err.message : String(err),
       })
     }
   }

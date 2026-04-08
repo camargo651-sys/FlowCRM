@@ -65,7 +65,7 @@ export default function FormBuilderPage() {
   useEffect(() => { load() }, [load])
 
   const entityFields = fields.filter(f => f.entity === entity)
-  const sections = Array.from(new Set(entityFields.map(f => (f as any).section || 'General')))
+  const sections = Array.from(new Set(entityFields.map(f => (f as { section?: string }).section || 'General')))
 
   const addField = async () => {
     if (!newField.label) return
@@ -127,7 +127,7 @@ export default function FormBuilderPage() {
       </div>
 
       {/* Entity selector */}
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {ENTITIES.map(e => (
           <button key={e.value} onClick={() => setEntity(e.value)}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -195,7 +195,7 @@ export default function FormBuilderPage() {
 
       {/* New field modal */}
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Custom Field</h2>

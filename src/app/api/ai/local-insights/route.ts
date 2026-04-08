@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -10,7 +10,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -23,7 +23,7 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let ws: any = null
+  let ws: { id: string; name: string; terminology: Record<string, string> } | null = null
   const { data: wsData, error: wsError } = await supabase.from('workspaces').select('id, name, terminology').eq('owner_id', user.id).single()
   if (wsError) {
     const { data: wsBasic } = await supabase.from('workspaces').select('id, name').eq('owner_id', user.id).single()
@@ -34,7 +34,7 @@ export async function POST() {
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
   const now = new Date()
-  const term = (ws.terminology as any) || {}
+  const term = (ws.terminology as Record<string, { singular?: string; plural?: string }>) || {}
   const dealLabel = term.deal?.singular || 'Deal'
   const dealLabelPlural = term.deal?.plural || 'Deals'
   const contactLabel = term.contact?.singular || 'Contact'
@@ -51,8 +51,8 @@ export async function POST() {
   const quotes = quotesRes.data || []
   const contacts = contactsRes.data || []
 
-  const actions: any[] = []
-  const insights: any[] = []
+  const actions: { id: string; priority: string; icon: string; title: string; description: string; entity_type: string; entity_name: string; suggested_message?: string }[] = []
+  const insights: { id: string; type: string; title: string; description: string }[] = []
   let actionId = 1
 
   // 1. Overdue tasks — highest priority
@@ -64,7 +64,7 @@ export async function POST() {
       priority: daysOverdue > 3 ? 'high' : 'medium',
       icon: a.type === 'call' ? 'phone' : a.type === 'email' ? 'mail' : 'clock',
       title: `${a.title} — ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
-      description: `This ${a.type} was due ${new Date(a.due_date!).toLocaleDateString()}. ${(a as any).contacts?.name ? `Contact: ${(a as any).contacts.name}.` : ''} ${(a as any).deals?.title ? `Related to ${dealLabel.toLowerCase()}: ${(a as any).deals.title}.` : ''}`,
+      description: `This ${a.type} was due ${new Date(a.due_date!).toLocaleDateString()}. ${(a as { contacts?: { name?: string } }).contacts?.name ? `Contact: ${(a as { contacts?: { name?: string } }).contacts?.name}.` : ''} ${(a as { deals?: { title?: string } }).deals?.title ? `Related to ${dealLabel.toLowerCase()}: ${(a as { deals?: { title?: string } }).deals?.title}.` : ''}`,
       entity_type: 'task',
       entity_name: a.title,
     })
@@ -94,7 +94,7 @@ export async function POST() {
   })
   staleDeals.slice(0, 3).forEach(d => {
     const days = Math.floor((now.getTime() - new Date(d.updated_at).getTime()) / (1000 * 60 * 60 * 24))
-    const contactName = (d as any).contacts?.name
+    const contactName = (d as { contacts?: { name?: string } }).contacts?.name
     actions.push({
       id: String(actionId++),
       priority: days > 14 ? 'high' : 'medium',
@@ -135,7 +135,7 @@ export async function POST() {
       priority: daysOld > 3 ? 'medium' : 'low',
       icon: 'mail',
       title: `Send quote "${q.title}"`,
-      description: `This quote ($${q.total}) has been a draft for ${daysOld} day${daysOld !== 1 ? 's' : ''}.${(q as any).contacts?.name ? ` Client: ${(q as any).contacts.name}.` : ''} Review and send it.`,
+      description: `This quote ($${q.total}) has been a draft for ${daysOld} day${daysOld !== 1 ? 's' : ''}.${(q as { contacts?: { name?: string } }).contacts?.name ? ` Client: ${(q as { contacts?: { name?: string } }).contacts?.name}.` : ''} Review and send it.`,
       entity_type: 'quote',
       entity_name: q.title,
     })
@@ -151,10 +151,10 @@ export async function POST() {
         priority: daysSent > 7 ? 'high' : 'medium',
         icon: 'phone',
         title: `Follow up on quote "${q.title}"`,
-        description: `Sent ${daysSent} days ago ($${q.total}) — no response yet.${(q as any).contacts?.name ? ` Call ${(q as any).contacts.name} to check.` : ''}`,
+        description: `Sent ${daysSent} days ago ($${q.total}) — no response yet.${(q as { contacts?: { name?: string } }).contacts?.name ? ` Call ${(q as { contacts?: { name?: string } }).contacts?.name} to check.` : ''}`,
         entity_type: 'quote',
         entity_name: q.title,
-        suggested_message: (q as any).contacts?.name ? `Hi ${(q as any).contacts.name.split(' ')[0]}, I wanted to check if you had a chance to review the quote I sent for "${q.title}". Happy to discuss any questions.` : undefined,
+        suggested_message: (q as { contacts?: { name?: string } }).contacts?.name ? `Hi ${(q as { contacts?: { name?: string } }).contacts?.name?.split(' ')[0]}, I wanted to check if you had a chance to review the quote I sent for "${q.title}". Happy to discuss any questions.` : undefined,
       })
     }
   })
@@ -245,7 +245,7 @@ export async function POST() {
     return d.status === 'open' && days > 21
   })
   if (staleOpenDeals.length > 0) {
-    const totalAtRisk = staleOpenDeals.reduce((s: number, d: any) => s + (d.value || 0), 0)
+    const totalAtRisk = staleOpenDeals.reduce((s: number, d) => s + (d.value || 0), 0)
     insights.push({
       id: '6', type: 'risk',
       title: `$${totalAtRisk.toLocaleString()} in stale ${dealLabelPlural.toLowerCase()}`,

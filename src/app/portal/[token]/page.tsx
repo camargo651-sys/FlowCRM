@@ -4,7 +4,13 @@ import { useParams } from 'next/navigation'
 
 export default function PortalPage() {
   const { token } = useParams()
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<{
+    company: { name: string; primary_color?: string; logo_url?: string } | null
+    contact: { name: string } | null
+    invoices: { id: string; invoice_number: string; issue_date: string; total: number; balance_due: number; status: string }[]
+    quotes: { id: string; title: string; quote_number: string; total: number; valid_until?: string; status: string; view_token?: string }[]
+    contracts: { id: string; title: string; contract_number: string; start_date?: string; end_date?: string; value: number; status: string }[]
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'invoices'|'quotes'|'contracts'>('invoices')
 
@@ -48,7 +54,7 @@ export default function PortalPage() {
             { key: 'quotes', label: `Proposals (${data.quotes.length})` },
             { key: 'contracts', label: `Contracts (${data.contracts.length})` },
           ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as any)}
+            <button key={t.key} onClick={() => setTab(t.key as 'invoices'|'quotes'|'contracts')}
               style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
                 background: tab === t.key ? 'white' : 'transparent', color: tab === t.key ? '#1e293b' : '#64748b',
                 boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
@@ -70,7 +76,7 @@ export default function PortalPage() {
                   <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Status</th>
                 </tr></thead>
                 <tbody>
-                  {data.invoices.map((inv: any) => (
+                  {data.invoices.map((inv) => (
                     <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 600 }}>{inv.invoice_number}</td>
                       <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{inv.issue_date}</td>
@@ -98,7 +104,7 @@ export default function PortalPage() {
                   <th style={{ padding: '8px 12px' }}></th>
                 </tr></thead>
                 <tbody>
-                  {data.quotes.map((q: any) => (
+                  {data.quotes.map((q) => (
                     <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 12px' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{q.title}</div><div style={{ fontSize: 10, color: '#94a3b8' }}>{q.quote_number}</div></td>
                       <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>${Number(q.total).toLocaleString()}</td>
@@ -125,7 +131,7 @@ export default function PortalPage() {
                   <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Status</th>
                 </tr></thead>
                 <tbody>
-                  {data.contracts.map((c: any) => (
+                  {data.contracts.map((c) => (
                     <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 12px' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{c.title}</div><div style={{ fontSize: 10, color: '#94a3b8' }}>{c.contract_number}</div></td>
                       <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{c.start_date || '—'} → {c.end_date || '—'}</td>

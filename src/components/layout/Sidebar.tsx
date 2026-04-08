@@ -50,7 +50,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         if (profile?.custom_role_id) {
           // Load custom role permissions from DB
           const { data: customRole } = await supabase.from('custom_roles').select('permissions').eq('id', profile.custom_role_id).single()
-          if (customRole?.permissions) setUserPermissions(customRole.permissions as any)
+          if (customRole?.permissions) setUserPermissions(customRole.permissions as Record<string, string[]>)
         } else if (profile?.role === 'admin') {
           // Admin sees everything
           setUserPermissions(null)
@@ -153,36 +153,35 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
   }
 
   return (
-    <aside className="w-56 h-screen bg-white border-r border-surface-100 flex flex-col flex-shrink-0 sticky top-0">
-      {/* Logo */}
-      <div className="p-3 border-b border-surface-100">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-white"
+    <aside className="w-[220px] h-screen bg-white shadow-sidebar flex flex-col flex-shrink-0 sticky top-0">
+      {/* Logo / Workspace */}
+      <div className="px-4 py-4 flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-white shadow-sm"
             style={{ backgroundColor: primaryColor || '#6172f3' }}>
-            {logoUrl ? <img src={logoUrl} alt="" className="w-4 h-4 object-contain" /> : <Zap className="w-3.5 h-3.5" />}
+            {logoUrl ? <img src={logoUrl} alt="" className="w-4.5 h-4.5 object-contain" /> : <Zap className="w-4 h-4" />}
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-surface-900 text-xs truncate">{displayName}</p>
+            <p className="font-bold text-surface-900 text-sm truncate leading-tight">{displayName}</p>
             <WorkspaceSwitcher currentName={displayName} currentColor={primaryColor || '#6172f3'} />
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-2 overflow-y-auto no-scrollbar">
+      <nav className="flex-1 px-3 py-1 overflow-y-auto no-scrollbar">
         {SECTIONS.map(section => {
-          // Filter items based on user role permissions
           const visibleItems = section.items.filter(item => canAccess(item.href))
           if (visibleItems.length === 0 && section.label) return null
 
           const isCollapsed = collapsed[section.key] !== undefined ? collapsed[section.key] : false
           return (
-            <div key={section.key} className="mb-1">
+            <div key={section.key} className={cn(section.label ? 'mt-5' : 'mt-0', 'mb-0.5')}>
               {section.label && (
                 <button onClick={() => toggleSection(section.key)}
-                  className="w-full flex items-center justify-between px-2 py-1 text-[9px] uppercase tracking-wider font-bold text-surface-400 hover:text-surface-600">
+                  className="section-label w-full mb-1">
                   <span>{section.label}</span>
-                  {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  <ChevronDown className={cn('w-3 h-3 transition-transform duration-200', isCollapsed && '-rotate-90')} />
                 </button>
               )}
               {!isCollapsed && (
@@ -190,12 +189,15 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
                   {visibleItems.map(({ href, icon: Icon, label }) => (
                     <Link key={href} href={href}
                       className={cn(
-                        'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all',
+                        'flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all duration-150 relative group',
                         isActive(href)
                           ? 'bg-brand-50 text-brand-700 font-semibold'
-                          : 'text-surface-600 hover:bg-surface-50 hover:text-surface-900'
+                          : 'text-surface-500 hover:bg-surface-50 hover:text-surface-800'
                       )}>
-                      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                      {isActive(href) && (
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-brand-600" />
+                      )}
+                      <Icon className={cn('w-4 h-4 flex-shrink-0 transition-colors', isActive(href) ? 'text-brand-600' : 'text-surface-400 group-hover:text-surface-600')} />
                       <span className="truncate">{label}</span>
                     </Link>
                   ))}
@@ -207,28 +209,30 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       </nav>
 
       {/* Bottom */}
-      <div className="p-2 border-t border-surface-100">
-        <div className="flex items-center justify-end mb-1 px-1">
+      <div className="p-3 border-t border-surface-100/80 flex-shrink-0">
+        <div className="flex items-center justify-end gap-0.5 mb-2">
           <ThemeToggle />
           <NotificationBell />
         </div>
 
         <div className="relative">
           <button onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-50 transition-colors">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ backgroundColor: primaryColor || '#6172f3' }}>
+            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-surface-50 transition-all duration-150 group">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 shadow-sm"
+              style={{ backgroundColor: primaryColor || '#6172f3' }}>
               {getInitials(userName || userEmail)}
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-[10px] font-semibold text-surface-800 truncate">{userName || 'User'}</p>
-              <p className="text-[9px] text-surface-400 truncate">{userEmail}</p>
+              <p className="text-xs font-semibold text-surface-800 truncate leading-tight">{userName || 'User'}</p>
+              <p className="text-[10px] text-surface-400 truncate leading-tight">{userEmail}</p>
             </div>
+            <ChevronDown className="w-3.5 h-3.5 text-surface-300 group-hover:text-surface-500 transition-colors" />
           </button>
 
           {userMenuOpen && (
-            <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-surface-100 rounded-xl shadow-lg overflow-hidden animate-fade-in z-50">
+            <div className="absolute bottom-full left-0 right-0 mb-1.5 bg-white border border-surface-100 rounded-xl shadow-float overflow-hidden animate-scale-in z-50">
               <button onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors">
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">
                 <LogOut className="w-3.5 h-3.5" /> {t('nav.signout')}
               </button>
             </div>

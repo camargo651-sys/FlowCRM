@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
@@ -11,7 +11,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -22,7 +22,8 @@ function getSupabase() {
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
   if (!key) return null
-  return new Stripe(key, { apiVersion: '2025-04-30.basil' as any })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Stripe API version may not be in type definitions yet
+  return new Stripe(key, { apiVersion: '2025-04-30.basil' as Stripe.LatestApiVersion })
 }
 
 // POST: Create a Stripe checkout session for an invoice
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
 
   // Create Stripe checkout session
-  const lineItems = (invoice.invoice_items || []).map((item: any) => ({
+  const lineItems = (invoice.invoice_items || []).map((item: { description: string; unit_price: number; quantity: number }) => ({
     price_data: {
       currency: (invoice.currency || 'usd').toLowerCase(),
       product_data: { name: item.description },
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     mode: 'payment',
     success_url: success_url || `${request.headers.get('origin')}/invoices?paid=${invoice_id}`,
     cancel_url: cancel_url || `${request.headers.get('origin')}/invoices`,
-    customer_email: (invoice as any).contacts?.email || undefined,
+    customer_email: (invoice as { contacts?: { email?: string } }).contacts?.email || undefined,
     metadata: { invoice_id, workspace_id: invoice.workspace_id },
   })
 

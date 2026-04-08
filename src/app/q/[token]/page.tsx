@@ -21,8 +21,8 @@ export default async function QuoteViewPage({ params }: { params: { token: strin
   const quote = await getQuote(params.token)
   if (!quote) notFound()
 
-  const contact = (quote as any).contacts
-  const items = ((quote as any).quote_items || []).sort((a: any, b: any) => a.order_index - b.order_index)
+  const contact = (quote as { contacts?: { name?: string; email?: string; company_name?: string } }).contacts
+  const items = ((quote as { quote_items?: { id: string; description: string; quantity: number; unit_price: number; total: number; order_index: number }[] }).quote_items || []).sort((a, b) => a.order_index - b.order_index)
 
   return (
     <html>
@@ -84,7 +84,7 @@ export default async function QuoteViewPage({ params }: { params: { token: strin
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item: any) => (
+                  {items.map((item) => (
                     <tr key={item.id}>
                       <td>{item.description}</td>
                       <td className="text-right">{item.quantity}</td>

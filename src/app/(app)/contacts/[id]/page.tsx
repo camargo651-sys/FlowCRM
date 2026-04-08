@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -15,12 +16,12 @@ interface ContactDetail {
   id: string; workspace_id: string; type: string; name: string;
   email?: string; phone?: string; company_name?: string; job_title?: string;
   website?: string; address?: string; notes?: string; tags?: string[];
-  custom_fields?: any; created_at: string; updated_at: string;
+  custom_fields?: DbRow; created_at: string; updated_at: string;
 }
 
 interface DealRow {
   id: string; title: string; value?: number; status: string;
-  created_at: string; pipeline_stages?: any;
+  created_at: string; pipeline_stages?: { name: string; color: string };
 }
 
 interface QuoteRow {
@@ -31,7 +32,7 @@ interface QuoteRow {
 interface ActivityRow {
   id: string; type: string; title: string; notes?: string;
   due_date?: string; done: boolean; created_at: string;
-  metadata?: any;
+  metadata?: DbRow;
 }
 
 interface EmailMessage {
@@ -54,7 +55,7 @@ interface CallLog {
   recording_url: string | null;
 }
 
-const ACTIVITY_ICONS: Record<string, any> = {
+const ACTIVITY_ICONS: Record<string, typeof Phone> = {
   call: Phone, email: Mail, meeting: Calendar, note: FileText, task: CheckSquare, whatsapp: MessageCircle,
 }
 const ACTIVITY_COLORS: Record<string, string> = {
@@ -290,7 +291,7 @@ export default function ContactDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[
           { id: 'overview', label: 'Timeline', count: timeline.length },
           { id: 'deals', label: template.dealLabel.plural, count: deals.length },
@@ -299,7 +300,7 @@ export default function ContactDetailPage() {
           { id: 'emails', label: 'Emails', count: emails.length },
           { id: 'whatsapp', label: 'WhatsApp', count: waMessages.length },
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
             className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all',
               tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
             {t.label}
@@ -680,7 +681,7 @@ export default function ContactDetailPage() {
 
       {/* ====== NEW ACTIVITY MODAL ====== */}
       {showNewActivity && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Activity</h2>
@@ -719,7 +720,7 @@ export default function ContactDetailPage() {
 
       {/* ====== NEW DEAL MODAL ====== */}
       {showNewDeal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New {template.dealLabel.singular}</h2>
@@ -753,7 +754,7 @@ export default function ContactDetailPage() {
 
       {/* ====== EDIT CONTACT MODAL ====== */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">Edit {template.contactLabel.singular}</h2>

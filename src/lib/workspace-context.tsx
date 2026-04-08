@@ -40,7 +40,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
       // Start from industry template, then override with custom terminology
       const template = { ...getTemplate(ws.industry || 'generic') }
-      const terminology = ws.terminology as any
+      const terminology = ws.terminology as Record<string, { singular: string; plural: string }> | null
       if (terminology) {
         if (terminology.deal) template.dealLabel = terminology.deal
         if (terminology.contact) template.contactLabel = terminology.contact

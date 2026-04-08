@@ -9,7 +9,7 @@ export async function logAudit(
     entityType: string
     entityId?: string
     entityName?: string
-    changes?: Record<string, any>
+    changes?: Record<string, unknown>
     ipAddress?: string
   },
 ) {

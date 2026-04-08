@@ -1,5 +1,4 @@
 'use client'
-import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Shield, Plus, X, Save, Trash2, CheckCircle2, Copy } from 'lucide-react'
@@ -175,7 +174,7 @@ export default function RolesPage() {
 
       {/* Edit/Create Modal */}
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">{editing ? 'Edit Role' : 'New Role'}</h2>

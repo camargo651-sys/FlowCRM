@@ -47,13 +47,19 @@ module.exports = {
       boxShadow: {
         'glow': '0 0 20px rgba(97, 114, 243, 0.15)',
         'glow-lg': '0 0 40px rgba(97, 114, 243, 0.2)',
-        'card': '0 1px 3px rgba(21, 27, 58, 0.08), 0 4px 16px rgba(21, 27, 58, 0.06)',
-        'card-hover': '0 4px 12px rgba(21, 27, 58, 0.12), 0 16px 40px rgba(21, 27, 58, 0.1)',
+        'card': '0 0 0 1px rgba(21, 27, 58, 0.03), 0 1px 2px rgba(21, 27, 58, 0.06), 0 2px 8px rgba(21, 27, 58, 0.04)',
+        'card-hover': '0 0 0 1px rgba(21, 27, 58, 0.04), 0 4px 8px rgba(21, 27, 58, 0.08), 0 12px 32px rgba(21, 27, 58, 0.08)',
+        'sidebar': 'inset -1px 0 0 rgba(21, 27, 58, 0.06)',
+        'input-focus': '0 0 0 3px rgba(97, 114, 243, 0.15)',
+        'modal': '0 24px 48px -12px rgba(21, 27, 58, 0.18), 0 0 0 1px rgba(21, 27, 58, 0.05)',
+        'float': '0 8px 24px -4px rgba(21, 27, 58, 0.12), 0 0 0 1px rgba(21, 27, 58, 0.04)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-out',
-        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        'fade-in': 'fadeIn 0.2s ease-out',
+        'slide-up': 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
         'slide-in-right': 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        'scale-in': 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        'shimmer': 'shimmer 2s infinite linear',
       },
       keyframes: {
         fadeIn: {
@@ -61,13 +67,24 @@ module.exports = {
           to: { opacity: '1' },
         },
         slideUp: {
-          from: { opacity: '0', transform: 'translateY(12px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
+          from: { opacity: '0', transform: 'translateY(8px) scale(0.98)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
         slideInRight: {
           from: { opacity: '0', transform: 'translateX(12px)' },
           to: { opacity: '1', transform: 'translateX(0)' },
         },
+        scaleIn: {
+          from: { opacity: '0', transform: 'scale(0.95)' },
+          to: { opacity: '1', transform: 'scale(1)' },
+        },
+        shimmer: {
+          from: { backgroundPosition: '200% 0' },
+          to: { backgroundPosition: '-200% 0' },
+        },
+      },
+      transitionTimingFunction: {
+        'ease-spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
       },
     },
   },

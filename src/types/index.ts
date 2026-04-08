@@ -1,5 +1,8 @@
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[]
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DbRow = Record<string, any>
+
 // --- WORKSPACE ---
 export interface Workspace {
   id: string

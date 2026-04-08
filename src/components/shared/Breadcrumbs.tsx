@@ -21,9 +21,9 @@ export default function Breadcrumbs() {
   if (parts.length <= 1) return null
 
   return (
-    <nav className="flex items-center gap-1 text-xs text-surface-400 mb-4">
-      <Link href="/dashboard" className="hover:text-surface-600 transition-colors">
-        <Home className="w-3 h-3" />
+    <nav className="flex items-center gap-1.5 text-xs text-surface-400 mb-5">
+      <Link href="/dashboard" className="hover:text-surface-600 transition-colors p-0.5">
+        <Home className="w-3.5 h-3.5" />
       </Link>
       {parts.map((part, i) => {
         const href = '/' + parts.slice(0, i + 1).join('/')

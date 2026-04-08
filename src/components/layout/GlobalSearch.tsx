@@ -14,7 +14,7 @@ interface SearchResult {
   score?: number
 }
 
-const TYPE_ICONS: Record<string, any> = {
+const TYPE_ICONS: Record<string, typeof User> = {
   contact: User,
   deal: TrendingUp,
   quote: FileText,
@@ -200,16 +200,16 @@ export default function GlobalSearch() {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[15vh] p-4 animate-fade-in" onClick={() => setOpen(false)}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] p-4 animate-fade-in" onClick={() => setOpen(false)}>
+      <div className="absolute inset-0 bg-surface-900/40 backdrop-blur-[2px]" />
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-modal overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-surface-100">
           <Search className="w-5 h-5 text-surface-400 flex-shrink-0" />
           <input ref={inputRef} type="text" className="flex-1 text-sm outline-none placeholder:text-surface-400"
             placeholder="Search contacts, deals, emails, messages..."
             value={query} onChange={e => setQuery(e.target.value)} onKeyDown={handleKeyDown} />
-          <kbd className="hidden sm:flex items-center gap-0.5 px-1.5 py-0.5 bg-surface-100 rounded text-[10px] text-surface-400 font-mono">ESC</kbd>
+          <kbd className="kbd hidden sm:flex">ESC</kbd>
         </div>
 
         {/* Results */}
@@ -263,10 +263,10 @@ export default function GlobalSearch() {
 
         {/* Footer */}
         {results.length > 0 && (
-          <div className="px-4 py-2 border-t border-surface-100 flex items-center gap-4 text-[10px] text-surface-400">
-            <span><kbd className="px-1 py-0.5 bg-surface-100 rounded font-mono">↑↓</kbd> navigate</span>
-            <span><kbd className="px-1 py-0.5 bg-surface-100 rounded font-mono">↵</kbd> open</span>
-            <span><kbd className="px-1 py-0.5 bg-surface-100 rounded font-mono">esc</kbd> close</span>
+          <div className="px-4 py-2.5 border-t border-surface-100 flex items-center gap-4 text-[10px] text-surface-400">
+            <span><kbd className="kbd">↑↓</kbd> navigate</span>
+            <span><kbd className="kbd">↵</kbd> open</span>
+            <span><kbd className="kbd">esc</kbd> close</span>
           </div>
         )}
       </div>

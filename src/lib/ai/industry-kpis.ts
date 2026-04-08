@@ -61,7 +61,7 @@ export async function getIndustryKPIs(
       return [
         { key: 'active_listings', label: 'Active Listings', value: openDeals.length, icon: '🏠' },
         { key: 'viewings_week', label: 'Viewings This Week', value: activities.filter(a => a.type === 'meeting' && a.due_date && a.due_date >= startOfWeek).length, icon: '👁️' },
-        { key: 'offers', label: 'Pending Offers', value: openDeals.filter(d => (d as any).pipeline_stages?.name?.includes('Offer')).length, icon: '📝' },
+        { key: 'offers', label: 'Pending Offers', value: openDeals.filter(d => (d as { pipeline_stages?: { name?: string } }).pipeline_stages?.name?.includes('Offer')).length, icon: '📝' },
         { key: 'closed', label: 'Closed This Month', value: wonDeals.filter(d => d.updated_at >= startOfMonth).length, icon: '🎉' },
         ...baseKPIs,
       ]
@@ -99,7 +99,7 @@ export async function getIndustryKPIs(
       ]
 
     case 'distribution':
-      const pendingDeliveries = openDeals.filter(d => (d as any).pipeline_stages?.name?.includes('Ship') || (d as any).pipeline_stages?.name?.includes('Preparation')).length
+      const pendingDeliveries = openDeals.filter(d => { const ps = (d as { pipeline_stages?: { name?: string } }).pipeline_stages; return ps?.name?.includes('Ship') || ps?.name?.includes('Preparation') }).length
       return [
         { key: 'orders_week', label: 'Orders This Week', value: deals.filter(d => d.updated_at >= startOfWeek && d.status === 'open').length, icon: '📦' },
         { key: 'pending', label: 'Pending Deliveries', value: pendingDeliveries, icon: '🚛' },

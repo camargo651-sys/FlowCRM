@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { decryptToken } from '@/lib/email/token-manager'
@@ -11,7 +11,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -86,8 +86,8 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({ success: true, message_id: result.id })
-    } catch (err: any) {
-      return NextResponse.json({ error: err.message }, { status: 500 })
+    } catch (err: unknown) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
     }
   }
 
@@ -138,8 +138,8 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({ success: true })
-    } catch (err: any) {
-      return NextResponse.json({ error: err.message }, { status: 500 })
+    } catch (err: unknown) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
     }
   }
 

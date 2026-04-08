@@ -9,7 +9,7 @@ export async function fireOutgoingWebhooks(
   supabase: SupabaseClient,
   workspaceId: string,
   event: string,
-  payload: any,
+  payload: Record<string, unknown>,
 ) {
   // Get webhook configs from integrations table
   const { data: webhookInt } = await supabase
@@ -51,7 +51,7 @@ export async function fireOutgoingWebhooks(
       },
       body,
     })
-  } catch (err: any) {
-    console.error(`Webhook delivery failed for ${event}:`, err.message)
+  } catch (err: unknown) {
+    console.error(`Webhook delivery failed for ${event}:`, err instanceof Error ? err.message : err)
   }
 }

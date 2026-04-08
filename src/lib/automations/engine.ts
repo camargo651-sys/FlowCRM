@@ -7,9 +7,9 @@ interface Automation {
   name: string
   enabled: boolean
   trigger_type: string
-  trigger_config: any
+  trigger_config: Record<string, string | number | boolean>
   action_type: string
-  action_config: any
+  action_config: Record<string, string | number | boolean | string[]>
 }
 
 interface TriggerContext {
@@ -59,8 +59,8 @@ export async function fireTrigger(
         last_triggered: new Date().toISOString(),
         trigger_count: (automation.trigger_count || 0) + 1,
       }).eq('id', automation.id)
-    } catch (err: any) {
-      console.error(`Automation "${automation.name}" failed:`, err.message)
+    } catch (err: unknown) {
+      console.error(`Automation "${automation.name}" failed:`, err instanceof Error ? err.message : err)
     }
   }
 }
@@ -82,7 +82,7 @@ async function executeAction(
   automation: Automation,
   context: TriggerContext,
 ) {
-  const config = automation.action_config || {}
+  const config: Record<string, any> = automation.action_config || {}
 
   switch (automation.action_type) {
     case 'create_task': {
@@ -175,7 +175,7 @@ async function executeAction(
 
     case 'update_deal': {
       if (!context.dealId) break
-      const updates: any = {}
+      const updates: Record<string, string> = {}
       if (config.status) updates.status = config.status
       if (config.stage_id) updates.stage_id = config.stage_id
       if (Object.keys(updates).length) {
@@ -186,11 +186,11 @@ async function executeAction(
 
     case 'update_contact': {
       if (!context.contactId) break
-      const updates: any = {}
+      const updates: Record<string, string | string[]> = {}
       if (config.tags_add) {
         const { data: contact } = await supabase.from('contacts').select('tags').eq('id', context.contactId).single()
-        const currentTags = contact?.tags || []
-        updates.tags = Array.from(new Set([...currentTags, ...config.tags_add]))
+        const currentTags = (contact?.tags || []) as string[]
+        updates.tags = Array.from(new Set([...currentTags, ...(config.tags_add as string[])]))
       }
       if (Object.keys(updates).length) {
         await supabase.from('contacts').update(updates).eq('id', context.contactId)

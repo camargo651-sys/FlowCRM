@@ -34,7 +34,7 @@ export default function ModulesPage() {
     setWorkspaceId(ws.id)
 
     // If no config yet, use defaults
-    const savedModules = (ws as any).enabled_modules
+    const savedModules = (ws as { enabled_modules?: Record<string, boolean> }).enabled_modules
     if (savedModules && typeof savedModules === 'object') {
       setEnabled(savedModules)
     } else {

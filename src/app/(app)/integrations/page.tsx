@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -47,7 +48,7 @@ export default function IntegrationsPage() {
 
     const { data } = await supabase.from('integrations').select('*').eq('workspace_id', ws.id)
     const map = new Map<string, SavedIntegration>()
-    ;(data || []).forEach((s: any) => map.set(s.key, { key: s.key, enabled: s.enabled, config: s.config || {} }))
+    ;(data || []).forEach((s: { key: string; enabled: boolean; config?: DbRow }) => map.set(s.key, { key: s.key, enabled: s.enabled, config: s.config || {} }))
     setSaved(map)
 
     // Load connected email accounts + linkedin accounts
@@ -66,13 +67,13 @@ export default function IntegrationsPage() {
         .select('id, status, name, email, last_synced_at, created_at')
         .eq('workspace_id', ws.id)
       if (liAccounts) {
-        const mapped = liAccounts.map((a: any) => ({
+        const mapped = liAccounts.map((a: { id: string; name?: string; email?: string; status?: string; last_synced_at?: string | null; created_at?: string }) => ({
           id: a.id,
           provider: 'linkedin',
           email_address: a.name || a.email || 'LinkedIn Account',
-          status: a.status,
-          last_synced_at: a.last_synced_at,
-          created_at: a.created_at,
+          status: a.status || 'active',
+          last_synced_at: a.last_synced_at ?? null,
+          created_at: a.created_at || '',
         }))
         setEmailAccounts(prev => [...prev, ...mapped])
       }
@@ -142,8 +143,8 @@ export default function IntegrationsPage() {
         setSavedMsg(true)
         setTimeout(() => setSavedMsg(false), 2000)
         return
-      } catch (err: any) {
-        setConnectError(err.message)
+      } catch (err: unknown) {
+        setConnectError(err instanceof Error ? err.message : 'Unknown error')
         setSaving(false)
         return
       }

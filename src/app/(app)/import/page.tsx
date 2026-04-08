@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -10,7 +11,7 @@ import { cn } from '@/lib/utils'
 // ============================================================
 interface DetectedTable {
   name: string
-  rows: Record<string, any>[]
+  rows: DbRow[]
   headers: string[]
   mappedTo: 'companies' | 'contacts' | 'products' | 'deals' | 'skip'
   fieldMapping: Record<string, string>
@@ -30,7 +31,7 @@ const ENTITY_CONFIG = {
 // ============================================================
 // File Parsers
 // ============================================================
-function parseCSV(text: string): { headers: string[]; rows: Record<string, any>[] } {
+function parseCSV(text: string): { headers: string[]; rows: DbRow[] } {
   const lines = text.split('\n').filter(l => l.trim())
   if (lines.length < 2) return { headers: [], rows: [] }
   const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
@@ -43,7 +44,7 @@ function parseCSV(text: string): { headers: string[]; rows: Record<string, any>[
       cur += c
     }
     vals.push(cur.trim())
-    const row: Record<string, any> = {}
+    const row: DbRow = {}
     headers.forEach((h, i) => { if (vals[i]) row[h] = vals[i] })
     return row
   }).filter(r => Object.values(r).some(v => v))
@@ -88,21 +89,21 @@ async function parseLarkBase(text: string): Promise<DetectedTable[]> {
     const recordMap = schemaData.recordMap || {}
     const fieldNames: Record<string, string> = {}
     for (const [fid, f] of Object.entries(fieldMap)) {
-      fieldNames[fid] = (f as any).name || fid
+      fieldNames[fid] = (f as { name?: string }).name || fid
     }
 
     const headers = Object.values(fieldNames)
-    const rows: Record<string, any>[] = []
+    const rows: DbRow[] = []
 
     for (const rec of Object.values(recordMap)) {
-      const row: Record<string, any> = {}
-      for (const [fid, cell] of Object.entries(rec as any)) {
+      const row: DbRow = {}
+      for (const [fid, cell] of Object.entries(rec as DbRow)) {
         if (!cell || typeof cell !== 'object') continue
         const name = fieldNames[fid] || fid
-        const val = (cell as any).value
+        const val = (cell as { value?: unknown }).value
         if (val == null) continue
         if (Array.isArray(val)) {
-          row[name] = val.map((v: any) =>
+          row[name] = val.map((v: { value?: string; text?: string; name?: string }) =>
             typeof v === 'object' ? (v.text || v.name || '') : String(v)
           ).filter(Boolean).join('; ')
         } else {
@@ -162,8 +163,8 @@ export default function ImportPage() {
         toast.error('Unsupported file format')
         return
       }
-    } catch (e: any) {
-      toast.error(`Parse error: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`Parse error: ${e instanceof Error ? e.message : 'Unknown error'}`)
       return
     }
 
@@ -241,7 +242,7 @@ export default function ImportPage() {
       return cols
     }
 
-    const cleanRecord = async (table: string, data: Record<string, any>) => {
+    const cleanRecord = async (table: string, data: DbRow) => {
       const cols = await getColumns(table)
 
       // Extract overflow before processing
@@ -257,7 +258,7 @@ export default function ImportPage() {
         return safe
       }
 
-      const clean: Record<string, any> = {}
+      const clean: DbRow = {}
       const overflow: string[] = []
 
       // Only include fields that exist in the table
@@ -291,7 +292,7 @@ export default function ImportPage() {
       return clean
     }
 
-    const checkDup = async (table: string, record: Record<string, any>): Promise<string | null> => {
+    const checkDup = async (table: string, record: DbRow): Promise<string | null> => {
       if (dupStrategy === 'create') return null
       const nameKey = table === 'deals' ? 'title' : 'name'
       const name = record[nameKey]
@@ -325,7 +326,7 @@ export default function ImportPage() {
           const get = (field: string) => fm[field] ? row[fm[field]] : null
 
           // Build base record
-          let baseRecord: Record<string, any> = { workspace_id: ws.id, owner_id: user.id }
+          let baseRecord: DbRow = { workspace_id: ws.id, owner_id: user.id }
 
           // Build only fields that we KNOW exist in the base schema
           // All extra/unmapped data goes through cleanRecord which handles overflow
@@ -460,7 +461,7 @@ export default function ImportPage() {
                       </div>
                       <select className="input text-xs w-36" value={table.mappedTo}
                         onChange={e => setTables(prev => prev.map((t, idx) =>
-                          idx === i ? { ...t, mappedTo: e.target.value as any } : t))}>
+                          idx === i ? { ...t, mappedTo: e.target.value as DetectedTable['mappedTo'] } : t))}>
                         <option value="companies">→ Companies</option>
                         <option value="contacts">→ Contacts</option>
                         <option value="products">→ Products</option>

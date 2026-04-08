@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     .eq('status', 'active')
 
   if (employees?.length) {
-    const payslips = employees.map((emp: any) => {
+    const payslips = employees.map((emp: { id: string; salary: number; salary_period: string }) => {
       // Normalize salary to period
       let grossSalary = emp.salary || 0
       if (emp.salary_period === 'annual') grossSalary = grossSalary / 12
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
     await auth.supabase.from('payslips').insert(payslips)
 
     // Update run totals
-    const totalGross = payslips.reduce((s: number, p: any) => s + p.gross_salary, 0)
-    const totalDed = payslips.reduce((s: number, p: any) => s + p.total_deductions, 0)
+    const totalGross = payslips.reduce((s: number, p) => s + p.gross_salary, 0)
+    const totalDed = payslips.reduce((s: number, p) => s + p.total_deductions, 0)
     await auth.supabase.from('payroll_runs').update({
       total_gross: totalGross,
       total_deductions: totalDed,

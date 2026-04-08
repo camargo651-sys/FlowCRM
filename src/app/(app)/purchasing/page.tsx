@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -14,9 +15,12 @@ const STATUS_STYLES: Record<string, string> = {
 export default function PurchasingPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [orders, setOrders] = useState<any[]>([])
-  const [suppliers, setSuppliers] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
+  interface POItem { description: string; quantity: number; unit_cost: number; product_id: string | null }
+  interface POForm { supplier_id: string; expected_date: string; notes: string; items: POItem[] }
+  interface SupForm { name: string; email: string; phone: string; address: string; payment_terms: string }
+  const [orders, setOrders] = useState<DbRow[]>([])
+  const [suppliers, setSuppliers] = useState<DbRow[]>([])
+  const [products, setProducts] = useState<{ id: string; name: string; cost_price: number; stock_quantity: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewPO, setShowNewPO] = useState(false)
   const [showNewSupplier, setShowNewSupplier] = useState(false)
@@ -24,9 +28,9 @@ export default function PurchasingPage() {
   const [workspaceId, setWorkspaceId] = useState('')
 
   // PO Form
-  const [poForm, setPoForm] = useState<any>({ supplier_id: '', expected_date: '', notes: '', items: [] })
+  const [poForm, setPoForm] = useState<POForm>({ supplier_id: '', expected_date: '', notes: '', items: [] })
   // Supplier Form
-  const [supForm, setSupForm] = useState<any>({ name: '', email: '', phone: '', address: '', payment_terms: '' })
+  const [supForm, setSupForm] = useState<SupForm>({ name: '', email: '', phone: '', address: '', payment_terms: '' })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -62,7 +66,7 @@ export default function PurchasingPage() {
   const createPO = async () => {
     if (!poForm.items.length) return
     setSaving(true)
-    const total = poForm.items.reduce((s: number, i: any) => s + i.quantity * i.unit_cost, 0)
+    const total = poForm.items.reduce((s: number, i: POItem) => s + i.quantity * i.unit_cost, 0)
     const num = orders.length + 1
     const { data: po } = await supabase.from('purchase_orders').insert({
       workspace_id: workspaceId, po_number: `PO-${String(num).padStart(4, '0')}`,
@@ -72,7 +76,7 @@ export default function PurchasingPage() {
 
     if (po) {
       await supabase.from('purchase_order_items').insert(
-        poForm.items.map((item: any, i: number) => ({
+        poForm.items.map((item: POItem, i: number) => ({
           purchase_order_id: po.id, product_id: item.product_id || null,
           description: item.description, quantity: item.quantity,
           unit_cost: item.unit_cost, total: item.quantity * item.unit_cost, order_index: i,
@@ -106,9 +110,9 @@ export default function PurchasingPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[{ id: 'orders', label: `Orders (${orders.length})` }, { id: 'suppliers', label: `Suppliers (${suppliers.length})` }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as 'orders'|'suppliers')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
             {t.label}
           </button>
@@ -178,7 +182,7 @@ export default function PurchasingPage() {
 
       {/* New PO Modal */}
       {showNewPO && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-2xl max-h-[85vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">New Purchase Order</h2>
@@ -187,34 +191,34 @@ export default function PurchasingPage() {
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="label">Supplier</label>
-                  <select className="input" value={poForm.supplier_id} onChange={e => setPoForm((f: any) => ({ ...f, supplier_id: e.target.value }))}>
+                  <select className="input" value={poForm.supplier_id} onChange={e => setPoForm((f) => ({ ...f, supplier_id: e.target.value }))}>
                     <option value="">Select supplier</option>
                     {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
-                <div><label className="label">Expected Date</label><input type="date" className="input" value={poForm.expected_date} onChange={e => setPoForm((f: any) => ({ ...f, expected_date: e.target.value }))} /></div>
+                <div><label className="label">Expected Date</label><input type="date" className="input" value={poForm.expected_date} onChange={e => setPoForm((f) => ({ ...f, expected_date: e.target.value }))} /></div>
               </div>
               <div>
                 <label className="label">Items</label>
-                {poForm.items.map((item: any, i: number) => (
+                {poForm.items.map((item: POItem, i: number) => (
                   <div key={i} className="flex gap-2 items-center mb-2">
-                    <input className="input flex-1 text-xs" placeholder="Description" value={item.description} onChange={e => setPoForm((f: any) => ({ ...f, items: f.items.map((it: any, idx: number) => idx === i ? { ...it, description: e.target.value } : it) }))} />
-                    <input className="input w-16 text-xs text-center" type="number" value={item.quantity} onChange={e => setPoForm((f: any) => ({ ...f, items: f.items.map((it: any, idx: number) => idx === i ? { ...it, quantity: parseInt(e.target.value) || 0 } : it) }))} />
-                    <input className="input w-24 text-xs text-right" type="number" placeholder="Cost" value={item.unit_cost} onChange={e => setPoForm((f: any) => ({ ...f, items: f.items.map((it: any, idx: number) => idx === i ? { ...it, unit_cost: parseFloat(e.target.value) || 0 } : it) }))} />
-                    <button onClick={() => setPoForm((f: any) => ({ ...f, items: f.items.filter((_: any, idx: number) => idx !== i) }))} className="text-surface-300 hover:text-red-500"><X className="w-4 h-4" /></button>
+                    <input className="input flex-1 text-xs" placeholder="Description" value={item.description} onChange={e => setPoForm((f) => ({ ...f, items: f.items.map((it: POItem, idx: number) => idx === i ? { ...it, description: e.target.value } : it) }))} />
+                    <input className="input w-16 text-xs text-center" type="number" value={item.quantity} onChange={e => setPoForm((f) => ({ ...f, items: f.items.map((it: POItem, idx: number) => idx === i ? { ...it, quantity: parseInt(e.target.value) || 0 } : it) }))} />
+                    <input className="input w-24 text-xs text-right" type="number" placeholder="Cost" value={item.unit_cost} onChange={e => setPoForm((f) => ({ ...f, items: f.items.map((it: POItem, idx: number) => idx === i ? { ...it, unit_cost: parseFloat(e.target.value) || 0 } : it) }))} />
+                    <button onClick={() => setPoForm((f) => ({ ...f, items: f.items.filter((_: POItem, idx: number) => idx !== i) }))} className="text-surface-300 hover:text-red-500"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <div className="flex gap-2">
-                  <button onClick={() => setPoForm((f: any) => ({ ...f, items: [...f.items, { description: '', quantity: 1, unit_cost: 0, product_id: null }] }))} className="btn-ghost btn-sm flex-1 border border-dashed border-surface-200"><Plus className="w-3.5 h-3.5" /> Add Item</button>
+                  <button onClick={() => setPoForm((f) => ({ ...f, items: [...f.items, { description: '', quantity: 1, unit_cost: 0, product_id: null }] }))} className="btn-ghost btn-sm flex-1 border border-dashed border-surface-200"><Plus className="w-3.5 h-3.5" /> Add Item</button>
                   {products.length > 0 && (
-                    <select className="input text-xs flex-1" value="" onChange={e => { const p = products.find((pr: any) => pr.id === e.target.value); if (p) setPoForm((f: any) => ({ ...f, items: [...f.items, { description: p.name, quantity: 1, unit_cost: p.cost_price, product_id: p.id }] })) }}>
+                    <select className="input text-xs flex-1" value="" onChange={e => { const p = products.find((pr: { id: string; name: string; cost_price: number; stock_quantity: number }) => pr.id === e.target.value); if (p) setPoForm((f) => ({ ...f, items: [...f.items, { description: p.name, quantity: 1, unit_cost: p.cost_price, product_id: p.id }] })) }}>
                       <option value="">From Inventory</option>
-                      {products.map((p: any) => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.cost_price)} (stock: {p.stock_quantity})</option>)}
+                      {products.map((p: { id: string; name: string; cost_price: number; stock_quantity: number }) => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.cost_price)} (stock: {p.stock_quantity})</option>)}
                     </select>
                   )}
                 </div>
               </div>
-              <div className="flex justify-end"><span className="text-sm font-bold text-brand-600">Total: {formatCurrency(poForm.items.reduce((s: number, i: any) => s + i.quantity * i.unit_cost, 0))}</span></div>
+              <div className="flex justify-end"><span className="text-sm font-bold text-brand-600">Total: {formatCurrency(poForm.items.reduce((s: number, i: POItem) => s + i.quantity * i.unit_cost, 0))}</span></div>
             </div>
             <div className="flex gap-2 p-5 border-t border-surface-100 flex-shrink-0">
               <button onClick={() => setShowNewPO(false)} className="btn-secondary flex-1">Cancel</button>
@@ -226,21 +230,21 @@ export default function PurchasingPage() {
 
       {/* New Supplier Modal */}
       {showNewSupplier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Supplier</h2>
               <button onClick={() => setShowNewSupplier(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
             </div>
             <div className="p-5 space-y-4">
-              <div><label className="label">Name *</label><input className="input" value={supForm.name} onChange={e => setSupForm((f: any) => ({ ...f, name: e.target.value }))} /></div>
+              <div><label className="label">Name *</label><input className="input" value={supForm.name} onChange={e => setSupForm((f) => ({ ...f, name: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Email</label><input className="input" type="email" value={supForm.email} onChange={e => setSupForm((f: any) => ({ ...f, email: e.target.value }))} /></div>
-                <div><label className="label">Phone</label><input className="input" value={supForm.phone} onChange={e => setSupForm((f: any) => ({ ...f, phone: e.target.value }))} /></div>
+                <div><label className="label">Email</label><input className="input" type="email" value={supForm.email} onChange={e => setSupForm((f) => ({ ...f, email: e.target.value }))} /></div>
+                <div><label className="label">Phone</label><input className="input" value={supForm.phone} onChange={e => setSupForm((f) => ({ ...f, phone: e.target.value }))} /></div>
               </div>
-              <div><label className="label">Address</label><input className="input" value={supForm.address} onChange={e => setSupForm((f: any) => ({ ...f, address: e.target.value }))} /></div>
+              <div><label className="label">Address</label><input className="input" value={supForm.address} onChange={e => setSupForm((f) => ({ ...f, address: e.target.value }))} /></div>
               <div><label className="label">Payment Terms</label>
-                <select className="input" value={supForm.payment_terms} onChange={e => setSupForm((f: any) => ({ ...f, payment_terms: e.target.value }))}>
+                <select className="input" value={supForm.payment_terms} onChange={e => setSupForm((f) => ({ ...f, payment_terms: e.target.value }))}>
                   <option value="">Select</option><option value="Cash">Cash</option><option value="Net 15">Net 15</option><option value="Net 30">Net 30</option><option value="Net 60">Net 60</option>
                 </select>
               </div>

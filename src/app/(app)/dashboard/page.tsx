@@ -5,8 +5,12 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import AICommandCenter from '@/components/dashboard/AICommandCenter'
 import GettingStarted from '@/components/dashboard/GettingStarted'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
+import { SupabaseClient } from '@supabase/supabase-js'
+import type { DbRow } from '@/types'
 
-async function getData(userId: string, supabase: any) {
+type DashboardRecord = DbRow
+
+async function getData(userId: string, supabase: SupabaseClient) {
   const { data: ws } = await supabase.from('workspaces').select('id, terminology, industry, name').eq('owner_id', userId).single()
   if (!ws) return null
 
@@ -15,7 +19,7 @@ async function getData(userId: string, supabase: any) {
 
   // Parallel fetch all ERP data
   // Safe query helper — returns empty array if table doesn't exist
-  const safeQuery = async (query: any) => {
+  const safeQuery = async (query: PromiseLike<{ data: DashboardRecord[] | null }>) => {
     const res = await query
     return res?.data || []
   }
@@ -31,32 +35,32 @@ async function getData(userId: string, supabase: any) {
     safeQuery(supabase.from('employees').select('id, salary, salary_period, status').eq('workspace_id', ws.id).eq('status', 'active')),
   ])
 
-  const openDeals = deals.filter((d: any) => d.status === 'open')
-  const term = (ws.terminology as any) || {}
+  const openDeals = deals.filter((d) => d.status === 'open')
+  const term = (ws.terminology as Record<string, { singular?: string; plural?: string }>) || {}
 
   // CRM metrics
-  const hotContacts = (contacts as any[]).filter((c: any) => c.score_label === 'hot').length
+  const hotContacts = contacts.filter((c) => c.score_label === 'hot').length
   const atRiskDeals = 0
 
   // Finance metrics
-  const outstandingInvoices = (invoices as any[]).filter((i: any) => ['sent', 'partial', 'overdue'].includes(i.status))
-  const totalOutstanding = outstandingInvoices.reduce((s: number, i: any) => s + (i.balance_due || 0), 0)
-  const collectedThisMonth = (invoices as any[]).filter((i: any) => i.status === 'paid').reduce((s: number, i: any) => s + (i.total || 0), 0)
+  const outstandingInvoices = invoices.filter((i) => ['sent', 'partial', 'overdue'].includes(i.status as string))
+  const totalOutstanding = outstandingInvoices.reduce((s: number, i) => s + ((i.balance_due as number) || 0), 0)
+  const collectedThisMonth = invoices.filter((i) => i.status === 'paid').reduce((s: number, i) => s + ((i.total as number) || 0), 0)
 
   // Inventory metrics
-  const lowStockCount = (products as any[]).filter((p: any) => p.stock_quantity <= p.min_stock).length
-  const inventoryValue = (products as any[]).reduce((s: number, p: any) => s + (p.stock_quantity * p.cost_price), 0)
+  const lowStockCount = products.filter((p) => (p.stock_quantity as number) <= (p.min_stock as number)).length
+  const inventoryValue = products.reduce((s: number, p) => s + ((p.stock_quantity as number) * (p.cost_price as number)), 0)
 
   // HR metrics
-  const monthlyPayroll = (employees as any[]).reduce((s: number, e: any) => {
-    let monthly = e.salary || 0
+  const monthlyPayroll = employees.reduce((s: number, e) => {
+    let monthly = (e.salary as number) || 0
     if (e.salary_period === 'annual') monthly /= 12
     if (e.salary_period === 'weekly') monthly *= 4.33
     return s + monthly
   }, 0)
 
   // Industry KPIs
-  let industryKPIs: any[] = []
+  let industryKPIs: { key: string; label: string; value: string | number; icon?: string; trend?: string }[] = []
   try { industryKPIs = await getIndustryKPIs(supabase, ws.id, ws.industry || 'generic') } catch {}
 
   return {
@@ -66,21 +70,21 @@ async function getData(userId: string, supabase: any) {
     contactLabel: term.contact?.plural || 'Contacts',
     industryKPIs,
     crm: {
-      pipelineValue: (openDeals as any[]).reduce((s: number, d: any) => s + (d.value || 0), 0),
+      pipelineValue: openDeals.reduce((s: number, d) => s + ((d.value as number) || 0), 0),
       openDeals: openDeals.length,
       wonThisMonth: wonDeals.length,
-      wonValue: (wonDeals as any[]).reduce((s: number, d: any) => s + (d.value || 0), 0),
+      wonValue: wonDeals.reduce((s: number, d) => s + ((d.value as number) || 0), 0),
       contacts: contacts.length,
       hotContacts,
       atRiskDeals,
-      overdueTasks: (overdueTasks as any[]).length,
-      pendingQuotes: (quotes as any[]).filter((q: any) => q.status === 'sent').length,
+      overdueTasks: overdueTasks.length,
+      pendingQuotes: quotes.filter((q) => q.status === 'sent').length,
     },
     finance: {
       totalOutstanding,
       outstandingCount: outstandingInvoices.length,
       collected: collectedThisMonth,
-      overdueInvoices: (invoices as any[]).filter((i: any) => i.status === 'overdue').length,
+      overdueInvoices: invoices.filter((i) => i.status === 'overdue').length,
     },
     inventory: {
       totalProducts: products.length,
@@ -120,7 +124,7 @@ export default async function DashboardPage() {
       {/* Industry KPIs */}
       {data.industryKPIs.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-          {data.industryKPIs.slice(0, 6).map((kpi: any) => (
+          {data.industryKPIs.slice(0, 6).map((kpi) => (
             <div key={kpi.key || kpi.label} className="card p-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 bg-surface-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">{kpi.icon || '📊'}</div>
@@ -138,10 +142,10 @@ export default async function DashboardPage() {
       <AICommandCenter />
 
       {/* ERP Module Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-8">
 
         {/* CRM Module */}
-        <Link href="/pipeline" className="card p-5 hover:shadow-card-hover transition-all group">
+        <Link href="/pipeline" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Sales / CRM</h3>
             <span className="text-lg">🔀</span>
@@ -175,7 +179,7 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Finance Module */}
-        <Link href="/invoices" className="card p-5 hover:shadow-card-hover transition-all group">
+        <Link href="/invoices" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Finance</h3>
             <span className="text-lg">💰</span>
@@ -207,7 +211,7 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Inventory Module */}
-        <Link href="/inventory" className="card p-5 hover:shadow-card-hover transition-all group">
+        <Link href="/inventory" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Inventory</h3>
             <span className="text-lg">📦</span>
@@ -236,7 +240,7 @@ export default async function DashboardPage() {
         </Link>
 
         {/* HR Module */}
-        <Link href="/hr" className="card p-5 hover:shadow-card-hover transition-all group">
+        <Link href="/hr" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Human Resources</h3>
             <span className="text-lg">👥</span>
@@ -259,10 +263,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex gap-2 mt-6">
+      <div className="flex gap-3 mt-8 flex-wrap">
         {quickActions.map(a => (
           <Link key={a.label} href={a.href}
-            className="flex items-center gap-2 px-4 py-2.5 card hover:shadow-card-hover transition-all text-sm font-medium text-surface-700">
+            className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
             <span>{a.icon}</span> {a.label}
           </Link>
         ))}

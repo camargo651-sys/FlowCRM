@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -14,7 +14,7 @@ export async function requireAuth() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -30,7 +30,7 @@ export async function requireAuth() {
   let permissions: Record<string, string[]> | null = null
   if (profile?.custom_role_id) {
     const { data: customRole } = await supabase.from('custom_roles').select('permissions').eq('id', profile.custom_role_id).single()
-    if (customRole?.permissions) permissions = customRole.permissions as any
+    if (customRole?.permissions) permissions = customRole.permissions as Record<string, string[]>
   }
 
   return {

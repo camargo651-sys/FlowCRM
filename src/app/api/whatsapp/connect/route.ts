@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { encryptToken } from '@/lib/whatsapp/client'
@@ -11,7 +11,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -44,8 +44,8 @@ export async function POST(request: Request) {
     }
     const data = await res.json()
     displayPhone = data.display_phone_number || ''
-  } catch (err: any) {
-    return NextResponse.json({ error: `Validation failed: ${err.message}` }, { status: 400 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: `Validation failed: ${err instanceof Error ? err.message : 'Unknown error'}` }, { status: 400 })
   }
 
   // Encrypt and store

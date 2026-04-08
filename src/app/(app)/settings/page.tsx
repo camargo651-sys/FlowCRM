@@ -82,7 +82,7 @@ export default function SettingsPage() {
 
     // Load terminology
     if (ws.terminology) {
-      const term = ws.terminology as any
+      const term = ws.terminology as Record<string, { singular: string; plural: string }>
       if (term.deal) setDealLabel(term.deal)
       if (term.contact) setContactLabel(term.contact)
       if (term.pipeline) setPipelineLabel(term.pipeline)
@@ -158,7 +158,7 @@ export default function SettingsPage() {
   const addStage = (pipelineId: string) => {
     const pipeline = pipelines.find(p => p.id === pipelineId)
     if (!pipeline) return
-    const newStage: any = {
+    const newStage: { id: string; pipeline_id: string; workspace_id: string; name: string; order_index: number; color: string; win_stage: boolean; lost_stage: boolean; created_at: string } = {
       id: `temp-${Date.now()}`, pipeline_id: pipelineId, workspace_id: workspaceId,
       name: 'New Stage', order_index: pipeline.stages.length, color: STAGE_COLORS[pipeline.stages.length % STAGE_COLORS.length],
       win_stage: false, lost_stage: false, created_at: new Date().toISOString(),
@@ -166,7 +166,7 @@ export default function SettingsPage() {
     setPipelines(prev => prev.map(p => p.id === pipelineId ? { ...p, stages: [...p.stages, newStage] } : p))
   }
 
-  const updateStage = (pipelineId: string, stageId: string, field: string, value: any) => {
+  const updateStage = (pipelineId: string, stageId: string, field: string, value: string | boolean | number) => {
     setPipelines(prev => prev.map(p => p.id === pipelineId
       ? { ...p, stages: p.stages.map(s => s.id === stageId ? { ...s, [field]: value } : s) }
       : p
@@ -222,7 +222,7 @@ export default function SettingsPage() {
 
   // --- CUSTOM FIELDS ---
   const addField = () => {
-    const newField: any = {
+    const newField: { id: string; workspace_id: string; entity: string; label: string; key: string; type: string; options: string[]; required: boolean; order_index: number } = {
       id: `temp-${Date.now()}`, workspace_id: workspaceId, entity: fieldEntity,
       label: '', key: '', type: 'text', options: [], required: false,
       order_index: customFields.filter(f => f.entity === fieldEntity).length,
@@ -230,7 +230,7 @@ export default function SettingsPage() {
     setCustomFields(prev => [...prev, newField])
   }
 
-  const updateField = (id: string, field: string, value: any) => {
+  const updateField = (id: string, field: string, value: string | boolean | string[]) => {
     setCustomFields(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f))
   }
 
@@ -286,7 +286,7 @@ export default function SettingsPage() {
   }
 
   const handleLanguageChange = async (newLocale: string) => {
-    setLocale(newLocale as any)
+    setLocale(newLocale as 'en' | 'es' | 'fr' | 'de' | 'pt')
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -307,15 +307,16 @@ export default function SettingsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('settings.title')}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">{t('settings.subtitle')}</p>
+          <p className="page-subtitle">{t('settings.subtitle')}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit overflow-x-auto">
+      <div className="segmented-control mb-8 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
-            className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap', tab === id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
+            data-active={tab === id}
+            className={cn(tab === id && 'active')}>
             <Icon className="w-3.5 h-3.5" />{label}
           </button>
         ))}

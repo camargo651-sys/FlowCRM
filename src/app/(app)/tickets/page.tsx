@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -14,17 +15,19 @@ const PRIORITY_STYLES: Record<string, string> = {
   low: 'text-surface-400', medium: 'text-blue-600', high: 'text-amber-600', urgent: 'text-red-600',
 }
 
+interface TicketForm { subject: string; description: string; priority: string; contact_id: string; category: string }
+
 export default function TicketsPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [tickets, setTickets] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
+  const [tickets, setTickets] = useState<DbRow[]>([])
+  const [contacts, setContacts] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [workspaceId, setWorkspaceId] = useState('')
-  const [form, setForm] = useState<any>({ subject: '', description: '', priority: 'medium', contact_id: '', category: '' })
+  const [form, setForm] = useState<TicketForm>({ subject: '', description: '', priority: 'medium', contact_id: '', category: '' })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -127,29 +130,29 @@ export default function TicketsPage() {
       )}
 
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Ticket</h2>
               <button onClick={() => setShowNew(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
             </div>
             <div className="p-5 space-y-4">
-              <div><label className="label">Subject *</label><input className="input" value={form.subject} onChange={e => setForm((f: any) => ({ ...f, subject: e.target.value }))} /></div>
-              <div><label className="label">Description</label><textarea className="input resize-none" rows={3} value={form.description} onChange={e => setForm((f: any) => ({ ...f, description: e.target.value }))} /></div>
+              <div><label className="label">Subject *</label><input className="input" value={form.subject} onChange={e => setForm((f: TicketForm) => ({ ...f, subject: e.target.value }))} /></div>
+              <div><label className="label">Description</label><textarea className="input resize-none" rows={3} value={form.description} onChange={e => setForm((f: TicketForm) => ({ ...f, description: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="label">Priority</label>
-                  <select className="input" value={form.priority} onChange={e => setForm((f: any) => ({ ...f, priority: e.target.value }))}>
+                  <select className="input" value={form.priority} onChange={e => setForm((f: TicketForm) => ({ ...f, priority: e.target.value }))}>
                     <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
                   </select>
                 </div>
                 <div><label className="label">Contact</label>
-                  <select className="input" value={form.contact_id} onChange={e => setForm((f: any) => ({ ...f, contact_id: e.target.value }))}>
+                  <select className="input" value={form.contact_id} onChange={e => setForm((f: TicketForm) => ({ ...f, contact_id: e.target.value }))}>
                     <option value="">None</option>
                     {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
-              <div><label className="label">Category</label><input className="input" value={form.category} onChange={e => setForm((f: any) => ({ ...f, category: e.target.value }))} placeholder="e.g. Billing, Technical, General" /></div>
+              <div><label className="label">Category</label><input className="input" value={form.category} onChange={e => setForm((f: TicketForm) => ({ ...f, category: e.target.value }))} placeholder="e.g. Billing, Technical, General" /></div>
               <div className="flex gap-2">
                 <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>
                 <button onClick={createTicket} disabled={!form.subject || saving} className="btn-primary flex-1">Create Ticket</button>

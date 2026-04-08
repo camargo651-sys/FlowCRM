@@ -13,7 +13,7 @@ interface CartItem { product: Product; quantity: number }
 
 export default function StorefrontPage() {
   const { slug } = useParams()
-  const [store, setStore] = useState<any>(null)
+  const [store, setStore] = useState<{ name: string; description?: string; primary_color?: string; logo_url?: string; color?: string; logo?: string } | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)

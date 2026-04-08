@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import type { DbRow } from '@/types'
 
 function getSupabase() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabase()
   if (!supabase) return NextResponse.json({ status: 'ok' })
 
-  let body: any
+  let body: DbRow
   try { body = await request.json() } catch { return NextResponse.json({ status: 'ok' }) }
 
   // Determine platform
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ status: 'ok' })
 }
 
-async function createLead(supabase: any, data: any) {
+async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>, data: DbRow) {
   // Find workspace (use first active one or from metadata)
   const workspaceId = data.metadata?.workspace_id
   let wsId = workspaceId

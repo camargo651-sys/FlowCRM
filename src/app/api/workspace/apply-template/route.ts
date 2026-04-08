@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getTemplate } from '@/lib/industry-templates'
@@ -12,7 +12,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -21,7 +21,7 @@ function getSupabase() {
 }
 
 // Automation mappings for each trigger template
-const AUTOMATION_MAPPINGS: Record<string, { trigger_type: string; trigger_config: any; action_type: string; action_config: any }> = {
+const AUTOMATION_MAPPINGS: Record<string, { trigger_type: string; trigger_config: Record<string, string | number>; action_type: string; action_config: Record<string, string | number> }> = {
   'Viewing reminder': {
     trigger_type: 'task_due_soon',
     trigger_config: { hours_before: 24, task_type: 'meeting' },
@@ -217,7 +217,7 @@ export async function POST(request: Request) {
         trigger_config: mapping.trigger_config,
         action_type: mapping.action_type,
         action_config: mapping.action_config,
-      }, { onConflict: 'workspace_id,name' } as any)
+      }, { onConflict: 'workspace_id,name' })
     }
   }
 

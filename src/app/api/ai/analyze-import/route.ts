@@ -1,6 +1,7 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import type { DbRow } from '@/types'
 
 function getSupabase() {
   const cookieStore = cookies()
@@ -10,7 +11,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -29,8 +30,8 @@ export async function POST(request: NextRequest) {
   const { tables } = await request.json()
 
   // Build prompt with table schemas and sample data
-  const tablesDescription = tables.map((t: any) => {
-    const sampleRows = t.rows.slice(0, 3).map((r: any) => {
+  const tablesDescription = tables.map((t: { name: string; headers: string[]; rows: DbRow[] }) => {
+    const sampleRows = t.rows.slice(0, 3).map((r) => {
       const entries = Object.entries(r).slice(0, 10).map(([k, v]) => `${k}: ${String(v).slice(0, 80)}`)
       return entries.join(', ')
     }).join('\n    ')
@@ -91,7 +92,7 @@ JSON:`
     const analysis = JSON.parse(jsonStr)
 
     return NextResponse.json({ analysis })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
   }
 }

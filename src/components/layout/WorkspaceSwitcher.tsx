@@ -58,7 +58,7 @@ export default function WorkspaceSwitcher({ currentName, currentColor }: { curre
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-xl shadow-lg border border-surface-100 z-50 p-1.5">
+          <div className="absolute left-0 top-full mt-1.5 w-52 bg-white rounded-xl shadow-float border border-surface-100 z-50 p-1.5 animate-scale-in">
             {workspaces.map(ws => (
               <div key={ws.id}
                 className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-xs',

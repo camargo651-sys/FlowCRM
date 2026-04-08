@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -10,7 +10,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -28,7 +28,7 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let ws: any = null
+  let ws: { id: string; name: string; terminology: Record<string, string>; industry?: string } | null = null
   const { data: wsData, error: wsError } = await supabase.from('workspaces').select('id, name, terminology, industry').eq('owner_id', user.id).single()
   if (wsError) {
     // Fallback without terminology column
@@ -58,7 +58,7 @@ export async function POST() {
   const quotes = quotesRes.data || []
 
   // Build terminology
-  const term = ws.terminology as any || {}
+  const term = (ws.terminology as Record<string, { singular?: string; plural?: string }>) || {}
   const dealLabel = term.deal?.singular || 'Deal'
   const contactLabel = term.contact?.singular || 'Contact'
 
@@ -84,22 +84,22 @@ Terminology: ${dealLabel}s, ${contactLabel}s
 Today: ${now.toLocaleDateString()}
 
 ### Open ${dealLabel}s (${openDeals.length}):
-${openDeals.map(d => `- "${d.title}" | ${d.value ? '$' + d.value : 'no value'} | Stage: ${(d as any).pipeline_stages?.name || 'unknown'} | Contact: ${(d as any).contacts?.name || 'none'} | Last updated: ${new Date(d.updated_at).toLocaleDateString()} | Close date: ${d.expected_close_date || 'not set'}`).join('\n')}
+${openDeals.map(d => `- "${d.title}" | ${d.value ? '$' + d.value : 'no value'} | Stage: ${(d as { pipeline_stages?: { name?: string } }).pipeline_stages?.name || 'unknown'} | Contact: ${(d as { contacts?: { name?: string } }).contacts?.name || 'none'} | Last updated: ${new Date(d.updated_at).toLocaleDateString()} | Close date: ${d.expected_close_date || 'not set'}`).join('\n')}
 
 ### Stale ${dealLabel}s (no activity in 7+ days): ${staleDeals.length}
-${staleDeals.map(d => `- "${d.title}" (${(d as any).contacts?.name || 'no contact'}) — last touch: ${new Date(d.updated_at).toLocaleDateString()}`).join('\n')}
+${staleDeals.map(d => `- "${d.title}" (${(d as { contacts?: { name?: string } }).contacts?.name || 'no contact'}) — last touch: ${new Date(d.updated_at).toLocaleDateString()}`).join('\n')}
 
 ### Closing this week: ${upcomingCloses.length}
 ${upcomingCloses.map(d => `- "${d.title}" closing ${d.expected_close_date} — ${d.value ? '$' + d.value : 'no value'}`).join('\n')}
 
 ### Overdue tasks: ${overdueActivities.length}
-${overdueActivities.map(a => `- "${a.title}" (${a.type}) due ${a.due_date ? new Date(a.due_date).toLocaleDateString() : '?'} — ${(a as any).contacts?.name || ''} ${(a as any).deals?.title ? '/ ' + (a as any).deals.title : ''}`).join('\n')}
+${overdueActivities.map(a => `- "${a.title}" (${a.type}) due ${a.due_date ? new Date(a.due_date).toLocaleDateString() : '?'} — ${(a as { contacts?: { name?: string } }).contacts?.name || ''} ${(a as { deals?: { title?: string } }).deals?.title ? '/ ' + (a as { deals?: { title?: string } }).deals?.title : ''}`).join('\n')}
 
 ### Pending activities (not done): ${activities.filter(a => !a.done).length}
 ${activities.filter(a => !a.done).slice(0, 10).map(a => `- "${a.title}" (${a.type}) ${a.due_date ? 'due ' + new Date(a.due_date).toLocaleDateString() : ''}`).join('\n')}
 
 ### Quotes: ${draftQuotes.length} drafts, ${sentQuotes.length} sent, ${quotes.filter(q => q.status === 'accepted').length} accepted
-${quotes.slice(0, 5).map(q => `- "${q.title}" — $${q.total} — ${q.status} — ${(q as any).contacts?.name || 'no client'}`).join('\n')}
+${quotes.slice(0, 5).map(q => `- "${q.title}" — $${q.total} — ${q.status} — ${(q as { contacts?: { name?: string } }).contacts?.name || 'no client'}`).join('\n')}
 
 ### Recent contacts (last 7 days): ${recentContacts.length} new
 ### Total contacts: ${contacts.length}
@@ -182,7 +182,7 @@ Rules:
     }
 
     return NextResponse.json(parsed)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
   }
 }

@@ -22,8 +22,8 @@ export default function InvoicesPage() {
   const supabase = createClient()
   const { t } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
+  const [contacts, setContacts] = useState<{ id: string; name: string }[]>([])
+  const [products, setProducts] = useState<{ id: string; name: string; unit_price: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -31,7 +31,9 @@ export default function InvoicesPage() {
   const [workspaceId, setWorkspaceId] = useState('')
 
   // Form
-  const [form, setForm] = useState<any>({ contact_id: '', due_date: '', notes: '', items: [] })
+  interface InvoiceItem { description: string; quantity: number; unit_price: number; product_id: string | null }
+  interface InvoiceForm { contact_id: string; due_date: string; notes: string; items: InvoiceItem[] }
+  const [form, setForm] = useState<InvoiceForm>({ contact_id: '', due_date: '', notes: '', items: [] })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -54,12 +56,12 @@ export default function InvoicesPage() {
 
   useEffect(() => { load() }, [load])
 
-  const addItem = () => setForm((f: any) => ({ ...f, items: [...f.items, { description: '', quantity: 1, unit_price: 0, product_id: null }] }))
-  const addFromProduct = (p: any) => setForm((f: any) => ({ ...f, items: [...f.items, { description: p.name, quantity: 1, unit_price: p.unit_price, product_id: p.id }] }))
-  const updateItem = (i: number, field: string, val: any) => setForm((f: any) => ({ ...f, items: f.items.map((item: any, idx: number) => idx === i ? { ...item, [field]: val } : item) }))
-  const removeItem = (i: number) => setForm((f: any) => ({ ...f, items: f.items.filter((_: any, idx: number) => idx !== i) }))
+  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { description: '', quantity: 1, unit_price: 0, product_id: null }] }))
+  const addFromProduct = (p: { id: string; name: string; unit_price: number }) => setForm((f) => ({ ...f, items: [...f.items, { description: p.name, quantity: 1, unit_price: p.unit_price, product_id: p.id }] }))
+  const updateItem = (i: number, field: string, val: string | number) => setForm((f) => ({ ...f, items: f.items.map((item, idx: number) => idx === i ? { ...item, [field]: val } : item) }))
+  const removeItem = (i: number) => setForm((f) => ({ ...f, items: f.items.filter((_, idx: number) => idx !== i) }))
 
-  const subtotal = form.items.reduce((s: number, i: any) => s + (i.quantity * i.unit_price), 0)
+  const subtotal = form.items.reduce((s: number, i) => s + (i.quantity * i.unit_price), 0)
   const taxAmount = subtotal * 0 // configurable later
   const total = subtotal + taxAmount
 
@@ -79,7 +81,7 @@ export default function InvoicesPage() {
 
     if (inv) {
       await supabase.from('invoice_items').insert(
-        form.items.map((item: any, i: number) => ({
+        form.items.map((item: InvoiceItem, i: number) => ({
           invoice_id: inv.id, product_id: item.product_id || null,
           description: item.description, quantity: item.quantity,
           unit_price: item.unit_price, total: item.quantity * item.unit_price, order_index: i,
@@ -99,7 +101,7 @@ export default function InvoicesPage() {
   }
 
   const filtered = invoices.filter(inv => {
-    if (search && !inv.invoice_number.toLowerCase().includes(search.toLowerCase()) && !(inv as any).contacts?.name?.toLowerCase().includes(search.toLowerCase())) return false
+    if (search && !inv.invoice_number.toLowerCase().includes(search.toLowerCase()) && !(inv as { contacts?: { name?: string } }).contacts?.name?.toLowerCase().includes(search.toLowerCase())) return false
     if (filterStatus !== 'all' && inv.status !== filterStatus) return false
     return true
   })
@@ -180,7 +182,7 @@ export default function InvoicesPage() {
               {filtered.map(inv => (
                 <tr key={inv.id} className="border-b border-surface-50 hover:bg-surface-50 transition-colors">
                   <td className="px-4 py-3"><span className="text-sm font-semibold text-surface-800 font-mono">{inv.invoice_number}</span></td>
-                  <td className="px-4 py-3 hidden md:table-cell"><span className="text-sm text-surface-600">{(inv as any).contacts?.name || '—'}</span></td>
+                  <td className="px-4 py-3 hidden md:table-cell"><span className="text-sm text-surface-600">{(inv as { contacts?: { name?: string } }).contacts?.name || '—'}</span></td>
                   <td className="px-4 py-3 hidden lg:table-cell"><span className="text-xs text-surface-500">{inv.issue_date}</span></td>
                   <td className="px-4 py-3 text-right"><span className="text-sm font-bold text-surface-900">{formatCurrency(inv.total)}</span></td>
                   <td className="px-4 py-3 text-right hidden md:table-cell">
@@ -205,31 +207,31 @@ export default function InvoicesPage() {
 
       {/* New Invoice Modal */}
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-2xl max-h-[85vh] flex flex-col animate-slide-up">
-            <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
-              <h2 className="font-semibold text-surface-900">New Invoice</h2>
-              <button onClick={() => setShowNew(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-2xl">
+            <div className="modal-header">
+              <h2>New Invoice</h2>
+              <button onClick={() => setShowNew(false)} className="modal-close"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+            <div className="modal-body space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Client</label>
-                  <select className="input" value={form.contact_id} onChange={e => setForm((f: any) => ({ ...f, contact_id: e.target.value }))}>
+                  <select className="input" value={form.contact_id} onChange={e => setForm((f) => ({ ...f, contact_id: e.target.value }))}>
                     <option value="">Select client</option>
                     {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="label">Due Date</label>
-                  <input type="date" className="input" value={form.due_date} onChange={e => setForm((f: any) => ({ ...f, due_date: e.target.value }))} />
+                  <input type="date" className="input" value={form.due_date} onChange={e => setForm((f) => ({ ...f, due_date: e.target.value }))} />
                 </div>
               </div>
 
               <div>
                 <label className="label">Items</label>
                 <div className="space-y-2">
-                  {form.items.map((item: any, i: number) => (
+                  {form.items.map((item: InvoiceItem, i: number) => (
                     <div key={i} className="flex gap-2 items-center">
                       <input className="input flex-1 text-xs" placeholder="Description" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
                       <input className="input w-16 text-xs text-center" type="number" placeholder="Qty" value={item.quantity} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 0)} />
@@ -242,9 +244,9 @@ export default function InvoicesPage() {
                 <div className="flex gap-2 mt-2">
                   <button onClick={addItem} className="btn-ghost btn-sm flex-1 border border-dashed border-surface-200"><Plus className="w-3.5 h-3.5" /> Add Item</button>
                   {products.length > 0 && (
-                    <select className="input text-xs flex-1" value="" onChange={e => { const p = products.find((pr: any) => pr.id === e.target.value); if (p) addFromProduct(p) }}>
+                    <select className="input text-xs flex-1" value="" onChange={e => { const p = products.find((pr: { id: string; name: string; unit_price: number }) => pr.id === e.target.value); if (p) addFromProduct(p) }}>
                       <option value="">Add from Inventory</option>
-                      {products.map((p: any) => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.unit_price)}</option>)}
+                      {products.map((p: { id: string; name: string; unit_price: number }) => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.unit_price)}</option>)}
                     </select>
                   )}
                 </div>
@@ -257,7 +259,7 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
-              <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={e => setForm((f: any) => ({ ...f, notes: e.target.value }))} /></div>
+              <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={e => setForm((f) => ({ ...f, notes: e.target.value }))} /></div>
             </div>
             <div className="flex gap-2 p-5 border-t border-surface-100 flex-shrink-0">
               <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>

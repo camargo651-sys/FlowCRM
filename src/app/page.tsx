@@ -29,15 +29,15 @@ export default async function Home() {
       <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-700 rounded-full text-xs font-semibold mb-6">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-          AI-Powered ERP — Zero Configuration
+          AI-Powered ERP — Ready in 60 Seconds
         </div>
         <h1 className="text-5xl sm:text-6xl font-extrabold text-surface-900 leading-tight tracking-tight">
           The ERP that runs<br />
           <span className="text-brand-600">your entire business</span>
         </h1>
         <p className="text-lg text-surface-500 mt-6 max-w-2xl mx-auto leading-relaxed">
-          CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce — all in one platform.
-          AI-powered, zero data entry, ready in 60 seconds. No specialist needed.
+          CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce — unified in one platform.
+          AI handles the data entry. You focus on growing your business.
         </p>
         <div className="flex items-center justify-center gap-4 mt-10">
           <Link href="/auth/signup" className="px-8 py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors text-sm shadow-lg shadow-brand-600/25">
@@ -55,8 +55,8 @@ export default async function Home() {
       {/* Features */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-surface-900">Why Tracktio?</h2>
-          <p className="text-surface-500 mt-3 max-w-xl mx-auto">Three pillars that make us fundamentally different from Odoo, SAP, and Zoho</p>
+          <h2 className="text-3xl font-bold text-surface-900">Why teams switch to Tracktio</h2>
+          <p className="text-surface-500 mt-3 max-w-xl mx-auto">Three things that make us fundamentally different from Odoo, SAP, and Zoho</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -188,10 +188,10 @@ export default async function Home() {
         <h2 className="text-3xl font-bold text-surface-900">Stop juggling 10 tools.<br />Run everything from one place.</h2>
         <p className="text-surface-500 mt-4 max-w-lg mx-auto">
           Tracktio replaces Odoo, SAP, Zoho, and Monday.com — at a fraction of the cost, with zero configuration.
-          Ready for your industry in 60 seconds.
+          Tailored to your industry in 60 seconds.
         </p>
         <Link href="/auth/signup" className="inline-flex px-8 py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors text-sm shadow-lg shadow-brand-600/25 mt-8">
-          Get started for free
+          Start free — takes 60 seconds
         </Link>
       </section>
 
@@ -199,13 +199,13 @@ export default async function Home() {
       {/* Contact */}
       <section className="bg-surface-50 py-16">
         <div className="max-w-md mx-auto px-6 text-center">
-          <h2 className="text-2xl font-bold text-surface-900 mb-2">Questions?</h2>
-          <p className="text-surface-500 text-sm mb-6">We'd love to hear from you. Drop us a message.</p>
+          <h2 className="text-2xl font-bold text-surface-900 mb-2">Have questions?</h2>
+          <p className="text-surface-500 text-sm mb-6">We respond within 24 hours. Let us know how we can help.</p>
           <form action="https://formspree.io/f/placeholder" method="POST" className="space-y-3">
             <input type="text" name="name" required placeholder="Your name" className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm outline-none focus:border-brand-500" />
             <input type="email" name="email" required placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm outline-none focus:border-brand-500" />
             <textarea name="message" required rows={3} placeholder="Your message" className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm outline-none focus:border-brand-500 resize-none" />
-            <button type="submit" className="w-full py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors text-sm">Send Message</button>
+            <button type="submit" className="w-full py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors text-sm">Send message</button>
           </form>
         </div>
       </section>

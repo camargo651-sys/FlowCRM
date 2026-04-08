@@ -14,7 +14,7 @@ export type DomainEvent =
   | { type: 'deal.won'; payload: { workspaceId: string; dealId: string; dealTitle: string; value?: number; contactId?: string; contactName?: string; userId: string } }
   | { type: 'deal.lost'; payload: { workspaceId: string; dealId: string; dealTitle: string; contactId?: string; userId: string } }
   | { type: 'deal.stage_changed'; payload: { workspaceId: string; dealId: string; dealTitle: string; stageName: string; previousStageName?: string; contactId?: string; userId: string } }
-  | { type: 'quote.accepted'; payload: { workspaceId: string; quoteId: string; quoteTitle: string; total: number; contactId?: string; userId: string; items: any[] } }
+  | { type: 'quote.accepted'; payload: { workspaceId: string; quoteId: string; quoteTitle: string; total: number; contactId?: string; userId: string; items: { product_id?: string; quantity?: number; description?: string }[] } }
   | { type: 'quote.sent'; payload: { workspaceId: string; quoteId: string; quoteTitle: string; contactId?: string; userId: string } }
   | { type: 'invoice.paid'; payload: { workspaceId: string; invoiceId: string; invoiceNumber: string; amount: number; contactId?: string; userId: string } }
   | { type: 'invoice.created'; payload: { workspaceId: string; invoiceId: string; invoiceNumber: string; total: number; contactId?: string; userId: string } }
@@ -25,6 +25,40 @@ export type DomainEvent =
   | { type: 'employee.created'; payload: { workspaceId: string; employeeId: string; employeeName: string; userId: string } }
   | { type: 'leave.requested'; payload: { workspaceId: string; employeeId: string; employeeName: string; type: string; days: number } }
 
+// Common fields across all event payloads — used for handlers that work with any event type
+type EventPayloadCommon = {
+  workspaceId: string
+  userId?: string
+  dealId?: string
+  dealTitle?: string
+  dealValue?: number
+  value?: number
+  contactId?: string
+  contactName?: string
+  contactPhone?: string
+  invoiceId?: string
+  invoiceNumber?: string
+  productId?: string
+  productName?: string
+  employeeId?: string
+  employeeName?: string
+  quoteId?: string
+  quoteTitle?: string
+  stageName?: string
+  previousStageName?: string
+  amount?: number
+  total?: number
+  source?: string
+  items?: { product_id?: string; quantity?: number; description?: string }[]
+  currentStock?: number
+  minStock?: number
+  poId?: string
+  poNumber?: string
+  supplierId?: string
+  type?: string
+  days?: number
+  paymentId?: string
+}
 type EventHandler = (event: DomainEvent, supabase: SupabaseClient) => Promise<void>
 
 const handlers: Map<string, EventHandler[]> = new Map()
@@ -55,7 +89,7 @@ export async function publish(event: DomainEvent, supabase: SupabaseClient) {
 
 // When a deal is won → create invoice, emit signal, fire automations
 on('deal.won', async (event, supabase) => {
-  const p = event.payload as any
+  const p = event.payload as EventPayloadCommon
 
   // Emit engagement signal
   if (p.contactId) {
@@ -99,7 +133,7 @@ on('deal.won', async (event, supabase) => {
 
 // When deal stage changes → fire automations, emit signal
 on('deal.stage_changed', async (event, supabase) => {
-  const p = event.payload as any
+  const p = event.payload as EventPayloadCommon
   await fireTrigger(supabase, {
     workspaceId: p.workspaceId,
     triggerType: 'deal_stage_changed',
@@ -124,7 +158,7 @@ on('deal.stage_changed', async (event, supabase) => {
 
 // When quote accepted → deduct stock for linked products
 on('quote.accepted', async (event, supabase) => {
-  const p = event.payload as any
+  const p = event.payload as EventPayloadCommon
   for (const item of p.items || []) {
     if (!item.product_id) continue
     const { data: product } = await supabase.from('products').select('stock_quantity').eq('id', item.product_id).single()
@@ -151,7 +185,7 @@ on('quote.accepted', async (event, supabase) => {
 
 // When product hits low stock → notify
 on('product.low_stock', async (event, supabase) => {
-  const p = event.payload as any
+  const p = event.payload as EventPayloadCommon
   const { data: ws } = await supabase.from('workspaces').select('owner_id').eq('id', p.workspaceId).single()
   if (ws) {
     await supabase.from('notifications').insert({
@@ -168,7 +202,7 @@ on('product.low_stock', async (event, supabase) => {
 
 // When contact created → emit signal, fire automations
 on('contact.created', async (event, supabase) => {
-  const p = event.payload as any
+  const p = event.payload as EventPayloadCommon
   await emitSignal(supabase, {
     workspaceId: p.workspaceId, contactId: p.contactId,
     signalType: 'contact_created', source: p.source || 'manual',
@@ -181,7 +215,7 @@ on('contact.created', async (event, supabase) => {
 
 // When payment received → update invoice, emit webhook
 on('payment.received', async (event, supabase) => {
-  const p = event.payload as any
+  const p = event.payload as EventPayloadCommon
   if (p.invoiceId) {
     const { data: invoice } = await supabase.from('invoices').select('total, amount_paid').eq('id', p.invoiceId).single()
     if (invoice) {
@@ -198,7 +232,7 @@ on('payment.received', async (event, supabase) => {
 
 // Wildcard: audit log + outgoing webhooks for all events
 on('*', async (event, supabase) => {
-  const p = event.payload as any
+  const p = event.payload as EventPayloadCommon
 
   // Audit log
   await logAudit(supabase, {

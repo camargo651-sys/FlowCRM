@@ -5,26 +5,35 @@ import { CheckCircle2, Circle, ArrowRight, X, Rocket } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
+interface OnboardingData {
+  contacts: number
+  deals: number
+  products: number
+  invoices: number
+  integrations: number
+  members: number
+}
+
 interface CheckItem {
   key: string
   label: string
   description: string
   href: string
-  check: (data: any) => boolean
+  check: (data: OnboardingData) => boolean
 }
 
 const CHECKLIST: CheckItem[] = [
-  { key: 'contact', label: 'Add your first contact', description: 'Import or create a contact', href: '/contacts', check: d => d.contacts > 0 },
-  { key: 'deal', label: 'Create a deal', description: 'Start tracking an opportunity', href: '/pipeline', check: d => d.deals > 0 },
-  { key: 'product', label: 'Add a product', description: 'Set up your catalog', href: '/inventory', check: d => d.products > 0 },
-  { key: 'invoice', label: 'Create an invoice', description: 'Send your first invoice', href: '/invoices', check: d => d.invoices > 0 },
-  { key: 'integration', label: 'Connect an integration', description: 'Gmail, WhatsApp, or Outlook', href: '/integrations', check: d => d.integrations > 0 },
-  { key: 'team', label: 'Invite a team member', description: 'Collaborate with your team', href: '/team', check: d => d.members > 1 },
+  { key: 'contact', label: 'Add your first contact', description: 'Import or create someone to start building your network', href: '/contacts', check: d => d.contacts > 0 },
+  { key: 'deal', label: 'Create your first deal', description: 'Start tracking an opportunity in your pipeline', href: '/pipeline', check: d => d.deals > 0 },
+  { key: 'product', label: 'Set up a product', description: 'Build your catalog so you can invoice faster', href: '/inventory', check: d => d.products > 0 },
+  { key: 'invoice', label: 'Send your first invoice', description: 'Get paid faster with professional invoices', href: '/invoices', check: d => d.invoices > 0 },
+  { key: 'integration', label: 'Connect your email', description: 'Sync Gmail, WhatsApp, or Outlook for zero data entry', href: '/integrations', check: d => d.integrations > 0 },
+  { key: 'team', label: 'Invite your team', description: 'Collaborate in real time with your colleagues', href: '/team', check: d => d.members > 1 },
 ]
 
 export default function GettingStarted() {
   const supabase = createClient()
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<OnboardingData | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -80,8 +89,8 @@ export default function GettingStarted() {
             <Rocket className="w-5 h-5 text-brand-600" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-surface-900">Getting Started</h3>
-            <p className="text-[10px] text-surface-500">{completed.length} of {CHECKLIST.length} completed</p>
+            <h3 className="text-sm font-bold text-surface-900">Set up your workspace</h3>
+            <p className="text-[10px] text-surface-500">{completed.length} of {CHECKLIST.length} steps completed</p>
           </div>
         </div>
         <button onClick={() => { setDismissed(true); localStorage.setItem('tracktio_getting_started_dismissed', 'true') }}

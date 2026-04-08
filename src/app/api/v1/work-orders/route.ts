@@ -16,7 +16,7 @@ export const { GET, POST, PUT, DELETE } = createCrudHandlers({
         .select('material_id, quantity, waste_percent')
         .eq('bom_id', record.bom_id)
 
-      const consumed: any[] = []
+      const consumed: { material_id?: string; product_id?: string; name?: string; product_name?: string; qty?: number; quantity_consumed?: number; previous_stock?: number; new_stock?: number }[] = []
 
       // Consume materials
       for (const line of bomLines || []) {

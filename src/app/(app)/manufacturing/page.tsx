@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -9,9 +10,10 @@ import { formatCurrency, cn } from '@/lib/utils'
 export default function ManufacturingPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [boms, setBoms] = useState<any[]>([])
-  const [workOrders, setWorkOrders] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
+  interface BomLine { id?: string; material_id: string; quantity: string | number; waste: string | number; waste_percent?: number; products?: { name?: string; sku?: string; cost_price: number } }
+  const [boms, setBoms] = useState<DbRow[]>([])
+  const [workOrders, setWorkOrders] = useState<DbRow[]>([])
+  const [products, setProducts] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'work_orders'|'boms'>('work_orders')
   const [showNewBOM, setShowNewBOM] = useState(false)
@@ -22,7 +24,7 @@ export default function ManufacturingPage() {
   const [bomName, setBomName] = useState('')
   const [bomProductId, setBomProductId] = useState('')
   const [bomYield, setBomYield] = useState(1)
-  const [bomLines, setBomLines] = useState<any[]>([])
+  const [bomLines, setBomLines] = useState<BomLine[]>([])
 
   // WO form
   const [woProductId, setWoProductId] = useState('')
@@ -60,9 +62,9 @@ export default function ManufacturingPage() {
 
     if (bom && bomLines.length) {
       await supabase.from('bom_lines').insert(
-        bomLines.map((l: any, i: number) => ({
-          bom_id: bom.id, material_id: l.material_id, quantity: parseFloat(l.quantity) || 1,
-          waste_percent: parseFloat(l.waste) || 0, order_index: i,
+        bomLines.map((l: BomLine, i: number) => ({
+          bom_id: bom.id, material_id: l.material_id, quantity: parseFloat(String(l.quantity)) || 1,
+          waste_percent: parseFloat(String(l.waste)) || 0, order_index: i,
         }))
       )
     }
@@ -118,9 +120,9 @@ export default function ManufacturingPage() {
         <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-violet-50 rounded-xl flex items-center justify-center"><Package className="w-4 h-4 text-violet-600" /></div><div><p className="text-lg font-bold">{boms.length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">BOMs</p></div></div>
       </div>
 
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[{ id: 'work_orders', label: `Work Orders (${workOrders.length})` }, { id: 'boms', label: `BOMs (${boms.length})` }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as 'work_orders'|'boms')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
             {t.label}
           </button>
@@ -181,19 +183,19 @@ export default function ManufacturingPage() {
                 <table className="w-full text-xs">
                   <thead><tr className="text-surface-400"><th className="text-left py-1">Material</th><th className="text-left py-1">SKU</th><th className="text-right py-1">Qty</th><th className="text-right py-1">Waste %</th><th className="text-right py-1">Cost</th></tr></thead>
                   <tbody>
-                    {bom.bom_lines.map((line: any) => (
+                    {bom.bom_lines.map((line: BomLine & { products?: { name: string; cost_price: number } }) => (
                       <tr key={line.id} className="border-t border-surface-50">
                         <td className="py-1.5 text-surface-700">{line.products?.name}</td>
                         <td className="py-1.5 text-surface-400 font-mono">{line.products?.sku}</td>
                         <td className="py-1.5 text-right font-semibold">{line.quantity}</td>
                         <td className="py-1.5 text-right text-surface-400">{line.waste_percent || 0}%</td>
-                        <td className="py-1.5 text-right font-semibold">{formatCurrency((line.products?.cost_price || 0) * line.quantity)}</td>
+                        <td className="py-1.5 text-right font-semibold">{formatCurrency((line.products?.cost_price || 0) * Number(line.quantity))}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot><tr className="border-t-2 border-surface-200 font-bold">
                     <td colSpan={4} className="py-1.5">Total Material Cost</td>
-                    <td className="py-1.5 text-right">{formatCurrency(bom.bom_lines.reduce((s: number, l: any) => s + (l.products?.cost_price || 0) * l.quantity, 0))}</td>
+                    <td className="py-1.5 text-right">{formatCurrency(bom.bom_lines.reduce((s: number, l: BomLine & { products?: { cost_price: number } }) => s + (l.products?.cost_price || 0) * Number(l.quantity), 0))}</td>
                   </tr></tfoot>
                 </table>
               )}
@@ -204,7 +206,7 @@ export default function ManufacturingPage() {
 
       {/* New BOM Modal */}
       {showNewBOM && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-2xl max-h-[85vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">New Bill of Materials</h2>
@@ -223,7 +225,7 @@ export default function ManufacturingPage() {
               <div><label className="label">Yield Quantity</label><input className="input w-24" type="number" value={bomYield} onChange={e => setBomYield(parseInt(e.target.value) || 1)} /></div>
               <div>
                 <label className="label">Materials</label>
-                {bomLines.map((line: any, i: number) => (
+                {bomLines.map((line: BomLine, i: number) => (
                   <div key={i} className="flex gap-2 items-center mb-2">
                     <select className="input flex-1 text-xs" value={line.material_id} onChange={e => setBomLines(prev => prev.map((l, idx) => idx === i ? { ...l, material_id: e.target.value } : l))}>
                       <option value="">Select material</option>
@@ -247,7 +249,7 @@ export default function ManufacturingPage() {
 
       {/* New Work Order Modal */}
       {showNewWO && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Work Order</h2>

@@ -28,7 +28,7 @@ function NewTaskModal({ onClose, onSave, workspaceId }: { onClose: () => void; o
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+    <div className="modal-overlay">
       <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
         <div className="flex items-center justify-between p-5 border-b border-surface-100">
           <h2 className="font-semibold text-surface-900">New Task</h2>
@@ -42,7 +42,7 @@ function NewTaskModal({ onClose, onSave, workspaceId }: { onClose: () => void; o
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Type</label>
-              <select className="input" value={type} onChange={e => setType(e.target.value as any)}>
+              <select className="input" value={type} onChange={e => setType(e.target.value as typeof TYPES[number])}>
                 {TYPES.map(t => <option key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
               </select>
             </div>
@@ -133,7 +133,7 @@ export default function TasksPage() {
       {/* Filters */}
       <div className="flex gap-1 mb-6">
         {([['all', `All (${tasks.length})`], ['pending', `Pending (${tasks.filter(t => !t.done).length})`], ['overdue', `Overdue (${overdue})`], ['done', `Done (${tasks.filter(t => t.done).length})`]] as const).map(([f, label]) => (
-          <button key={f} onClick={() => setFilter(f as any)}
+          <button key={f} onClick={() => setFilter(f as typeof filter)}
             className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', filter === f ? (f === 'overdue' ? 'bg-red-600 text-white' : 'bg-brand-600 text-white') : 'text-surface-500 hover:bg-surface-100')}>
             {label}
           </button>

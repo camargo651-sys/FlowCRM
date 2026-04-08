@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
-          <p className="text-surface-400 text-sm mb-8">Sign in to your workspace</p>
+          <p className="text-surface-400 text-sm mb-8">Sign in to pick up where you left off</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -112,7 +112,7 @@ export default function LoginPage() {
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <><span>Sign in</span><ArrowRight className="w-4 h-4" /></>
+                <><span>Sign in to workspace</span><ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </form>
@@ -120,7 +120,7 @@ export default function LoginPage() {
           <p className="text-center text-surface-500 text-sm mt-6">
             Don't have an account?{' '}
             <Link href="/auth/signup" className="text-brand-400 hover:text-brand-300 font-medium transition-colors">
-              Create workspace
+              Create a free workspace
             </Link>
           </p>
         </div>

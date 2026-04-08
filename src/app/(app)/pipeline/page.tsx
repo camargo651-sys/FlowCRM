@@ -7,7 +7,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-p
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
-import type { Deal, PipelineStage, Contact } from '@/types'
+import type { Deal, PipelineStage, Contact, DbRow } from '@/types'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -22,14 +22,14 @@ function NewDealModal({ stages, contacts, onClose, onSave, workspaceId, customFi
   stages: PipelineStage[], contacts: Pick<Contact, 'id' | 'name' | 'email'>[], onClose: () => void,
   onSave: (deal: Partial<Deal>) => void, workspaceId: string,
   customFields: { entity: string; label: string; key: string; type: string; options?: string[] }[],
-  template: any,
+  template: { key?: string; name?: string; dealLabel: { singular: string; plural: string }; contactLabel: { singular: string; plural: string } },
 }) {
   const [title, setTitle] = useState('')
   const [value, setValue] = useState('')
   const [stageId, setStageId] = useState(stages[0]?.id || '')
   const [contactId, setContactId] = useState('')
   const [closeDate, setCloseDate] = useState('')
-  const [customValues, setCustomValues] = useState<Record<string, any>>({})
+  const [customValues, setCustomValues] = useState<DbRow>({})
 
   const dealFields = customFields.filter(f => f.entity === 'deal')
 
@@ -46,15 +46,15 @@ function NewDealModal({ stages, contacts, onClose, onSave, workspaceId, customFi
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
-          <h2 className="font-semibold text-surface-900">New {template.dealLabel.singular}</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100 transition-colors">
-            <X className="w-4 h-4 text-surface-500" />
+    <div className="modal-overlay">
+      <div className="modal-panel max-w-md">
+        <div className="modal-header">
+          <h2>New {template.dealLabel.singular}</h2>
+          <button onClick={onClose} className="modal-close">
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="modal-body space-y-4">
           <div>
             <label className="label">{template.dealLabel.singular} title *</label>
             <input className="input" required value={title} onChange={e => setTitle(e.target.value)}
@@ -163,7 +163,7 @@ function DealCard({ deal, onClick }: { deal: DealWithContact; onClick: () => voi
       {/* Show some custom fields on card */}
       {deal.custom_fields && typeof deal.custom_fields === 'object' && Object.keys(deal.custom_fields as object).length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
-          {Object.entries(deal.custom_fields as Record<string, any>).slice(0, 2).map(([key, val]) => (
+          {Object.entries(deal.custom_fields as DbRow).slice(0, 2).map(([key, val]) => (
             val && <span key={key} className="badge-gray text-[9px]">{String(val)}</span>
           ))}
         </div>
@@ -190,7 +190,7 @@ interface PipelineInfo {
   name: string
   color: string
   contact_id?: string | null
-  contacts?: any
+  contacts?: { name: string } | null
 }
 
 export default function PipelinePage() {
@@ -217,7 +217,7 @@ export default function PipelinePage() {
     // Load all pipelines
     const { data: pipelinesData } = await supabase.from('pipelines').select('id, name, color, contact_id, contacts(name)').eq('workspace_id', ws.id).order('order_index')
     const allPipelines = pipelinesData || []
-    setPipelines(allPipelines)
+    setPipelines(allPipelines as unknown as PipelineInfo[])
 
     // Pick active pipeline
     const activeId = pipelineId || allPipelines[0]?.id || ''
@@ -297,7 +297,7 @@ export default function PipelinePage() {
       <div className="page-header flex-shrink-0">
         <div>
           <h1 className="page-title">{template.dealLabel.plural}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">
+          <p className="page-subtitle">
             {totalDeals} {template.dealLabel.plural.toLowerCase()} · {formatCurrency(totalValue)} total
           </p>
         </div>
@@ -316,11 +316,11 @@ export default function PipelinePage() {
 
       {/* Pipeline selector - only show if multiple pipelines */}
       {pipelines.length > 1 && (
-        <div className="flex gap-1 mb-4 p-1 bg-surface-100 rounded-xl w-fit flex-shrink-0 overflow-x-auto no-scrollbar">
+        <div className="segmented-control mb-4 flex-shrink-0 overflow-x-auto no-scrollbar">
           {pipelines.map(p => (
             <button key={p.id} onClick={() => switchPipeline(p.id)}
-              className={cn('flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
-                activePipelineId === p.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
+              data-active={activePipelineId === p.id}
+              className={cn(activePipelineId === p.id && 'active')}>
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
               <span>{p.name}</span>
               {p.contacts?.name && (
@@ -335,13 +335,13 @@ export default function PipelinePage() {
 
       {/* No pipeline */}
       {columns.length === 0 && pipelines.length === 0 && (
-        <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-          <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Filter className="w-8 h-8 text-brand-400" />
+        <div className="empty-state flex-1">
+          <div className="empty-state-icon">
+            <Filter className="w-7 h-7 text-surface-300" />
           </div>
-          <h2 className="text-lg font-semibold text-surface-800 mb-1">No pipeline yet</h2>
-          <p className="text-surface-500 text-sm mb-4 max-w-xs">Go to Settings to create your pipeline.</p>
-          <a href="/settings" className="btn-primary btn-sm">Set up pipeline</a>
+          <p className="empty-state-title">No pipeline yet</p>
+          <p className="empty-state-desc">Go to Settings to create your pipeline and start tracking deals.</p>
+          <a href="/settings" className="btn-primary">Set up pipeline</a>
         </div>
       )}
 

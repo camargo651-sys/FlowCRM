@@ -34,10 +34,12 @@ export function decryptToken(ciphertext: string): string {
 
 interface EmailAccount {
   id: string
-  provider: 'gmail' | 'outlook'
+  provider?: 'gmail' | 'outlook' | string
   access_token: string
-  refresh_token: string
-  token_expires_at: string
+  refresh_token?: string
+  token_expires_at?: string
+  expires_at?: string
+  sync_cursor?: string
 }
 
 interface TokenResult {
@@ -100,7 +102,7 @@ export async function getValidToken(
   onTokenRefreshed: (accountId: string, accessToken: string, expiresAt: Date) => Promise<void>
 ): Promise<string> {
   const decryptedAccess = decryptToken(account.access_token)
-  const expiresAt = new Date(account.token_expires_at)
+  const expiresAt = new Date(account.token_expires_at || account.expires_at || 0)
 
   // If token is still valid (with 5min buffer), return it
   if (expiresAt.getTime() - Date.now() > 5 * 60 * 1000) {
@@ -108,6 +110,7 @@ export async function getValidToken(
   }
 
   // Refresh the token
+  if (!account.refresh_token) throw new Error('No refresh token available')
   const decryptedRefresh = decryptToken(account.refresh_token)
   const result = account.provider === 'gmail'
     ? await refreshGmailToken(decryptedRefresh)

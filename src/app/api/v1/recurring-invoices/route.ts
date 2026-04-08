@@ -63,10 +63,10 @@ export async function POST(request: NextRequest) {
 
       // Create invoice items
       if (inv && rec.items) {
-        const items = (typeof rec.items === 'string' ? JSON.parse(rec.items) : rec.items) as any[]
+        const items = (typeof rec.items === 'string' ? JSON.parse(rec.items) : rec.items) as { description: string; quantity?: number; unit_price?: number }[]
         if (items.length) {
           await auth.supabase.from('invoice_items').insert(
-            items.map((item: any, i: number) => ({
+            items.map((item, i: number) => ({
               invoice_id: inv.id,
               description: item.description,
               quantity: item.quantity || 1,

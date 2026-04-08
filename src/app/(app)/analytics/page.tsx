@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -11,10 +12,10 @@ const COLORS = ['#6172f3','#a78bfa','#34d399','#fbbf24','#f87171','#22d3ee','#f9
 export default function AnalyticsPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [deals, setDeals] = useState<any[]>([])
-  const [stages, setStages] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
-  const [signals, setSignals] = useState<any[]>([])
+  const [deals, setDeals] = useState<DbRow[]>([])
+  const [stages, setStages] = useState<DbRow[]>([])
+  const [contacts, setContacts] = useState<DbRow[]>([])
+  const [signals, setSignals] = useState<DbRow[]>([])
   const [emailCount, setEmailCount] = useState(0)
   const [waCount, setWaCount] = useState(0)
   const [callCount, setCallCount] = useState(0)
@@ -147,13 +148,13 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'channels', label: 'Channels' },
           { id: 'engagement', label: 'Engagement' },
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all',
               tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
             {t.label}
@@ -193,7 +194,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${v/1000}k` : `$${v}`} />
-                  <Tooltip formatter={(v: any, name: string) => [name === 'revenue' ? formatCurrency(v) : v, name === 'revenue' ? 'Revenue' : 'New Contacts']} contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
+                  <Tooltip formatter={(v: number, name: string) => [name === 'revenue' ? formatCurrency(v) : v, name === 'revenue' ? 'Revenue' : 'New Contacts']} contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
                   <Area type="monotone" dataKey="revenue" stroke="#6172f3" strokeWidth={2.5} fill="url(#revenue)" />
                   <Line type="monotone" dataKey="contacts" stroke="#a78bfa" strokeWidth={2} dot={false} />
                 </AreaChart>

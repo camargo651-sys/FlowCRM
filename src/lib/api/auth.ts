@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
 export interface ApiContext {
-  supabase: any
+  supabase: SupabaseClient
   userId: string
   workspaceId: string
   role: string
@@ -58,7 +58,7 @@ export async function authenticateRequest(request: NextRequest): Promise<ApiCont
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -89,7 +89,7 @@ function hashApiKey(key: string): string {
 /**
  * Standard API response helpers
  */
-export function apiSuccess(data: any, meta?: any) {
+export function apiSuccess(data: unknown, meta?: Record<string, unknown>) {
   return NextResponse.json({ data, meta, error: null })
 }
 
@@ -97,7 +97,7 @@ export function apiError(message: string, status: number = 400) {
   return NextResponse.json({ data: null, error: { message } }, { status })
 }
 
-export function apiList(data: any[], total: number, page: number, perPage: number) {
+export function apiList(data: unknown[], total: number, page: number, perPage: number) {
   return NextResponse.json({
     data,
     meta: { total, page, per_page: perPage, total_pages: Math.ceil(total / perPage) },

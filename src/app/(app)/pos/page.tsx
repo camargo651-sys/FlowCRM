@@ -30,15 +30,17 @@ export default function POSPage() {
   const [amountPaid, setAmountPaid] = useState('')
   const [showPayment, setShowPayment] = useState(false)
   const [showReceipt, setShowReceipt] = useState(false)
-  const [lastTransaction, setLastTransaction] = useState<any>(null)
+  const [lastTransaction, setLastTransaction] = useState<{ id: string; total: number; payment_method: string; items: { name: string; quantity: number; price: number; total?: number }[]; created_at: string; transaction_number?: string; change_given?: number } | null>(null)
   const [processing, setProcessing] = useState(false)
+  const [taxRate, setTaxRate] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const { data: ws } = await supabase.from('workspaces').select('id, default_tax_rate').eq('owner_id', user.id).single()
     if (!ws) { setLoading(false); return }
+    setTaxRate((ws.default_tax_rate || 0) / 100)
     setWorkspaceId(ws.id)
 
     const { data } = await supabase.from('products')
@@ -86,7 +88,6 @@ export default function POSPage() {
   }
 
   const subtotal = cart.reduce((s, i) => s + i.total, 0)
-  const taxRate = 0 // TODO: from workspace settings
   const taxAmount = subtotal * taxRate
   const total = subtotal + taxAmount
   const change = parseFloat(amountPaid || '0') - total
@@ -224,7 +225,7 @@ export default function POSPage() {
         {/* Totals */}
         <div className="p-4 border-t border-surface-100 space-y-2">
           <div className="flex justify-between text-sm"><span className="text-surface-500">Subtotal</span><span className="font-semibold">{formatCurrency(subtotal)}</span></div>
-          {taxAmount > 0 && <div className="flex justify-between text-sm"><span className="text-surface-500">Tax</span><span>{formatCurrency(taxAmount)}</span></div>}
+          {taxAmount > 0 && <div className="flex justify-between text-sm"><span className="text-surface-500">Tax ({(taxRate * 100).toFixed(1)}%)</span><span>{formatCurrency(taxAmount)}</span></div>}
           <div className="flex justify-between text-lg font-bold border-t border-surface-100 pt-2">
             <span>Total</span><span className="text-brand-600">{formatCurrency(total)}</span>
           </div>
@@ -240,13 +241,13 @@ export default function POSPage() {
 
       {/* Payment Modal */}
       {showPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up">
-            <div className="flex items-center justify-between p-5 border-b border-surface-100">
-              <h2 className="font-bold text-surface-900">Payment</h2>
-              <button onClick={() => setShowPayment(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4" /></button>
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-sm">
+            <div className="modal-header">
+              <h2>Payment</h2>
+              <button onClick={() => setShowPayment(false)} className="modal-close"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="modal-body space-y-4">
               <div className="text-center">
                 <p className="text-3xl font-extrabold text-brand-600">{formatCurrency(total)}</p>
                 <p className="text-xs text-surface-400 mt-1">Total to collect</p>
@@ -290,23 +291,23 @@ export default function POSPage() {
 
       {/* Receipt Modal */}
       {showReceipt && lastTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs animate-slide-up">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-xs">
             <div className="p-6 text-center">
-              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100">
                 <Receipt className="w-6 h-6 text-emerald-600" />
               </div>
               <p className="font-bold text-surface-900">Sale Complete!</p>
               <p className="text-xs text-surface-400 font-mono mt-1">{lastTransaction.transaction_number}</p>
               <p className="text-2xl font-extrabold text-emerald-600 mt-3">{formatCurrency(lastTransaction.total)}</p>
-              {lastTransaction.change_given > 0 && (
-                <p className="text-sm text-surface-500 mt-1">Change: {formatCurrency(lastTransaction.change_given)}</p>
+              {(lastTransaction.change_given ?? 0) > 0 && (
+                <p className="text-sm text-surface-500 mt-1">Change: {formatCurrency(lastTransaction.change_given ?? 0)}</p>
               )}
               <div className="mt-4 space-y-1 text-xs text-left">
-                {lastTransaction.items.map((item: any, i: number) => (
+                {lastTransaction.items.map((item: { name: string; quantity: number; price: number; total?: number }, i: number) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-surface-600">{item.quantity}x {item.name}</span>
-                    <span className="font-semibold">{formatCurrency(item.total)}</span>
+                    <span className="font-semibold">{formatCurrency(item.total ?? item.price * item.quantity)}</span>
                   </div>
                 ))}
               </div>

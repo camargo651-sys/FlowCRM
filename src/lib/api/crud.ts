@@ -1,27 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateRequest, apiSuccess, apiError, apiList, parsePagination } from './auth'
+import { authenticateRequest, apiSuccess, apiError, apiList, parsePagination, type ApiContext } from './auth'
 import { checkRateLimit, rateLimitHeaders } from './rate-limit'
-import { hasPermission, type Module } from '@/lib/rbac/permissions'
+import { hasPermission, type Module, type Action } from '@/lib/rbac/permissions'
 import { z } from 'zod'
+import type { DbRow } from '@/types'
 
 interface CrudConfig {
   table: string
   module?: string // for RBAC
-  schema?: z.ZodObject<any> // validation for create/update
+  schema?: z.ZodObject<z.ZodRawShape> // validation for create/update
   searchFields?: string[]
   selectFields?: string
   allowedFilters?: string[]
   defaultSort?: string
-  beforeCreate?: (data: any, ctx: any) => Promise<any>
-  afterCreate?: (record: any, ctx: any) => Promise<void>
-  beforeUpdate?: (data: any, ctx: any) => Promise<any>
-  afterUpdate?: (record: any, ctx: any) => Promise<void>
-  afterDelete?: (id: string, ctx: any) => Promise<void>
+  beforeCreate?: (data: DbRow, ctx: ApiContext) => Promise<DbRow>
+  afterCreate?: (record: DbRow, ctx: ApiContext) => Promise<void>
+  beforeUpdate?: (data: DbRow, ctx: ApiContext) => Promise<DbRow>
+  afterUpdate?: (record: DbRow, ctx: ApiContext) => Promise<void>
+  afterDelete?: (id: string, ctx: ApiContext) => Promise<void>
 }
 
 function checkPermission(role: string, module: string | undefined, action: string): NextResponse | null {
   if (!module) return null // no module = no RBAC check
-  if (!hasPermission(role, module as Module, action as any)) {
+  if (!hasPermission(role, module as Module, action as Action)) {
     return NextResponse.json(
       { error: `Permission denied: ${role} cannot ${action} in ${module}` },
       { status: 403 }
@@ -94,7 +95,7 @@ export function createCrudHandlers(config: CrudConfig) {
     const denied = checkPermission(role, config.module, 'create')
     if (denied) return denied
 
-    let body: any
+    let body: Record<string, unknown>
     try {
       body = await request.json()
     } catch {
@@ -105,7 +106,7 @@ export function createCrudHandlers(config: CrudConfig) {
     if (config.schema) {
       const result = config.schema.safeParse(body)
       if (!result.success) {
-        const errors = result.error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+        const errors = result.error.issues.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join(', ')
         return apiError(`Validation failed: ${errors}`, 400)
       }
       body = result.data
@@ -138,7 +139,7 @@ export function createCrudHandlers(config: CrudConfig) {
     if (denied) return denied
 
     const url = new URL(request.url)
-    let body: any
+    let body: Record<string, unknown>
     try {
       body = await request.json()
     } catch {
@@ -155,7 +156,7 @@ export function createCrudHandlers(config: CrudConfig) {
     if (config.schema) {
       const result = config.schema.partial().safeParse(body)
       if (!result.success) {
-        const errors = result.error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+        const errors = result.error.issues.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join(', ')
         return apiError(`Validation failed: ${errors}`, 400)
       }
       body = result.data

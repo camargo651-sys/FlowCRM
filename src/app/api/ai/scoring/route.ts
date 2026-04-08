@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -10,7 +10,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -67,7 +67,7 @@ export async function POST() {
     .limit(5)
 
   // Build proactive actions
-  const proactiveActions: any[] = []
+  const proactiveActions: { type: string; priority: string; contactId?: string; contactName: string; score?: number; message: string; dealId?: string; dealTitle?: string; value?: number | null }[] = []
 
   // Hot contacts that haven't been contacted today
   for (const contact of hotContacts || []) {
@@ -120,9 +120,9 @@ export async function POST() {
   }
 
   // Signal-based real-time alerts (last 24h)
-  const signalAlerts: any[] = []
+  const signalAlerts: { type: string; contactName: string; contactId: string | null; dealId?: string | null; time: string; message: string }[] = []
   for (const signal of recentSignals || []) {
-    const contactName = (signal as any).contacts?.name || 'Unknown'
+    const contactName = (signal as { contacts?: { name?: string } }).contacts?.name || 'Unknown'
     if (signal.signal_type === 'whatsapp_received') {
       signalAlerts.push({
         type: 'new_whatsapp',
@@ -146,7 +146,7 @@ export async function POST() {
         contactId: signal.contact_id,
         dealId: signal.deal_id,
         time: signal.created_at,
-        message: `${contactName} viewed your quote — ${(signal.metadata as any)?.view_count > 2 ? 'multiple times! Call now.' : 'follow up soon.'}`,
+        message: `${contactName} viewed your quote — ${((signal.metadata as { view_count?: number } | null)?.view_count ?? 0) > 2 ? 'multiple times! Call now.' : 'follow up soon.'}`,
       })
     } else if (signal.signal_type === 'call_positive') {
       signalAlerts.push({

@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -10,15 +11,17 @@ const STATUS_STYLES: Record<string, string> = {
   draft: 'badge-gray', active: 'badge-green', expired: 'badge-red', cancelled: 'badge-gray', renewed: 'badge-blue',
 }
 
+interface ContractForm { title: string; contact_id: string; type: string; start_date: string; end_date: string; value: string; renewal_type: string; notes: string }
+
 export default function ContractsPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [contracts, setContracts] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
+  const [contracts, setContracts] = useState<DbRow[]>([])
+  const [contacts, setContacts] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
-  const [form, setForm] = useState<any>({ title: '', contact_id: '', type: '', start_date: '', end_date: '', value: 0, renewal_type: 'manual', notes: '' })
+  const [form, setForm] = useState<ContractForm>({ title: '', contact_id: '', type: '', start_date: '', end_date: '', value: '', renewal_type: 'manual', notes: '' })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -50,7 +53,7 @@ export default function ContractsPage() {
       renewal_type: form.renewal_type, notes: form.notes || null,
       status: 'draft',
     })
-    setForm({ title: '', contact_id: '', type: '', start_date: '', end_date: '', value: 0, renewal_type: 'manual', notes: '' })
+    setForm({ title: '', contact_id: '', type: '', start_date: '', end_date: '', value: '', renewal_type: 'manual', notes: '' })
     setShowNew(false); setSaving(false)
     toast.success('Contract created')
     load()
@@ -62,7 +65,7 @@ export default function ContractsPage() {
     const daysLeft = (new Date(c.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
     return daysLeft > 0 && daysLeft <= 30
   }).length
-  const totalValue = contracts.filter(c => c.status === 'active').reduce((s: number, c: any) => s + (c.value || 0), 0)
+  const totalValue = contracts.filter(c => c.status === 'active').reduce((s: number, c) => s + ((c.value as number) || 0), 0)
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 
@@ -114,27 +117,27 @@ export default function ContractsPage() {
       )}
 
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Contract</h2>
               <button onClick={() => setShowNew(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
             </div>
             <div className="p-5 space-y-4">
-              <div><label className="label">Title *</label><input className="input" value={form.title} onChange={e => setForm((f: any) => ({ ...f, title: e.target.value }))} /></div>
+              <div><label className="label">Title *</label><input className="input" value={form.title} onChange={e => setForm((f: ContractForm) => ({ ...f, title: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Client</label><select className="input" value={form.contact_id} onChange={e => setForm((f: any) => ({ ...f, contact_id: e.target.value }))}><option value="">Select</option>{contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-                <div><label className="label">Type</label><input className="input" value={form.type} onChange={e => setForm((f: any) => ({ ...f, type: e.target.value }))} placeholder="e.g. SaaS, Service" /></div>
+                <div><label className="label">Client</label><select className="input" value={form.contact_id} onChange={e => setForm((f: ContractForm) => ({ ...f, contact_id: e.target.value }))}><option value="">Select</option>{contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+                <div><label className="label">Type</label><input className="input" value={form.type} onChange={e => setForm((f: ContractForm) => ({ ...f, type: e.target.value }))} placeholder="e.g. SaaS, Service" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Start Date</label><input type="date" className="input" value={form.start_date} onChange={e => setForm((f: any) => ({ ...f, start_date: e.target.value }))} /></div>
-                <div><label className="label">End Date</label><input type="date" className="input" value={form.end_date} onChange={e => setForm((f: any) => ({ ...f, end_date: e.target.value }))} /></div>
+                <div><label className="label">Start Date</label><input type="date" className="input" value={form.start_date} onChange={e => setForm((f: ContractForm) => ({ ...f, start_date: e.target.value }))} /></div>
+                <div><label className="label">End Date</label><input type="date" className="input" value={form.end_date} onChange={e => setForm((f: ContractForm) => ({ ...f, end_date: e.target.value }))} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Value</label><input type="number" className="input" value={form.value} onChange={e => setForm((f: any) => ({ ...f, value: e.target.value }))} /></div>
-                <div><label className="label">Renewal</label><select className="input" value={form.renewal_type} onChange={e => setForm((f: any) => ({ ...f, renewal_type: e.target.value }))}><option value="manual">Manual</option><option value="auto">Auto-renew</option><option value="notify">Notify before expiry</option></select></div>
+                <div><label className="label">Value</label><input type="number" className="input" value={form.value} onChange={e => setForm((f: ContractForm) => ({ ...f, value: e.target.value }))} /></div>
+                <div><label className="label">Renewal</label><select className="input" value={form.renewal_type} onChange={e => setForm((f: ContractForm) => ({ ...f, renewal_type: e.target.value }))}><option value="manual">Manual</option><option value="auto">Auto-renew</option><option value="notify">Notify before expiry</option></select></div>
               </div>
-              <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={e => setForm((f: any) => ({ ...f, notes: e.target.value }))} /></div>
+              <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={e => setForm((f: ContractForm) => ({ ...f, notes: e.target.value }))} /></div>
               <div className="flex gap-2">
                 <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>
                 <button onClick={createContract} disabled={!form.title || saving} className="btn-primary flex-1">Create</button>

@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -13,7 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function StoreOrdersPage() {
   const supabase = createClient()
-  const [orders, setOrders] = useState<any[]>([])
+  const [orders, setOrders] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -56,7 +57,7 @@ export default function StoreOrdersPage() {
     return true
   })
 
-  const totalRevenue = orders.filter(o => !['cancelled', 'refunded'].includes(o.status)).reduce((s: number, o: any) => s + (o.total || 0), 0)
+  const totalRevenue = orders.filter(o => !['cancelled', 'refunded'].includes(o.status)).reduce((s: number, o: DbRow) => s + (o.total || 0), 0)
   const pendingOrders = orders.filter(o => o.status === 'pending').length
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>

@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Users, Plus, Mail, Shield, Clock, X, Trash2, CheckCircle2 } from 'lucide-react'
+import { Plus, Mail, Clock, X, Trash2, CheckCircle2 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 
 interface Member {
@@ -186,7 +186,7 @@ export default function TeamPage() {
 
       {/* Invite Modal */}
       {showInvite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">Invite Team Member</h2>

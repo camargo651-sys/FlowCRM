@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -16,7 +17,7 @@ interface Product {
   unit_price: number; cost_price: number; stock_quantity: number;
   min_stock: number; status: string; category_id: string | null;
   sizes: string[]; colors: string[]; brand: string; model: string;
-  specs: any; tags: string[]; image_url: string | null;
+  specs: DbRow; tags: string[]; image_url: string | null;
   created_at: string; product_categories?: { name: string; type: string } | null;
 }
 
@@ -62,7 +63,8 @@ export default function InventoryPage() {
   const [workspaceId, setWorkspaceId] = useState('')
 
   // New product form
-  const [newProduct, setNewProduct] = useState<any>({
+  interface NewProductForm { name: string; sku: string; description: string; unit_price: number; cost_price: number; stock_quantity: number; min_stock: number; category_id: string; status: string; sizes: string[]; colors: string[]; brand: string; model: string }
+  const [newProduct, setNewProduct] = useState<NewProductForm>({
     name: '', sku: '', description: '', unit_price: 0, cost_price: 0,
     stock_quantity: 0, min_stock: 0, category_id: '', status: 'active',
     sizes: [], colors: [], brand: '', model: '',
@@ -225,9 +227,9 @@ export default function InventoryPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[{ id: 'products', label: 'Products' }, { id: 'dashboard', label: 'Dashboard' }, { id: 'movements', label: 'Movements' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as 'products' | 'dashboard' | 'movements')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all',
               tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
             {t.label}
@@ -263,7 +265,7 @@ export default function InventoryPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
-                    <Tooltip formatter={(v: any) => [formatCurrency(v), 'Value']} contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
+                    <Tooltip formatter={(v: number) => [formatCurrency(v), 'Value']} contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
                     <Bar dataKey="value" fill="#6172f3" radius={[6,6,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -363,7 +365,7 @@ export default function InventoryPage() {
               </thead>
               <tbody>
                 {movements.map(m => {
-                  const product = products.find(p => p.id === (m as any).product_id)
+                  const product = products.find(p => p.id === (m as { product_id?: string }).product_id)
                   return (
                     <tr key={m.id} className="border-b border-surface-50">
                       <td className="px-4 py-3 text-xs text-surface-500">{new Date(m.created_at).toLocaleDateString()}</td>
@@ -446,7 +448,7 @@ export default function InventoryPage() {
                     <span className="text-xs text-surface-500 font-mono">{product.sku || '—'}</span>
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs text-surface-600">{(product as any).product_categories?.name || '—'}</span>
+                    <span className="text-xs text-surface-600">{(product as { product_categories?: { name: string } }).product_categories?.name || '—'}</span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <span className="text-sm font-semibold text-surface-800">{formatCurrency(product.unit_price)}</span>
@@ -495,7 +497,7 @@ export default function InventoryPage() {
 
       {/* New Category Modal */}
       {showNewCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Category</h2>
@@ -533,7 +535,7 @@ export default function InventoryPage() {
 
       {/* New Product Modal */}
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">New Product</h2>
@@ -543,42 +545,42 @@ export default function InventoryPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Name *</label>
-                  <input className="input" value={newProduct.name} onChange={e => setNewProduct((p: any) => ({ ...p, name: e.target.value }))} />
+                  <input className="input" value={newProduct.name} onChange={e => setNewProduct((p) => ({ ...p, name: e.target.value }))} />
                 </div>
                 <div>
                   <label className="label">SKU</label>
-                  <input className="input" value={newProduct.sku} onChange={e => setNewProduct((p: any) => ({ ...p, sku: e.target.value }))} />
+                  <input className="input" value={newProduct.sku} onChange={e => setNewProduct((p) => ({ ...p, sku: e.target.value }))} />
                 </div>
               </div>
               <div>
                 <label className="label">Category</label>
-                <select className="input" value={newProduct.category_id} onChange={e => setNewProduct((p: any) => ({ ...p, category_id: e.target.value }))}>
+                <select className="input" value={newProduct.category_id} onChange={e => setNewProduct((p) => ({ ...p, category_id: e.target.value }))}>
                   <option value="">None</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">Description</label>
-                <textarea className="input resize-none" rows={2} value={newProduct.description} onChange={e => setNewProduct((p: any) => ({ ...p, description: e.target.value }))} />
+                <textarea className="input resize-none" rows={2} value={newProduct.description} onChange={e => setNewProduct((p) => ({ ...p, description: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Sell Price</label>
-                  <input className="input" type="number" value={newProduct.unit_price} onChange={e => setNewProduct((p: any) => ({ ...p, unit_price: parseFloat(e.target.value) || 0 }))} />
+                  <input className="input" type="number" value={newProduct.unit_price} onChange={e => setNewProduct((p) => ({ ...p, unit_price: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div>
                   <label className="label">Cost Price</label>
-                  <input className="input" type="number" value={newProduct.cost_price} onChange={e => setNewProduct((p: any) => ({ ...p, cost_price: parseFloat(e.target.value) || 0 }))} />
+                  <input className="input" type="number" value={newProduct.cost_price} onChange={e => setNewProduct((p) => ({ ...p, cost_price: parseFloat(e.target.value) || 0 }))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Stock Quantity</label>
-                  <input className="input" type="number" value={newProduct.stock_quantity} onChange={e => setNewProduct((p: any) => ({ ...p, stock_quantity: parseInt(e.target.value) || 0 }))} />
+                  <input className="input" type="number" value={newProduct.stock_quantity} onChange={e => setNewProduct((p) => ({ ...p, stock_quantity: parseInt(e.target.value) || 0 }))} />
                 </div>
                 <div>
                   <label className="label">Min Stock Alert</label>
-                  <input className="input" type="number" value={newProduct.min_stock} onChange={e => setNewProduct((p: any) => ({ ...p, min_stock: parseInt(e.target.value) || 0 }))} />
+                  <input className="input" type="number" value={newProduct.min_stock} onChange={e => setNewProduct((p) => ({ ...p, min_stock: parseInt(e.target.value) || 0 }))} />
                 </div>
               </div>
 
@@ -587,11 +589,11 @@ export default function InventoryPage() {
                 <>
                   <div>
                     <label className="label">Sizes (comma separated)</label>
-                    <input className="input" placeholder="XS, S, M, L, XL" onChange={e => setNewProduct((p: any) => ({ ...p, sizes: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) }))} />
+                    <input className="input" placeholder="XS, S, M, L, XL" onChange={e => setNewProduct((p) => ({ ...p, sizes: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) }))} />
                   </div>
                   <div>
                     <label className="label">Colors (comma separated)</label>
-                    <input className="input" placeholder="Black, White, Blue" onChange={e => setNewProduct((p: any) => ({ ...p, colors: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) }))} />
+                    <input className="input" placeholder="Black, White, Blue" onChange={e => setNewProduct((p) => ({ ...p, colors: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) }))} />
                   </div>
                 </>
               )}
@@ -601,11 +603,11 @@ export default function InventoryPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="label">Brand</label>
-                    <input className="input" value={newProduct.brand} onChange={e => setNewProduct((p: any) => ({ ...p, brand: e.target.value }))} />
+                    <input className="input" value={newProduct.brand} onChange={e => setNewProduct((p) => ({ ...p, brand: e.target.value }))} />
                   </div>
                   <div>
                     <label className="label">Model</label>
-                    <input className="input" value={newProduct.model} onChange={e => setNewProduct((p: any) => ({ ...p, model: e.target.value }))} />
+                    <input className="input" value={newProduct.model} onChange={e => setNewProduct((p) => ({ ...p, model: e.target.value }))} />
                   </div>
                 </div>
               )}
@@ -620,7 +622,7 @@ export default function InventoryPage() {
 
       {/* Stock Movement Modal */}
       {showMovement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-sm animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">Stock Movement</h2>

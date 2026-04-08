@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -11,12 +12,13 @@ const CATEGORIES = ['Travel', 'Meals', 'Office Supplies', 'Software', 'Transport
 export default function ExpensesPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [reports, setReports] = useState<any[]>([])
+  interface ExpenseItem { description: string; amount: string; date: string; category: string }
+  const [reports, setReports] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
   const [title, setTitle] = useState('')
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<ExpenseItem[]>([])
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -36,12 +38,12 @@ export default function ExpensesPage() {
 
   useEffect(() => { load() }, [load])
 
-  const addItem = () => setItems(prev => [...prev, { date: new Date().toISOString().split('T')[0], category: 'Other', description: '', amount: 0 }])
+  const addItem = () => setItems(prev => [...prev, { date: new Date().toISOString().split('T')[0], category: 'Other', description: '', amount: '' }])
 
   const createReport = async () => {
     if (!title || !items.length) return
     setSaving(true)
-    const total = items.reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0)
+    const total = items.reduce((s: number, i: ExpenseItem) => s + (parseFloat(i.amount) || 0), 0)
     const count = reports.length + 1
 
     const { data: report } = await supabase.from('expense_reports').insert({
@@ -53,7 +55,7 @@ export default function ExpensesPage() {
 
     if (report) {
       await supabase.from('expense_items').insert(
-        items.map((item: any, i: number) => ({
+        items.map((item: ExpenseItem, i: number) => ({
           report_id: report.id, date: item.date, category: item.category,
           description: item.description, amount: parseFloat(item.amount) || 0, order_index: i,
         }))
@@ -70,8 +72,8 @@ export default function ExpensesPage() {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 
-  const totalPending = reports.filter(r => r.status === 'submitted').reduce((s: number, r: any) => s + (r.total || 0), 0)
-  const totalApproved = reports.filter(r => r.status === 'approved').reduce((s: number, r: any) => s + (r.total || 0), 0)
+  const totalPending = reports.filter(r => r.status === 'submitted').reduce((s: number, r: DbRow) => s + (r.total || 0), 0)
+  const totalApproved = reports.filter(r => r.status === 'approved').reduce((s: number, r: DbRow) => s + (r.total || 0), 0)
 
   return (
     <div className="animate-fade-in">
@@ -123,7 +125,7 @@ export default function ExpensesPage() {
       )}
 
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-2xl max-h-[85vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">New Expense Report</h2>
@@ -133,7 +135,7 @@ export default function ExpensesPage() {
               <div><label className="label">Title</label><input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Q1 Travel Expenses" /></div>
               <div>
                 <label className="label">Items</label>
-                {items.map((item: any, i: number) => (
+                {items.map((item: ExpenseItem, i: number) => (
                   <div key={i} className="flex gap-2 items-center mb-2">
                     <input type="date" className="input w-32 text-xs" value={item.date} onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, date: e.target.value } : it))} />
                     <select className="input w-32 text-xs" value={item.category} onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, category: e.target.value } : it))}>
@@ -148,7 +150,7 @@ export default function ExpensesPage() {
               </div>
               {items.length > 0 && (
                 <div className="flex justify-end text-sm font-bold text-brand-600">
-                  Total: {formatCurrency(items.reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0))}
+                  Total: {formatCurrency(items.reduce((s: number, i: ExpenseItem) => s + (parseFloat(i.amount) || 0), 0))}
                 </div>
               )}
             </div>

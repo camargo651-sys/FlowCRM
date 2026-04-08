@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyWebhookSignature } from '@/lib/whatsapp/client'
 import { processInboundWhatsAppMessage } from '@/lib/whatsapp/process-inbound'
+import type { DbRow } from '@/types'
 
 // Use service role for webhook (no user session)
 function getServiceSupabase() {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let payload: any
+  let payload: DbRow
   try {
     payload = JSON.parse(rawBody)
   } catch {
@@ -124,8 +125,8 @@ export async function POST(request: NextRequest) {
             profileName,
             conversationId: value.metadata?.conversation_id,
           }, account)
-        } catch (err: any) {
-          console.error(`WhatsApp message processing error:`, err.message)
+        } catch (err: unknown) {
+          console.error(`WhatsApp message processing error:`, err instanceof Error ? err.message : err)
         }
       }
 
@@ -136,8 +137,8 @@ export async function POST(request: NextRequest) {
             status: status.status, // sent, delivered, read, failed
             status_updated_at: new Date(parseInt(status.timestamp) * 1000).toISOString(),
           }).eq('wamid', status.id).eq('whatsapp_account_id', account.id)
-        } catch (err: any) {
-          console.error(`WhatsApp status update error:`, err.message)
+        } catch (err: unknown) {
+          console.error(`WhatsApp status update error:`, err instanceof Error ? err.message : err)
         }
       }
     }

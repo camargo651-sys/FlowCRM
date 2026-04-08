@@ -14,7 +14,7 @@ interface OutlookMessage {
   labels: string[]
 }
 
-function parseRecipients(recipients: any[]): { email: string; name: string }[] {
+function parseRecipients(recipients: { emailAddress?: { address?: string; name?: string } }[]): { email: string; name: string }[] {
   return (recipients || []).map(r => ({
     email: r.emailAddress?.address || '',
     name: r.emailAddress?.name || r.emailAddress?.address?.split('@')[0] || '',
@@ -22,7 +22,7 @@ function parseRecipients(recipients: any[]): { email: string; name: string }[] {
 }
 
 export async function syncOutlookMessages(
-  account: any,
+  account: { id: string; sync_cursor?: string; access_token: string; refresh_token?: string; expires_at?: string },
   onTokenRefreshed: (id: string, token: string, expires: Date) => Promise<void>,
 ): Promise<{ messages: OutlookMessage[]; newCursor: string | null }> {
   const accessToken = await getValidToken(account, onTokenRefreshed)

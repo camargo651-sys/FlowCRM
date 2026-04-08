@@ -167,7 +167,7 @@ export default function AdvancedFilters({ fields, onApply, storageKey }: Advance
 /**
  * Apply filter rules to a data array client-side
  */
-export function applyFilterRules<T extends Record<string, any>>(data: T[], rules: { field: string; operator: string; value: string }[]): T[] {
+export function applyFilterRules<T extends Record<string, unknown>>(data: T[], rules: { field: string; operator: string; value: string }[]): T[] {
   if (!rules.length) return data
   return data.filter(item => {
     return rules.every(rule => {

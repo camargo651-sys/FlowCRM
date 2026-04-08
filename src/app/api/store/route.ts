@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   // Validate products and calculate totals
   let subtotal = 0
-  const orderItems: any[] = []
+  const orderItems: { product_id: string; name?: string; description?: string; quantity: number; unit_price: number; total: number }[] = []
   for (const item of items) {
     const { data: product } = await supabase.from('products')
       .select('id, name, unit_price, stock_quantity')

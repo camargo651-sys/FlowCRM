@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
@@ -16,7 +17,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function LeadsPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [leads, setLeads] = useState<any[]>([])
+  const [leads, setLeads] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -55,7 +56,7 @@ export default function LeadsPage() {
     load()
   }
 
-  const convertToContact = async (lead: any) => {
+  const convertToContact = async (lead: DbRow) => {
     const { data: contact } = await supabase.from('contacts').insert({
       workspace_id: workspaceId, name: lead.author_name,
       notes: `From ${lead.platform}: ${lead.message || ''}`,
@@ -148,7 +149,7 @@ export default function LeadsPage() {
       )}
 
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">Add Lead Manually</h2>

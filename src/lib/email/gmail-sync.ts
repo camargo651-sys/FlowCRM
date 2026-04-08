@@ -25,12 +25,12 @@ function parseAddressList(value: string): { name: string; email: string }[] {
   return value.split(',').map(v => parseEmailHeader(v.trim())).filter(a => a.email)
 }
 
-function getHeader(headers: any[], name: string): string {
-  return headers?.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || ''
+function getHeader(headers: { name: string; value: string }[], name: string): string {
+  return headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || ''
 }
 
 export async function syncGmailMessages(
-  account: any,
+  account: { id: string; sync_cursor?: string; access_token: string; refresh_token?: string; expires_at?: string },
   onTokenRefreshed: (id: string, token: string, expires: Date) => Promise<void>,
 ): Promise<{ messages: GmailMessage[]; newCursor: string | null }> {
   const accessToken = await getValidToken(account, onTokenRefreshed)
@@ -50,8 +50,8 @@ export async function syncGmailMessages(
     if (historyRes.ok) {
       const historyData = await historyRes.json()
       newHistoryId = historyData.historyId || null
-      const addedMessages = historyData.history?.flatMap((h: any) =>
-        (h.messagesAdded || []).map((m: any) => m.message.id)
+      const addedMessages = historyData.history?.flatMap((h: { messagesAdded?: { message: { id: string } }[] }) =>
+        (h.messagesAdded || []).map((m) => m.message.id)
       ) || []
       messageIds = Array.from(new Set(addedMessages)) as string[]
     } else if (historyRes.status === 404) {
@@ -61,7 +61,7 @@ export async function syncGmailMessages(
       })
       if (listRes.ok) {
         const listData = await listRes.json()
-        messageIds = (listData.messages || []).map((m: any) => m.id)
+        messageIds = (listData.messages || []).map((m: { id: string }) => m.id)
       }
     }
   } else {
@@ -71,7 +71,7 @@ export async function syncGmailMessages(
     })
     if (listRes.ok) {
       const listData = await listRes.json()
-      messageIds = (listData.messages || []).map((m: any) => m.id)
+      messageIds = (listData.messages || []).map((m: { id: string }) => m.id)
     }
   }
 

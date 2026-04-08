@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Building2, Save, CheckCircle2, Globe, DollarSign, FileText, Key, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
@@ -14,8 +15,8 @@ export default function CompanySettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [tab, setTab] = useState<'company'|'billing'|'api'|'danger'>('company')
-  const [form, setForm] = useState<any>({})
-  const [apiKeys, setApiKeys] = useState<any[]>([])
+  const [form, setForm] = useState<Record<string, string>>({})
+  const [apiKeys, setApiKeys] = useState<DbRow[]>([])
   const [newKeyName, setNewKeyName] = useState('')
   const [generatedKey, setGeneratedKey] = useState('')
 
@@ -108,7 +109,7 @@ export default function CompanySettingsPage() {
     load()
   }
 
-  const set = (key: string, val: any) => setForm((f: any) => ({ ...f, [key]: val }))
+  const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }))
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 
@@ -118,9 +119,9 @@ export default function CompanySettingsPage() {
         <div><h1 className="page-title">Company Settings</h1><p className="text-sm text-surface-500 mt-0.5">Configure your business details</p></div>
       </div>
 
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[{ id: 'company', label: 'Company Info' }, { id: 'billing', label: 'Billing & Tax' }, { id: 'api', label: 'API Keys' }, { id: 'danger', label: 'Danger Zone' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as 'company'|'billing'|'api'|'danger')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
             {t.label}
           </button>

@@ -3,7 +3,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 export interface DuplicateResult {
   isDuplicate: boolean
   existingId?: string
-  existingRecord?: any
+  existingRecord?: Record<string, unknown>
   matchField?: string
   matchValue?: string
 }

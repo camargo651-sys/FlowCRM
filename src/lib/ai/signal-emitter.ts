@@ -45,7 +45,7 @@ export async function emitSignal(
     dealId?: string | null
     signalType: SignalType
     source?: string
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   },
 ) {
   const strength = SIGNAL_WEIGHTS[params.signalType] || 1

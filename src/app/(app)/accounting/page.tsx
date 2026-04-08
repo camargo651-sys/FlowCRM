@@ -16,8 +16,12 @@ const ACCOUNT_TYPE_COLORS: Record<string, string> = {
 export default function AccountingPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [entries, setEntries] = useState<any[]>([])
+  interface AcctRecord { id: string; code: string; name: string; type: string; subtype: string; balance: number; workspace_id: string; [key: string]: unknown }
+  interface JournalLine { account_id: string; debit: string; credit: string; description: string }
+  interface EntryForm { description: string; date: string; lines: JournalLine[] }
+  const [accounts, setAccounts] = useState<AcctRecord[]>([])
+  interface EntryRecord { id: string; entry_number: string; date: string; description: string; status: string; total_debit: number; total_credit: number; journal_lines: { debit: number; credit: number; chart_of_accounts: { code: string; name: string } }[]; [key: string]: unknown }
+  const [entries, setEntries] = useState<EntryRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'overview'|'accounts'|'journal'>('overview')
   const [showNewAccount, setShowNewAccount] = useState(false)
@@ -26,7 +30,7 @@ export default function AccountingPage() {
 
   // Forms
   const [accForm, setAccForm] = useState({ code: '', name: '', type: 'asset', subtype: '' })
-  const [entryForm, setEntryForm] = useState<any>({ description: '', date: new Date().toISOString().split('T')[0], lines: [] })
+  const [entryForm, setEntryForm] = useState<EntryForm>({ description: '', date: new Date().toISOString().split('T')[0], lines: [] })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -60,8 +64,8 @@ export default function AccountingPage() {
   const createEntry = async () => {
     const lines = entryForm.lines
     if (!lines.length) return
-    const totalDebit = lines.reduce((s: number, l: any) => s + (parseFloat(l.debit) || 0), 0)
-    const totalCredit = lines.reduce((s: number, l: any) => s + (parseFloat(l.credit) || 0), 0)
+    const totalDebit = lines.reduce((s: number, l: JournalLine) => s + (parseFloat(l.debit) || 0), 0)
+    const totalCredit = lines.reduce((s: number, l: JournalLine) => s + (parseFloat(l.credit) || 0), 0)
     if (Math.abs(totalDebit - totalCredit) > 0.01) { alert('Debits must equal credits'); return }
 
     setSaving(true)
@@ -74,7 +78,7 @@ export default function AccountingPage() {
 
     if (entry) {
       await supabase.from('journal_lines').insert(
-        lines.map((l: any, i: number) => ({
+        lines.map((l: JournalLine, i: number) => ({
           journal_entry_id: entry.id, account_id: l.account_id,
           description: l.description || null,
           debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0, order_index: i,
@@ -121,9 +125,9 @@ export default function AccountingPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[{ id: 'overview', label: 'Overview' }, { id: 'accounts', label: 'Chart of Accounts' }, { id: 'journal', label: 'Journal' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as 'overview'|'accounts'|'journal')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
             {t.label}
           </button>
@@ -143,7 +147,7 @@ export default function AccountingPage() {
             <div className="card p-5">
               <h3 className="font-semibold text-surface-900 mb-4">Account Balances by Type</h3>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={typeData} barSize={48}><CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} /><Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: any) => [formatCurrency(v), 'Balance']} /><Bar dataKey="value" radius={[8,8,0,0]}>{typeData.map((e,i) => <rect key={i} fill={e.color} />)}</Bar></BarChart>
+                <BarChart data={typeData} barSize={48}><CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} /><Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: number) => [formatCurrency(v), 'Balance']} /><Bar dataKey="value" radius={[8,8,0,0]}>{typeData.map((e,i) => <rect key={i} fill={e.color} />)}</Bar></BarChart>
               </ResponsiveContainer>
             </div>
           )}
@@ -194,8 +198,8 @@ export default function AccountingPage() {
               <table className="w-full text-xs">
                 <thead><tr className="text-surface-400"><th className="text-left py-1">Account</th><th className="text-right py-1">Debit</th><th className="text-right py-1">Credit</th></tr></thead>
                 <tbody>
-                  {(entry.journal_lines || []).map((line: any) => (
-                    <tr key={line.id} className="border-t border-surface-50">
+                  {(entry.journal_lines || []).map((line, idx) => (
+                    <tr key={idx} className="border-t border-surface-50">
                       <td className="py-1.5 text-surface-700">{line.chart_of_accounts?.code} — {line.chart_of_accounts?.name}</td>
                       <td className="py-1.5 text-right font-semibold">{line.debit > 0 ? formatCurrency(line.debit) : ''}</td>
                       <td className="py-1.5 text-right font-semibold">{line.credit > 0 ? formatCurrency(line.credit) : ''}</td>
@@ -215,7 +219,7 @@ export default function AccountingPage() {
 
       {/* New Account Modal */}
       {showNewAccount && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Account</h2>
@@ -243,7 +247,7 @@ export default function AccountingPage() {
 
       {/* New Journal Entry Modal */}
       {showNewEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-2xl max-h-[85vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">New Journal Entry</h2>
@@ -251,27 +255,27 @@ export default function AccountingPage() {
             </div>
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Date</label><input type="date" className="input" value={entryForm.date} onChange={e => setEntryForm((f: any) => ({ ...f, date: e.target.value }))} /></div>
-                <div><label className="label">Description</label><input className="input" value={entryForm.description} onChange={e => setEntryForm((f: any) => ({ ...f, description: e.target.value }))} /></div>
+                <div><label className="label">Date</label><input type="date" className="input" value={entryForm.date} onChange={e => setEntryForm((f) => ({ ...f, date: e.target.value }))} /></div>
+                <div><label className="label">Description</label><input className="input" value={entryForm.description} onChange={e => setEntryForm((f) => ({ ...f, description: e.target.value }))} /></div>
               </div>
               <div>
                 <label className="label">Lines</label>
-                {entryForm.lines.map((line: any, i: number) => (
+                {entryForm.lines.map((line: JournalLine, i: number) => (
                   <div key={i} className="flex gap-2 items-center mb-2">
-                    <select className="input flex-1 text-xs" value={line.account_id} onChange={e => setEntryForm((f: any) => ({ ...f, lines: f.lines.map((l: any, idx: number) => idx === i ? { ...l, account_id: e.target.value } : l) }))}>
+                    <select className="input flex-1 text-xs" value={line.account_id} onChange={e => setEntryForm((f) => ({ ...f, lines: f.lines.map((l: JournalLine, idx: number) => idx === i ? { ...l, account_id: e.target.value } : l) }))}>
                       <option value="">Select account</option>
                       {accounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
                     </select>
-                    <input className="input w-24 text-xs text-right" type="number" placeholder="Debit" value={line.debit || ''} onChange={e => setEntryForm((f: any) => ({ ...f, lines: f.lines.map((l: any, idx: number) => idx === i ? { ...l, debit: e.target.value, credit: '' } : l) }))} />
-                    <input className="input w-24 text-xs text-right" type="number" placeholder="Credit" value={line.credit || ''} onChange={e => setEntryForm((f: any) => ({ ...f, lines: f.lines.map((l: any, idx: number) => idx === i ? { ...l, credit: e.target.value, debit: '' } : l) }))} />
-                    <button onClick={() => setEntryForm((f: any) => ({ ...f, lines: f.lines.filter((_: any, idx: number) => idx !== i) }))} className="text-surface-300 hover:text-red-500"><X className="w-4 h-4" /></button>
+                    <input className="input w-24 text-xs text-right" type="number" placeholder="Debit" value={line.debit || ''} onChange={e => setEntryForm((f) => ({ ...f, lines: f.lines.map((l: JournalLine, idx: number) => idx === i ? { ...l, debit: e.target.value, credit: '' } : l) }))} />
+                    <input className="input w-24 text-xs text-right" type="number" placeholder="Credit" value={line.credit || ''} onChange={e => setEntryForm((f) => ({ ...f, lines: f.lines.map((l: JournalLine, idx: number) => idx === i ? { ...l, credit: e.target.value, debit: '' } : l) }))} />
+                    <button onClick={() => setEntryForm((f) => ({ ...f, lines: f.lines.filter((_: JournalLine, idx: number) => idx !== i) }))} className="text-surface-300 hover:text-red-500"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
-                <button onClick={() => setEntryForm((f: any) => ({ ...f, lines: [...f.lines, { account_id: '', debit: '', credit: '', description: '' }] }))} className="btn-ghost btn-sm w-full border border-dashed border-surface-200"><Plus className="w-3.5 h-3.5" /> Add Line</button>
+                <button onClick={() => setEntryForm((f) => ({ ...f, lines: [...f.lines, { account_id: '', debit: '', credit: '', description: '' }] }))} className="btn-ghost btn-sm w-full border border-dashed border-surface-200"><Plus className="w-3.5 h-3.5" /> Add Line</button>
               </div>
               {entryForm.lines.length > 0 && (() => {
-                const td = entryForm.lines.reduce((s: number, l: any) => s + (parseFloat(l.debit) || 0), 0)
-                const tc = entryForm.lines.reduce((s: number, l: any) => s + (parseFloat(l.credit) || 0), 0)
+                const td = entryForm.lines.reduce((s: number, l: JournalLine) => s + (parseFloat(l.debit) || 0), 0)
+                const tc = entryForm.lines.reduce((s: number, l: JournalLine) => s + (parseFloat(l.credit) || 0), 0)
                 const balanced = Math.abs(td - tc) < 0.01
                 return (
                   <div className={cn('p-3 rounded-xl text-sm font-semibold flex justify-between', balanced ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>

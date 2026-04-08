@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -10,7 +10,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -18,8 +18,12 @@ function getSupabase() {
   )
 }
 
-function generateInvoiceHTML(invoice: any, items: any[], contact: any, workspace: any) {
-  const rows = items.map((item: any) => `
+interface InvoiceItem { description: string; quantity: number; unit_price: number; total: number }
+interface InvoiceRecord { invoice_number: string; issue_date: string; due_date: string; total: number; notes?: string; contacts?: { name?: string; email?: string; company_name?: string } | null; type?: string; status?: string; currency?: string; subtotal?: number; discount_value?: number; tax_amount?: number; amount_paid?: number; balance_due?: number; terms?: string; contact_id?: string }
+interface WorkspaceRecord { name: string; logo_url?: string }
+
+function generateInvoiceHTML(invoice: InvoiceRecord, items: InvoiceItem[], contact: InvoiceRecord['contacts'], workspace: WorkspaceRecord) {
+  const rows = items.map((item) => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${item.description}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;text-align:right">${item.quantity}</td>
@@ -84,8 +88,8 @@ function generateInvoiceHTML(invoice: any, items: any[], contact: any, workspace
       ${Number(invoice.discount_value) > 0 ? `<div class="total-row"><span>Discount</span><span style="color:#ef4444">-$${Number(invoice.discount_value).toLocaleString()}</span></div>` : ''}
       ${Number(invoice.tax_amount) > 0 ? `<div class="total-row"><span>Tax</span><span>$${Number(invoice.tax_amount).toLocaleString()}</span></div>` : ''}
       <div class="total-row total-final"><span>Total</span><span>$${Number(invoice.total).toLocaleString()} ${invoice.currency}</span></div>
-      ${invoice.amount_paid > 0 ? `<div class="total-row"><span>Paid</span><span style="color:#059669">$${Number(invoice.amount_paid).toLocaleString()}</span></div>` : ''}
-      ${invoice.balance_due > 0 ? `<div class="total-row"><span style="font-weight:700">Balance Due</span><span style="font-weight:700;color:#ef4444">$${Number(invoice.balance_due).toLocaleString()}</span></div>` : ''}
+      ${(invoice.amount_paid ?? 0) > 0 ? `<div class="total-row"><span>Paid</span><span style="color:#059669">$${Number(invoice.amount_paid).toLocaleString()}</span></div>` : ''}
+      ${(invoice.balance_due ?? 0) > 0 ? `<div class="total-row"><span style="font-weight:700">Balance Due</span><span style="font-weight:700;color:#ef4444">$${Number(invoice.balance_due).toLocaleString()}</span></div>` : ''}
     </div>
     ${invoice.notes ? `<div class="notes"><strong>Notes:</strong> ${invoice.notes}</div>` : ''}
     ${invoice.terms ? `<div style="margin-top:16px;font-size:11px;color:#94a3b8"><strong>Terms:</strong> ${invoice.terms}</div>` : ''}

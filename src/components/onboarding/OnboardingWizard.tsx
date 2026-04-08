@@ -7,7 +7,7 @@ import { INDUSTRY_LIST, getTemplate, type IndustryTemplate } from '@/lib/industr
 import { useI18n } from '@/lib/i18n/context'
 import { cn } from '@/lib/utils'
 
-const TEAM_SIZES = ['Just me', '2-5', '6-15', '16-50', '51-200', '200+']
+const TEAM_SIZES = ['Solo', '2-5', '6-15', '16-50', '51-200', '200+']
 const BRAND_COLORS = ['#6172f3','#8b5cf6','#ec4899','#ef4444','#f97316','#f59e0b','#10b981','#06b6d4','#3b82f6','#64748b']
 
 interface OnboardingWizardProps {
@@ -52,7 +52,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
 
   const steps = [
     { num: 1, title: t('onboarding.step1_title'), icon: Building2 },
-    { num: 2, title: 'Modules', icon: Sparkles },
+    { num: 2, title: t('onboarding.modules_title') || 'Modules', icon: Sparkles },
     { num: 3, title: t('onboarding.step2_title'), icon: Palette },
     { num: 4, title: t('onboarding.step3_title'), icon: Globe },
     { num: 5, title: t('onboarding.step4_title'), icon: CheckCircle2 },
@@ -197,8 +197,8 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
               </div>
 
               <div>
-                <label className="label">What type of business are you?</label>
-                <p className="text-xs text-surface-400 mb-3">This will configure your pipeline, fields, and automations</p>
+                <label className="label">{t('onboarding.business_type') || 'What best describes your business?'}</label>
+                <p className="text-xs text-surface-400 mb-3">{t('onboarding.business_type_desc') || 'We\'ll tailor your pipeline, fields, and automations to match'}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {INDUSTRY_LIST.map(ind => (
                     <button key={ind.key} onClick={() => setIndustryKey(ind.key)}
@@ -238,7 +238,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
           {/* Step 2: Modules */}
           {step === 2 && (
             <div className="space-y-4 animate-fade-in">
-              <p className="text-sm text-surface-500">Choose which modules you need. You can change this later in Settings.</p>
+              <p className="text-sm text-surface-500">{t('onboarding.modules_desc') || 'Select the tools you need. You can always adjust this later in Settings.'}</p>
               <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto">
                 {MODULES_LIST.map(mod => {
                   const isOn = enabledModules[mod.key] || false
@@ -261,7 +261,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
                 const all: Record<string, boolean> = {}
                 MODULES_LIST.forEach(m => { all[m.key] = true })
                 return all
-              })} className="text-xs text-brand-600 font-semibold hover:underline">Enable all modules</button>
+              })} className="text-xs text-brand-600 font-semibold hover:underline">{t('onboarding.enable_all') || 'Enable all modules'}</button>
             </div>
           )}
 

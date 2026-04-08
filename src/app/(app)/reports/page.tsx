@@ -8,9 +8,13 @@ import { formatCurrency, cn } from '@/lib/utils'
 export default function ReportsPage() {
   const { t } = useI18n()
   const [tab, setTab] = useState<'pnl'|'balance'|'cashflow'>('pnl')
-  const [pnl, setPnl] = useState<any>(null)
-  const [balance, setBalance] = useState<any>(null)
-  const [cashflow, setCashflow] = useState<any>(null)
+  interface ReportAccount { name: string; total: number; code: string; balance: number }
+  interface PnlReport { revenue: { total: number; accounts: ReportAccount[] }; expenses: { total: number; accounts: ReportAccount[] }; net_income: number; gross_margin?: number }
+  interface BalanceSection { label: string; data?: { total?: number; accounts?: ReportAccount[] } }
+  interface CashflowReport { months?: { month: string; inflow: number; outflow: number; net: number }[]; monthly?: { month: string; inflow: number; outflow: number; net: number }[]; total_inflow?: number; total_outflow?: number; net_cashflow: number }
+  const [pnl, setPnl] = useState<PnlReport | null>(null)
+  const [balance, setBalance] = useState<{ assets?: { total: number; accounts: ReportAccount[] }; liabilities?: { total: number; accounts: ReportAccount[] }; equity?: { total: number; accounts: ReportAccount[] }; balanced?: boolean } | null>(null)
+  const [cashflow, setCashflow] = useState<CashflowReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0])
@@ -44,9 +48,9 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
+      <div className="segmented-control mb-8">
         {[{ id: 'pnl', label: 'Profit & Loss' }, { id: 'balance', label: 'Balance Sheet' }, { id: 'cashflow', label: 'Cash Flow' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as 'pnl'|'balance'|'cashflow')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
             {t.label}
           </button>
@@ -68,7 +72,7 @@ export default function ReportsPage() {
               <h3 className="font-semibold text-surface-900 mb-4 text-emerald-700">Revenue</h3>
               {(pnl.revenue?.accounts || []).length > 0 ? (
                 <div className="space-y-2">
-                  {pnl.revenue.accounts.map((a: any) => (
+                  {pnl.revenue.accounts.map((a: ReportAccount) => (
                     <div key={a.code} className="flex items-center justify-between py-1.5 border-b border-surface-50">
                       <span className="text-sm text-surface-700"><span className="text-surface-400 font-mono mr-2">{a.code}</span>{a.name}</span>
                       <span className="text-sm font-semibold text-emerald-600">{formatCurrency(a.balance)}</span>
@@ -83,7 +87,7 @@ export default function ReportsPage() {
               <h3 className="font-semibold text-surface-900 mb-4 text-red-700">Expenses</h3>
               {(pnl.expenses?.accounts || []).length > 0 ? (
                 <div className="space-y-2">
-                  {pnl.expenses.accounts.map((a: any) => (
+                  {pnl.expenses.accounts.map((a: ReportAccount) => (
                     <div key={a.code} className="flex items-center justify-between py-1.5 border-b border-surface-50">
                       <span className="text-sm text-surface-700"><span className="text-surface-400 font-mono mr-2">{a.code}</span>{a.name}</span>
                       <span className="text-sm font-semibold text-red-600">{formatCurrency(a.balance)}</span>
@@ -119,7 +123,7 @@ export default function ReportsPage() {
               <div key={section.title} className="card p-5">
                 <h3 className={cn('font-semibold mb-4', section.color)}>{section.title}</h3>
                 <div className="space-y-2">
-                  {(section.data?.accounts || []).map((a: any) => (
+                  {(section.data?.accounts || []).map((a: ReportAccount) => (
                     <div key={a.code} className="flex justify-between py-1.5 border-b border-surface-50">
                       <span className="text-sm text-surface-700"><span className="text-surface-400 font-mono mr-2">{a.code}</span>{a.name}</span>
                       <span className="text-sm font-semibold">{formatCurrency(a.balance)}</span>
@@ -152,8 +156,8 @@ export default function ReportsPage() {
                 <BarChart data={cashflow.monthly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} formatter={(v: any) => [formatCurrency(v)]} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} formatter={(v: number) => [formatCurrency(v)]} />
                   <Bar dataKey="inflow" fill="#34d399" radius={[4,4,0,0]} name="Inflow" />
                   <Bar dataKey="outflow" fill="#f87171" radius={[4,4,0,0]} name="Outflow" />
                 </BarChart>
@@ -169,8 +173,8 @@ export default function ReportsPage() {
                   <defs><linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6172f3" stopOpacity={0.2}/><stop offset="95%" stopColor="#6172f3" stopOpacity={0}/></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
-                  <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: any) => [formatCurrency(v), 'Net']} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
+                  <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: number) => [formatCurrency(v), 'Net']} />
                   <Area type="monotone" dataKey="net" stroke="#6172f3" strokeWidth={2.5} fill="url(#netGrad)" />
                 </AreaChart>
               </ResponsiveContainer>

@@ -1,6 +1,7 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import type { DbRow } from '@/types'
 
 function getSupabase() {
   const cookieStore = cookies()
@@ -10,7 +11,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -18,7 +19,7 @@ function getSupabase() {
   )
 }
 
-function toCSV(data: Record<string, any>[]): string {
+function toCSV(data: DbRow[]): string {
   if (!data.length) return ''
   const headers = Object.keys(data[0])
   const rows = data.map(row =>

@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -18,7 +19,7 @@ const ACTION_COLORS: Record<string, string> = {
 export default function AuditLogPage() {
   const supabase = createClient()
   const { t } = useI18n()
-  const [logs, setLogs] = useState<any[]>([])
+  const [logs, setLogs] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('all')

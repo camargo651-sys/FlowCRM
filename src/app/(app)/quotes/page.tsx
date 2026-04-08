@@ -105,7 +105,7 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
     }])
   }
 
-  const updateItem = (id: string, field: string, value: any) => {
+  const updateItem = (id: string, field: string, value: string | number) => {
     setItems(prev => prev.map(item => {
       if (item.id !== id) return item
       const updated = { ...item, [field]: value }
@@ -193,7 +193,7 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
   const { template } = useWorkspace()
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+    <div className="modal-overlay">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
@@ -336,7 +336,7 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-surface-500">Discount</span>
                     <div className="flex items-center gap-2">
-                      <select className="input py-1 px-2 text-xs w-20" value={discountType} onChange={e => setDiscountType(e.target.value as any)}>
+                      <select className="input py-1 px-2 text-xs w-20" value={discountType} onChange={e => setDiscountType(e.target.value as 'percent' | 'fixed')}>
                         <option value="percent">%</option>
                         <option value="fixed">Fixed</option>
                       </select>

@@ -16,7 +16,7 @@ interface Notification {
   created_at: string
 }
 
-const TYPE_ICONS: Record<string, any> = {
+const TYPE_ICONS: Record<string, typeof Bell> = {
   quote_viewed: Eye,
   hot_contact: Star,
   deal_at_risk: AlertTriangle,
@@ -60,7 +60,7 @@ export default function NotificationBell() {
     const interval = setInterval(fetchNotifications, 30000)
 
     // Realtime subscription (graceful — won't break if table doesn't exist)
-    let channel: any = null
+    let channel: ReturnType<typeof supabase.channel> | null = null
     try {
       channel = supabase
         .channel('notifications')
@@ -124,17 +124,17 @@ export default function NotificationBell() {
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen(!open)} className="relative p-2 rounded-lg hover:bg-surface-100 transition-colors">
-        <Bell className="w-5 h-5 text-surface-500" />
+      <button onClick={() => setOpen(!open)} className="relative p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+        <Bell className="w-4 h-4 text-surface-400" />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-surface-900">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-lg border border-surface-100 z-50 overflow-hidden animate-fade-in">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-float border border-surface-100 z-50 overflow-hidden animate-scale-in">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-100">
             <h3 className="font-semibold text-surface-900 text-sm">Notifications</h3>

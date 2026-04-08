@@ -20,7 +20,7 @@ interface SyncResult {
 
 export async function syncLinkedInProfile(
   supabase: SupabaseClient,
-  account: any,
+  account: { id: string; workspace_id: string; access_token: string; refresh_token?: string; expires_at?: string },
   onTokenRefreshed: (id: string, token: string, expires: Date) => Promise<void>,
 ): Promise<SyncResult> {
   const accessToken = await getValidToken(account, onTokenRefreshed)

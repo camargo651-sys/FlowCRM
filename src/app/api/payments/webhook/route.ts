@@ -11,7 +11,7 @@ function getSupabase() {
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
   if (!key) return null
-  return new Stripe(key, { apiVersion: '2025-04-30.basil' as any })
+  return new Stripe(key, { apiVersion: '2025-04-30.basil' as Stripe.LatestApiVersion })
 }
 
 // POST: Stripe webhook — handle payment events
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     } else {
       event = JSON.parse(body)
     }
-  } catch (err: any) {
-    return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: `Webhook error: ${err instanceof Error ? err.message : 'Unknown error'}` }, { status: 400 })
   }
 
   if (event.type === 'checkout.session.completed') {

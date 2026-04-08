@@ -31,7 +31,7 @@ interface AIInsights {
   daily_summary: string
 }
 
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, typeof Phone> = {
   phone: Phone, mail: Mail, alert: AlertTriangle, clock: Clock,
   dollar: DollarSign, trending: TrendingUp, check: CheckCircle2,
   star: Star, message: MessageCircle,
@@ -84,8 +84,8 @@ export default function AICommandCenter() {
       const insights = await res.json()
       setData(insights)
       setError('')
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
     }
     setLoading(false)
     setRefreshing(false)
@@ -113,8 +113,8 @@ export default function AICommandCenter() {
               <Sparkles className="w-5 h-5 text-brand-600 animate-pulse" />
             </div>
             <div>
-              <p className="font-bold text-surface-900">AI is analyzing your CRM...</p>
-              <p className="text-xs text-surface-400">Reviewing deals, contacts, tasks, and patterns</p>
+              <p className="font-bold text-surface-900">Analyzing your business data...</p>
+              <p className="text-xs text-surface-400">Reviewing deals, contacts, and tasks to find what needs attention</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -134,8 +134,8 @@ export default function AICommandCenter() {
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-amber-500" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-surface-800">AI Assistant</p>
-              <p className="text-xs text-surface-500">{error || 'Configure your Anthropic API key in .env.local to enable AI insights'}</p>
+              <p className="text-sm font-medium text-surface-800">AI Sales Assistant</p>
+              <p className="text-xs text-surface-500">{error || 'Add your Anthropic API key in .env.local to unlock AI-powered insights'}</p>
             </div>
             <button onClick={refresh} className="btn-secondary btn-sm"><RefreshCw className="w-3.5 h-3.5" /> Retry</button>
           </div>

@@ -1,4 +1,5 @@
 'use client'
+import { DbRow } from '@/types'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -55,9 +56,9 @@ const DEFAULT_TEMPLATE = `<div style="font-family: -apple-system, sans-serif; ma
 
 export default function TemplatesPage() {
   const supabase = createClient()
-  const [templates, setTemplates] = useState<any[]>([])
+  const [templates, setTemplates] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<any>(null)
+  const [editing, setEditing] = useState<DbRow | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
   const [form, setForm] = useState({ name: '', type: 'invoice', html_content: DEFAULT_TEMPLATE })
@@ -92,7 +93,7 @@ export default function TemplatesPage() {
     load()
   }
 
-  const editTemplate = (t: any) => {
+  const editTemplate = (t: DbRow) => {
     setEditing(t)
     setForm({ name: t.name, type: t.type, html_content: t.html_content })
     setShowNew(true)
@@ -133,7 +134,7 @@ export default function TemplatesPage() {
 
       {/* Editor */}
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-4 border-b border-surface-100 flex-shrink-0">
               <h2 className="font-semibold text-surface-900">{editing ? 'Edit Template' : 'New Template'}</h2>

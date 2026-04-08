@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync } from 'fs'
@@ -12,7 +12,7 @@ function getSupabase() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
         },
       },
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
-  const results: any = {}
+  const results: Record<string, { total?: number; imported?: number; error?: string }> = {}
 
   // Import contacts
   try {
@@ -65,11 +65,11 @@ export async function POST(request: NextRequest) {
         job_title: row['Role / Title'] || null,
         type: 'person', tags: ['imported', 'mars-crm'],
         owner_id: user.id,
-      }, { onConflict: 'workspace_id,email' } as any)
+      }, { onConflict: 'workspace_id,email' })
       if (!error) imported++
     }
     results.contacts = { total: rows.length, imported }
-  } catch (e: any) { results.contacts = { error: e.message } }
+  } catch (e: unknown) { results.contacts = { error: e instanceof Error ? e.message : 'Unknown error' } }
 
   // Import companies
   try {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       if (!error) imported++
     }
     results.companies = { total: rows.length, imported }
-  } catch (e: any) { results.companies = { error: e.message } }
+  } catch (e: unknown) { results.companies = { error: e instanceof Error ? e.message : 'Unknown error' } }
 
   // Import products
   try {
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       if (!error) imported++
     }
     results.products = { total: rows.length, imported }
-  } catch (e: any) { results.products = { error: e.message } }
+  } catch (e: unknown) { results.products = { error: e instanceof Error ? e.message : 'Unknown error' } }
 
   return NextResponse.json({ success: true, results })
 }
