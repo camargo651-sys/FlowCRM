@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, FileText, Send, CheckCircle2, XCircle, Clock, Eye, Trash2, X, DollarSign, Percent, Calendar, Save } from 'lucide-react'
+import { Plus, Search, FileText, Send, CheckCircle2, XCircle, Clock, Eye, Trash2, X, DollarSign, Percent, Calendar, Save, Copy, Download, Mail, AlertTriangle } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
@@ -45,6 +45,9 @@ interface Quote {
   notes?: string
   terms?: string
   valid_until?: string
+  view_token?: string
+  view_count?: number
+  last_viewed_at?: string
   created_at: string
   updated_at: string
   contacts?: { name: string; email?: string } | null
@@ -59,6 +62,31 @@ const STATUS_CONFIG = {
   rejected: { label: 'Rejected', color: 'badge-red', icon: XCircle },
   expired: { label: 'Expired', color: 'badge-yellow', icon: Clock },
 }
+
+const QUOTE_TEMPLATES = [
+  {
+    name: 'Basic Package',
+    items: [{ id: `temp-tpl-1`, description: 'Basic Package — Standard service offering', quantity: 1, unit_price: 500, discount: 0, total: 500, order_index: 0, product_id: null }],
+    notes: 'Thank you for considering our basic package.',
+    terms: 'Payment due within 30 days of acceptance.\nPrices valid for 30 days from the date of this quote.',
+  },
+  {
+    name: 'Premium Package',
+    items: [
+      { id: `temp-tpl-1`, description: 'Setup & Configuration', quantity: 1, unit_price: 1000, discount: 0, total: 1000, order_index: 0, product_id: null },
+      { id: `temp-tpl-2`, description: 'Monthly Maintenance', quantity: 12, unit_price: 200, discount: 0, total: 2400, order_index: 1, product_id: null },
+      { id: `temp-tpl-3`, description: 'Priority Support', quantity: 1, unit_price: 500, discount: 0, total: 500, order_index: 2, product_id: null },
+    ],
+    notes: 'Premium package includes priority support and dedicated account manager.',
+    terms: 'Payment due within 30 days of acceptance.\nPrices valid for 30 days from the date of this quote.',
+  },
+  {
+    name: 'Custom Project',
+    items: [] as QuoteItem[],
+    notes: 'Custom project scope to be defined upon approval.',
+    terms: '50% upfront, 50% upon completion.\nPrices valid for 15 days from the date of this quote.\nAdditional revisions may incur extra charges.',
+  },
+]
 
 // ==================== QUOTE EDITOR ====================
 function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, onSave }: {
@@ -84,6 +112,16 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
   const [items, setItems] = useState<QuoteItem[]>(quote?.items || [])
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<'items' | 'preview'>('items')
+  const [createInvoiceOnAccept, setCreateInvoiceOnAccept] = useState(true)
+
+  const applyTemplate = (templateName: string) => {
+    const tpl = QUOTE_TEMPLATES.find(t => t.name === templateName)
+    if (!tpl) return
+    const newItems = tpl.items.map((item, i) => ({ ...item, id: `temp-${Date.now()}-${i}` }))
+    setItems(newItems)
+    setNotes(tpl.notes)
+    setTerms(tpl.terms)
+  }
 
   // Calculations
   const subtotal = items.reduce((s, i) => s + i.total, 0)
@@ -186,6 +224,44 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
       }
     }
 
+    // Auto-create invoice when accepted
+    if (newStatus === 'accepted' && quoteId && createInvoiceOnAccept) {
+      const invCount = await supabase.from('invoices').select('id', { count: 'exact' }).eq('workspace_id', workspaceId)
+      const invNum = (invCount.count || 0) + 1
+      const { data: newInvoice } = await supabase.from('invoices').insert([{
+        workspace_id: workspaceId,
+        contact_id: contactId || null,
+        invoice_number: `INV-${String(invNum).padStart(4, '0')}`,
+        status: 'draft',
+        currency,
+        subtotal,
+        discount_value: discountAmount,
+        tax_rate: taxRate,
+        tax_amount: taxAmount,
+        total,
+        notes: notes || null,
+        issue_date: new Date().toISOString().split('T')[0],
+        due_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+        balance_due: total,
+        amount_paid: 0,
+      }]).select('id').single()
+
+      if (newInvoice && items.length > 0) {
+        const invItems = items.map((item, i) => ({
+          invoice_id: newInvoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount: item.discount,
+          total: item.total,
+          order_index: i,
+          product_id: item.product_id || null,
+        }))
+        await supabase.from('invoice_items').insert(invItems)
+      }
+      toast.success('Quote accepted! Draft invoice created.')
+    }
+
     setSaving(false)
     onSave()
     onClose()
@@ -203,9 +279,43 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
             {quote && <p className="text-xs text-surface-400 mt-0.5">{quote.quote_number}</p>}
           </div>
           <div className="flex items-center gap-2">
+            {quote && (
+              <button onClick={() => window.open(`/api/pdf?type=quote&id=${quote.id}`, '_blank')} className="btn-secondary btn-sm">
+                <Download className="w-3.5 h-3.5" /> Download PDF
+              </button>
+            )}
             {quote?.status === 'draft' && (
-              <button onClick={() => handleSave('sent')} className="btn-secondary btn-sm">
-                <Send className="w-3.5 h-3.5" /> Mark as Sent
+              <button onClick={async () => {
+                const contact = contacts.find(c => c.id === contactId)
+                if (contact?.email && quote.view_token) {
+                  try {
+                    const viewLink = `${window.location.origin}/q/${quote.view_token}`
+                    const htmlBody = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
+                      <h2 style="color:#1e293b">Quote: ${title}</h2>
+                      <p style="color:#64748b">Total: ${formatCurrency(total)}</p>
+                      <p style="color:#64748b">Please review your quote by clicking the link below:</p>
+                      <a href="${viewLink}" style="display:inline-block;padding:10px 24px;background:#6172f3;color:#fff;border-radius:8px;text-decoration:none;margin-top:12px">View Quote</a>
+                    </div>`
+                    await fetch('/api/email-send', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        to: contact.email,
+                        subject: `Quote ${quote.quote_number}: ${title}`,
+                        body: htmlBody,
+                        contactId: contact.id,
+                      }),
+                    })
+                    toast.success(`Quote sent to ${contact.email}`)
+                  } catch {
+                    toast.error('Failed to send email, marking as sent.')
+                  }
+                } else if (!contacts.find(c => c.id === contactId)?.email) {
+                  toast('No email address for contact — marked as sent only.', { icon: '⚠️' })
+                }
+                handleSave('sent')
+              }} className="btn-secondary btn-sm">
+                <Send className="w-3.5 h-3.5" /> {contacts.find(c => c.id === contactId)?.email ? 'Send by Email' : 'Mark as Sent'}
               </button>
             )}
             {quote?.status === 'sent' && (
@@ -225,6 +335,25 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Template selector for new quotes */}
+          {!quote && (
+            <div>
+              <label className="label">Start from Template</label>
+              <select className="input text-sm" value="" onChange={e => { if (e.target.value) applyTemplate(e.target.value) }}>
+                <option value="">Blank quote...</option>
+                {QUOTE_TEMPLATES.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Create invoice checkbox for sent quotes */}
+          {quote?.status === 'sent' && (
+            <label className="flex items-center gap-2 text-sm text-surface-700 bg-emerald-50 p-3 rounded-xl">
+              <input type="checkbox" checked={createInvoiceOnAccept} onChange={e => setCreateInvoiceOnAccept(e.target.checked)} className="rounded border-surface-300" />
+              Create draft invoice when accepting this quote
+            </label>
+          )}
+
           {/* Basic info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -520,16 +649,72 @@ export default function QuotesPage() {
     setQuotes(prev => prev.filter(q => q.id !== id))
   }
 
+  const duplicateQuote = async (original: Quote) => {
+    // Fetch items for the original quote
+    const { data: originalItems } = await supabase.from('quote_items').select('*').eq('quote_id', original.id).order('order_index')
+
+    // Generate new quote number
+    const count = await supabase.from('quotes').select('id', { count: 'exact' }).eq('workspace_id', workspaceId)
+    const num = (count.count || 0) + 1
+    const viewToken = crypto.randomUUID()
+
+    const { data: newQuote } = await supabase.from('quotes').insert([{
+      workspace_id: workspaceId,
+      title: `${original.title} (Copy)`,
+      contact_id: original.contact_id || null,
+      deal_id: original.deal_id || null,
+      currency: original.currency,
+      subtotal: original.subtotal,
+      discount_type: original.discount_type,
+      discount_value: original.discount_value,
+      tax_rate: original.tax_rate,
+      tax_amount: original.tax_amount,
+      total: original.total,
+      notes: original.notes || null,
+      terms: original.terms || null,
+      valid_until: original.valid_until || null,
+      status: 'draft',
+      quote_number: `Q-${String(num).padStart(4, '0')}`,
+      view_token: viewToken,
+    }]).select('*,  contacts(name, email), deals(title)').single()
+
+    if (newQuote && originalItems && originalItems.length > 0) {
+      const newItems = originalItems.map((item: QuoteItem & { quote_id?: string }, i: number) => ({
+        quote_id: newQuote.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        discount: item.discount,
+        total: item.total,
+        order_index: i,
+        product_id: item.product_id || null,
+      }))
+      await supabase.from('quote_items').insert(newItems)
+    }
+
+    if (newQuote) {
+      toast.success(`Quote duplicated as ${newQuote.quote_number}`)
+      await load()
+      // Open the duplicated quote in editor
+      const { data: dupItems } = await supabase.from('quote_items').select('*').eq('quote_id', newQuote.id).order('order_index')
+      setEditingQuote({ ...newQuote, items: dupItems || [] })
+      setShowEditor(true)
+    }
+  }
+
   const filtered = quotes.filter(q => {
     if (filter !== 'all' && q.status !== filter) return false
     if (search && !q.title.toLowerCase().includes(search.toLowerCase()) && !q.quote_number.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
+  const expiredCount = quotes.filter(q => q.valid_until && new Date(q.valid_until) < new Date() && q.status !== 'accepted' && q.status !== 'rejected').length
+
   const stats = {
     draft: quotes.filter(q => q.status === 'draft').length,
     sent: quotes.filter(q => q.status === 'sent').length,
     accepted: quotes.filter(q => q.status === 'accepted').length,
+    expired: expiredCount,
     total_value: quotes.filter(q => q.status === 'accepted').reduce((s, q) => s + q.total, 0),
   }
 
@@ -548,11 +733,12 @@ export default function QuotesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-5 gap-3 mb-6">
         {[
           { label: 'Drafts', value: stats.draft, icon: FileText, color: 'text-surface-500', bg: 'bg-surface-50' },
           { label: 'Sent', value: stats.sent, icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Accepted', value: stats.accepted, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Expired', value: stats.expired, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Revenue', value: formatCurrency(stats.total_value), icon: DollarSign, color: 'text-violet-600', bg: 'bg-violet-50' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="stat-card">
@@ -603,13 +789,18 @@ export default function QuotesPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">{template.contactLabel.singular}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden lg:table-cell">{template.dealLabel.singular}</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Total</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Views</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Status</th>
-                <th className="px-4 py-3 w-10"></th>
+                <th className="px-4 py-3 w-20"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(quote => {
                 const statusCfg = STATUS_CONFIG[quote.status]
+                const isExpired = quote.valid_until && new Date(quote.valid_until) < new Date() && quote.status !== 'accepted' && quote.status !== 'rejected'
+                const isExpiringSoon = quote.valid_until && !isExpired && (new Date(quote.valid_until).getTime() - Date.now()) < 3 * 86400000 && quote.status !== 'accepted' && quote.status !== 'rejected'
+                const lastViewed = quote.last_viewed_at ? new Date(quote.last_viewed_at) : null
+                const relativeViewed = lastViewed ? (Date.now() - lastViewed.getTime() < 3600000 ? `${Math.round((Date.now() - lastViewed.getTime()) / 60000)}m ago` : Date.now() - lastViewed.getTime() < 86400000 ? `${Math.round((Date.now() - lastViewed.getTime()) / 3600000)}h ago` : lastViewed.toLocaleDateString()) : null
                 return (
                   <tr key={quote.id} onClick={() => openEditor(quote)}
                     className="border-b border-surface-50 last:border-0 hover:bg-surface-50 cursor-pointer transition-colors">
@@ -626,14 +817,32 @@ export default function QuotesPage() {
                     <td className="px-4 py-3 text-right">
                       <span className="text-sm font-bold text-surface-900">{formatCurrency(quote.total)}</span>
                     </td>
+                    <td className="px-4 py-3 text-center hidden md:table-cell">
+                      <div className="flex items-center justify-center gap-1" title={relativeViewed ? `Last viewed: ${relativeViewed}` : 'Not viewed yet'}>
+                        <Eye className="w-3 h-3 text-surface-400" />
+                        <span className="text-xs text-surface-500">{quote.view_count || 0}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={cn('badge text-[10px]', statusCfg.color)}>{statusCfg.label}</span>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className={cn('badge text-[10px]', statusCfg.color)}>{statusCfg.label}</span>
+                        {isExpired && <span className="badge text-[10px] bg-red-100 text-red-700">Expired</span>}
+                        {isExpiringSoon && <span className="badge text-[10px] bg-amber-100 text-amber-700">Expiring soon</span>}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={e => { e.stopPropagation(); deleteQuote(quote.id) }}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-surface-300 hover:text-red-500">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-0.5">
+                        <button onClick={e => { e.stopPropagation(); duplicateQuote(quote) }}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 text-surface-300 hover:text-blue-500"
+                          title="Duplicate quote">
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={e => { e.stopPropagation(); if (confirm(`Delete quote "${quote.title}"? This cannot be undone.`)) deleteQuote(quote.id) }}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-surface-300 hover:text-red-500"
+                          title="Delete quote">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
