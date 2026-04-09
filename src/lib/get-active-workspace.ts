@@ -34,7 +34,9 @@ export async function getActiveWorkspace(
     .single()
 
   if (data && typeof window !== 'undefined') {
-    localStorage.setItem('tracktio_active_workspace', (data as unknown as { id: string }).id)
+    const wsId = (data as unknown as { id: string }).id
+    localStorage.setItem('tracktio_active_workspace', wsId)
+    document.cookie = `tracktio_ws=${wsId};path=/;max-age=${60*60*24*365};samesite=lax`
   }
 
   return data

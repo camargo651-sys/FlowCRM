@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { formatCurrency } from '@/lib/utils'
 import Link from 'next/link'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import AICommandCenter from '@/components/dashboard/AICommandCenter'
 import GettingStarted from '@/components/dashboard/GettingStarted'
 import DashboardWidgets from '@/components/dashboard/DashboardWidgets'
+import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
 import { SupabaseClient } from '@supabase/supabase-js'
 import type { DbRow } from '@/types'
@@ -12,24 +14,36 @@ import type { DbRow } from '@/types'
 type DashboardRecord = DbRow
 
 async function getData(userId: string, supabase: SupabaseClient) {
-  const { data: ws } = await supabase.from('workspaces').select('id, terminology, industry, name').eq('owner_id', userId).single()
+  // Read active workspace from cookie (server-side) or fallback to first
+  const cookieStore = cookies()
+  const activeWsId = cookieStore.get('tracktio_ws')?.value
+
+  let ws: DashboardRecord | null = null
+  if (activeWsId) {
+    const { data } = await supabase.from('workspaces').select('id, terminology, industry, name, enabled_modules').eq('id', activeWsId).eq('owner_id', userId).single()
+    ws = data
+  }
+  if (!ws) {
+    const { data } = await supabase.from('workspaces').select('id, terminology, industry, name, enabled_modules').eq('owner_id', userId).order('created_at').limit(1).single()
+    ws = data
+  }
   if (!ws) return null
 
   const now = new Date()
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Parallel fetch all ERP data
-  // Safe query helper — returns empty array if table doesn't exist
   const safeQuery = async (query: PromiseLike<{ data: DashboardRecord[] | null }>) => {
     const res = await query
     return res?.data || []
   }
 
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-  const [deals, wonDeals, overdueTasks, contacts, quotes, invoices, products, employees, socialLeads, firstActivities] = await Promise.all([
+  const [deals, wonDeals, wonDealsLastMonth, overdueTasks, contacts, quotes, invoices, products, employees, socialLeads, firstActivities, recentDeals] = await Promise.all([
     safeQuery(supabase.from('deals').select('id, value, status, probability, updated_at, created_at').eq('workspace_id', ws.id)),
     safeQuery(supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('status', 'won').gte('updated_at', firstOfMonth)),
+    safeQuery(supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('status', 'won').gte('updated_at', firstOfLastMonth).lte('updated_at', endOfLastMonth)),
     safeQuery(supabase.from('activities').select('id').eq('workspace_id', ws.id).eq('done', false).lte('due_date', now.toISOString())),
     safeQuery(supabase.from('contacts').select('id, score_label').eq('workspace_id', ws.id)),
     safeQuery(supabase.from('quotes').select('id, total, status').eq('workspace_id', ws.id)),
@@ -38,10 +52,15 @@ async function getData(userId: string, supabase: SupabaseClient) {
     safeQuery(supabase.from('employees').select('id, salary, salary_period, status').eq('workspace_id', ws.id).eq('status', 'active')),
     safeQuery(supabase.from('social_leads').select('id, platform, status, contact_id, created_at').eq('workspace_id', ws.id)),
     safeQuery(supabase.from('activities').select('contact_id, created_at').eq('workspace_id', ws.id).order('created_at', { ascending: true })),
+    // Last 7 days of won deals for trend chart
+    safeQuery(supabase.from('deals').select('value, updated_at').eq('workspace_id', ws.id).eq('status', 'won').gte('updated_at', sevenDaysAgo)),
   ])
 
   const openDeals = deals.filter((d) => d.status === 'open')
   const term = (ws.terminology as Record<string, { singular?: string; plural?: string }>) || {}
+
+  // Enabled modules
+  const enabledMods = ws.enabled_modules as Record<string, boolean> | null
 
   // CRM metrics
   const hotContacts = contacts.filter((c) => c.score_label === 'hot').length
@@ -56,7 +75,12 @@ async function getData(userId: string, supabase: SupabaseClient) {
   const dealWinRate = closedDeals.length > 0 ? Math.round((wonDealsAll.length / closedDeals.length) * 100) : 0
   const avgWonDealValue = wonDealsAll.length > 0 ? wonDealsAll.reduce((s: number, d) => s + ((d.value as number) || 0), 0) / wonDealsAll.length : 0
 
-  // Response time metric: avg time from social_lead.created_at to first activity on linked contact
+  // MoM comparison
+  const wonThisMonthValue = wonDeals.reduce((s: number, d) => s + ((d.value as number) || 0), 0)
+  const wonLastMonthValue = wonDealsLastMonth.reduce((s: number, d) => s + ((d.value as number) || 0), 0)
+  const momChange = wonLastMonthValue > 0 ? Math.round(((wonThisMonthValue - wonLastMonthValue) / wonLastMonthValue) * 100) : 0
+
+  // Response time
   const convertedLeadsWithContact = socialLeads.filter((l) => l.contact_id)
   const firstActivityByContact = new Map<string, string>()
   for (const a of firstActivities) {
@@ -84,13 +108,37 @@ async function getData(userId: string, supabase: SupabaseClient) {
     leadsByPlatform[platform] = (leadsByPlatform[platform] || 0) + 1
   }
 
+  // Trend data: daily won deal values for last 7 days
+  const trendData: { day: string; value: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+    const dayStr = d.toLocaleDateString('en', { weekday: 'short' })
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000
+    const dayValue = recentDeals
+      .filter(deal => {
+        const t = new Date(deal.updated_at as string).getTime()
+        return t >= dayStart && t < dayEnd
+      })
+      .reduce((s: number, deal) => s + ((deal.value as number) || 0), 0)
+    trendData.push({ day: dayStr, value: dayValue })
+  }
+
+  // Contextual alerts
+  const alerts: { text: string; href: string; type: 'warning' | 'info' | 'success' }[] = []
+  const unrepliedLeads = socialLeads.filter(l => l.status === 'new').length
+  if (unrepliedLeads > 0) alerts.push({ text: `${unrepliedLeads} leads sin responder`, href: '/leads', type: 'warning' })
+  if (atRiskDeals > 0) alerts.push({ text: `${atRiskDeals} deals at risk (>7d sin actividad)`, href: '/pipeline', type: 'warning' })
+  if (overdueTasks.length > 0) alerts.push({ text: `${overdueTasks.length} tareas vencidas`, href: '/tasks', type: 'warning' })
+  const lowStockCount = products.filter((p) => (p.stock_quantity as number) <= (p.min_stock as number)).length
+  if (lowStockCount > 0) alerts.push({ text: `${lowStockCount} productos con stock bajo`, href: '/inventory', type: 'warning' })
+
   // Finance metrics
   const outstandingInvoices = invoices.filter((i) => ['sent', 'partial', 'overdue'].includes(i.status as string))
   const totalOutstanding = outstandingInvoices.reduce((s: number, i) => s + ((i.balance_due as number) || 0), 0)
   const collectedThisMonth = invoices.filter((i) => i.status === 'paid').reduce((s: number, i) => s + ((i.total as number) || 0), 0)
 
   // Inventory metrics
-  const lowStockCount = products.filter((p) => (p.stock_quantity as number) <= (p.min_stock as number)).length
   const inventoryValue = products.reduce((s: number, p) => s + ((p.stock_quantity as number) * (p.cost_price as number)), 0)
 
   // HR metrics
@@ -103,19 +151,23 @@ async function getData(userId: string, supabase: SupabaseClient) {
 
   // Industry KPIs
   let industryKPIs: { key: string; label: string; value: string | number; icon?: string; trend?: string }[] = []
-  try { industryKPIs = await getIndustryKPIs(supabase, ws.id, ws.industry || 'generic') } catch {}
+  try { industryKPIs = await getIndustryKPIs(supabase, ws.id as string, (ws.industry as string) || 'generic') } catch {}
 
   return {
-    workspaceName: ws.name,
-    industry: ws.industry,
+    workspaceName: ws.name as string,
+    industry: ws.industry as string,
+    enabledModules: enabledMods,
     dealLabel: term.deal?.plural || 'Deals',
     contactLabel: term.contact?.plural || 'Contacts',
     industryKPIs,
+    trendData,
+    alerts,
+    momChange,
     crm: {
       pipelineValue: openDeals.reduce((s: number, d) => s + ((d.value as number) || 0), 0),
       openDeals: openDeals.length,
       wonThisMonth: wonDeals.length,
-      wonValue: wonDeals.reduce((s: number, d) => s + ((d.value as number) || 0), 0),
+      wonValue: wonThisMonthValue,
       contacts: contacts.length,
       hotContacts,
       atRiskDeals,
@@ -145,6 +197,12 @@ async function getData(userId: string, supabase: SupabaseClient) {
   }
 }
 
+function getGreeting(name: string): string {
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches'
+  return name ? `${greeting}, ${name}` : greeting
+}
+
 export default async function DashboardPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -154,19 +212,31 @@ export default async function DashboardPage() {
   if (!data) return null
 
   const firstName = user.user_metadata?.full_name?.split(' ')[0] || ''
-
-  // Quick action links
-  const quickActions = [
-    { label: `New ${data.dealLabel.replace(/s$/, '')}`, href: '/pipeline', icon: '🔀' },
-    { label: 'New Contact', href: '/contacts', icon: '👤' },
-    { label: 'New Invoice', href: '/invoices', icon: '🧾' },
-    { label: 'New Quote', href: '/quotes', icon: '📄' },
-  ]
+  const isModuleEnabled = (mod: string) => !data.enabledModules || (data.enabledModules as Record<string, boolean>)[mod] !== false
 
   return (
     <div className="animate-fade-in">
       <DashboardClient />
       <GettingStarted />
+
+      {/* Personalized greeting */}
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-surface-900">{getGreeting(firstName)}</h1>
+        {data.alerts.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {data.alerts.map((alert, i) => (
+              <Link key={i} href={alert.href}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+                  alert.type === 'warning' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' :
+                  alert.type === 'success' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' :
+                  'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                }`}>
+                {alert.type === 'warning' ? '⚠️' : alert.type === 'success' ? '✅' : 'ℹ️'} {alert.text}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       <DashboardWidgets
         kpis={<>
@@ -226,33 +296,17 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Leads by Source */}
-          {Object.keys(data.crm.leadsByPlatform).length > 0 && (
-            <div className="card p-4 mb-6">
-              <p className="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-3">Leads by Source</p>
-              <div className="flex items-end gap-3">
-                {Object.entries(data.crm.leadsByPlatform).sort(([,a], [,b]) => b - a).map(([platform, count]) => {
-                  const maxCount = Math.max(...Object.values(data.crm.leadsByPlatform))
-                  const height = Math.max(16, Math.round((count / maxCount) * 64))
-                  const icons: Record<string, string> = { instagram: '📸', facebook: '📘', tiktok: '🎵', linkedin: '💼', twitter: '🐦', youtube: '📺' }
-                  return (
-                    <div key={platform} className="flex flex-col items-center gap-1 flex-1">
-                      <span className="text-xs font-bold text-surface-700">{count}</span>
-                      <div className="w-full bg-brand-500 rounded-t-md" style={{ height: `${height}px` }} />
-                      <span className="text-sm" title={platform}>{icons[platform] || '🌐'}</span>
-                      <span className="text-[9px] text-surface-400 font-medium capitalize">{platform}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+          {/* Trend chart + Leads by source side by side */}
+          <DashboardCharts
+            trendData={data.trendData}
+            leadsByPlatform={data.crm.leadsByPlatform}
+          />
         </>}
         ai={<AICommandCenter />}
         modules={
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-8">
 
-        {/* CRM Module */}
+        {/* CRM Module — always visible */}
         <Link href="/pipeline" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Sales / CRM</h3>
@@ -265,7 +319,14 @@ export default async function DashboardPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Won this month</span>
-              <span className="text-xs font-bold text-emerald-600">{formatCurrency(data.crm.wonValue)}</span>
+              <span className="text-xs font-bold text-emerald-600">
+                {formatCurrency(data.crm.wonValue)}
+                {data.momChange !== 0 && (
+                  <span className={`ml-1 text-[10px] ${data.momChange > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {data.momChange > 0 ? '↑' : '↓'}{Math.abs(data.momChange)}%
+                  </span>
+                )}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Open {data.dealLabel.toLowerCase()}</span>
@@ -287,6 +348,7 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Finance Module */}
+        {isModuleEnabled('invoicing') && (
         <Link href="/invoices" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Finance</h3>
@@ -317,8 +379,10 @@ export default async function DashboardPage() {
             </div>
           </div>
         </Link>
+        )}
 
         {/* Inventory Module */}
+        {isModuleEnabled('inventory') && (
         <Link href="/inventory" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Inventory</h3>
@@ -346,8 +410,10 @@ export default async function DashboardPage() {
             )}
           </div>
         </Link>
+        )}
 
         {/* HR Module */}
+        {isModuleEnabled('hr') && (
         <Link href="/hr" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-surface-900">Human Resources</h3>
@@ -368,17 +434,29 @@ export default async function DashboardPage() {
             </div>
           </div>
         </Link>
+        )}
       </div>
 
         }
         actions={
           <div className="flex gap-3 mt-8 flex-wrap">
-            {quickActions.map(a => (
-              <Link key={a.label} href={a.href}
-                className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
-                <span>{a.icon}</span> {a.label}
+            <Link href="/pipeline" className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
+              <span>🔀</span> Nuevo {(data.dealLabel || 'Deal').replace(/s$/i, '')}
+            </Link>
+            <Link href="/contacts" className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
+              <span>👤</span> Nuevo Contacto
+            </Link>
+            {isModuleEnabled('invoicing') && (
+              <Link href="/invoices" className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
+                <span>🧾</span> Nueva Factura
               </Link>
-            ))}
+            )}
+            <Link href="/quotes" className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
+              <span>📄</span> Nueva Cotización
+            </Link>
+            <Link href="/leads" className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
+              <span>📸</span> Ver Leads
+            </Link>
           </div>
         }
       />

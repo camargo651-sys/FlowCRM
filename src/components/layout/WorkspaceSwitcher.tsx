@@ -65,6 +65,7 @@ export default function WorkspaceSwitcher({ currentName, currentColor }: { curre
               <button key={ws.id} onClick={() => {
                 if (ws.id !== currentId) {
                   localStorage.setItem('tracktio_active_workspace', ws.id)
+                  document.cookie = `tracktio_ws=${ws.id};path=/;max-age=${60*60*24*365};samesite=lax`
                   setCurrentId(ws.id)
                   setOpen(false)
                   window.location.reload()
