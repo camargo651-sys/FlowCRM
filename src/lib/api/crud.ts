@@ -62,7 +62,8 @@ export function createCrudHandlers(config: CrudConfig) {
 
     // Search
     if (search && searchFields.length) {
-      const searchFilter = searchFields.map(f => `${f}.ilike.%${search}%`).join(',')
+      const escaped = search.replace(/[%_\\]/g, '\\$&')
+      const searchFilter = searchFields.map(f => `${f}.ilike.%${escaped}%`).join(',')
       countQuery = countQuery.or(searchFilter)
       dataQuery = dataQuery.or(searchFilter)
     }

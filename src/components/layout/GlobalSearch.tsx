@@ -141,7 +141,9 @@ export default function GlobalSearch() {
     const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
     if (!ws) { setLoading(false); return }
 
-    const searchTerm = `%${q}%`
+    // Escape LIKE wildcards to prevent pattern injection
+    const escaped = q.replace(/[%_\\]/g, '\\$&')
+    const searchTerm = `%${escaped}%`
     const all: SearchResult[] = []
 
     const { data: contacts } = await supabase

@@ -38,10 +38,13 @@ export async function POST(request: NextRequest) {
   const { invoice_id, success_url, cancel_url } = await request.json()
   if (!invoice_id) return NextResponse.json({ error: 'Missing invoice_id' }, { status: 400 })
 
-  // Get invoice
+  // Get invoice (scoped to user's workspace)
+  const { data: wsData } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+  if (!wsData) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
+
   const { data: invoice } = await supabase.from('invoices')
     .select('*, contacts(name, email), invoice_items(*)')
-    .eq('id', invoice_id).single()
+    .eq('id', invoice_id).eq('workspace_id', wsData.id).single()
 
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
 

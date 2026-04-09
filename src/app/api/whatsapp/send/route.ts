@@ -33,8 +33,8 @@ export async function POST(request: Request) {
   const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
-  // Get contact phone
-  const { data: contact } = await supabase.from('contacts').select('id, name, phone').eq('id', contactId).single()
+  // Get contact phone (scoped to workspace)
+  const { data: contact } = await supabase.from('contacts').select('id, name, phone').eq('id', contactId).eq('workspace_id', ws.id).single()
   if (!contact?.phone) {
     return NextResponse.json({ error: 'Contact has no phone number' }, { status: 400 })
   }

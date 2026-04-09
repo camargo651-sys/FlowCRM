@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
   let userId: string | null = null
   let workspaceId: string | null = null
 
-  if (cronSecret && cronSecret === process.env.CRON_SECRET) {
+  if (process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET) {
     // Cron-triggered: sync all active accounts (we'll iterate)
-  } else {
+  } else if (!cronSecret) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     userId = user.id

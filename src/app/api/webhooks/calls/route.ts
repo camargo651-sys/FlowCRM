@@ -15,13 +15,14 @@ function getServiceSupabase() {
 
 // POST: Twilio recording/transcription callback
 export async function POST(request: NextRequest) {
-  // Verify webhook auth token if configured
+  // Verify webhook auth token — required
   const webhookToken = process.env.TWILIO_WEBHOOK_TOKEN
-  if (webhookToken) {
-    const authHeader = request.headers.get('x-webhook-token') || request.nextUrl.searchParams.get('token') || ''
-    if (authHeader !== webhookToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
+  if (!webhookToken) {
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+  }
+  const authHeader = request.headers.get('x-webhook-token') || request.nextUrl.searchParams.get('token') || ''
+  if (authHeader !== webhookToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
   const contentType = request.headers.get('content-type') || ''
   let body: Record<string, string>
@@ -51,18 +52,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No phone numbers provided' }, { status: 400 })
   }
 
-  // Find workspace by matching phone number with a whatsapp_account or twilio integration
+  // Find contact by phone number (use normalized search, limit results)
   const contactPhone = direction === 'inbound' ? fromNumber : toNumber
-  const { data: allContacts } = await supabase
+  const normalized = normalizePhone(contactPhone)
+
+  // Search by normalized phone to avoid loading all contacts
+  const { data: matchedContacts } = await supabase
     .from('contacts')
     .select('id, phone, workspace_id, name')
     .not('phone', 'is', null)
+    .or(`phone.ilike.%${normalized.slice(-7)}%`)
+    .limit(20)
 
   let contactId: string | null = null
   let workspaceId: string | null = null
   let contactName = ''
 
-  for (const c of allContacts || []) {
+  for (const c of matchedContacts || []) {
     if (c.phone && matchPhoneNumber(c.phone, contactPhone)) {
       contactId = c.id
       workspaceId = c.workspace_id

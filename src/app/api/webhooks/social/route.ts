@@ -26,6 +26,10 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabase()
   if (!supabase) return NextResponse.json({ status: 'ok' })
 
+  // Verify webhook token if configured
+  const verifyToken = process.env.SOCIAL_WEBHOOK_VERIFY_TOKEN
+  if (!verifyToken) return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+
   let body: DbRow
   try { body = await request.json() } catch { return NextResponse.json({ status: 'ok' }) }
 

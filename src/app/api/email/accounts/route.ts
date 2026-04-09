@@ -43,8 +43,12 @@ export async function DELETE(request: Request) {
   const { accountId } = await request.json()
   if (!accountId) return NextResponse.json({ error: 'Missing accountId' }, { status: 400 })
 
-  // Delete the account (cascades to email_messages and sync_log)
-  const { error } = await supabase.from('email_accounts').delete().eq('id', accountId)
+  // Scope to user's workspace
+  const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+  if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
+
+  // Delete the account (scoped to workspace, cascades to email_messages and sync_log)
+  const { error } = await supabase.from('email_accounts').delete().eq('id', accountId).eq('workspace_id', ws.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ success: true })

@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabase()
   if (!supabase) return NextResponse.json({ error: 'Not configured' }, { status: 503 })
 
-  // Auth: cron secret or user session
+  // Auth: require cron secret
   const cronSecret = request.nextUrl.searchParams.get('secret')
-  if (cronSecret !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
+  if (!process.env.CRON_SECRET || cronSecret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
