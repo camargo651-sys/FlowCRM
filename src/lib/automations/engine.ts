@@ -26,6 +26,10 @@ interface TriggerContext {
   previousStageName?: string
   quoteId?: string
   quoteTitle?: string
+  leadId?: string
+  leadName?: string
+  leadPlatform?: string
+  leadMessage?: string
   userId?: string
   metadata?: Record<string, any>
 }
@@ -224,4 +228,7 @@ function interpolateTemplate(template: string, context: TriggerContext): string 
     .replace(/\{\{deal_value\}\}/g, context.dealValue?.toString() || '')
     .replace(/\{\{stage_name\}\}/g, context.stageName || '')
     .replace(/\{\{quote_title\}\}/g, context.quoteTitle || '')
+    .replace(/\{\{lead_name\}\}/g, context.leadName || '')
+    .replace(/\{\{lead_platform\}\}/g, context.leadPlatform || '')
+    .replace(/\{\{lead_message\}\}/g, context.leadMessage || '')
 }

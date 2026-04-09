@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { fireTrigger } from '@/lib/automations/engine'
 import type { DbRow } from '@/types'
 
 function getSupabase() {
@@ -92,7 +93,41 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
 
   if (!wsId) return
 
-  await supabase.from('social_leads').insert({
+  // --- Duplicate detection: check for same author_username + platform in last 24h ---
+  if (data.author_username) {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { data: existing } = await supabase
+      .from('social_leads')
+      .select('id, metadata')
+      .eq('workspace_id', wsId)
+      .eq('author_username', data.author_username)
+      .eq('platform', data.platform)
+      .gte('created_at', oneDayAgo)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (existing) {
+      // Append new message to existing lead's metadata instead of creating duplicate
+      const existingMeta = (existing.metadata || {}) as Record<string, any>
+      const additionalMessages = existingMeta.additional_messages || []
+      additionalMessages.push({
+        message: data.message?.slice(0, 2000),
+        timestamp: new Date().toISOString(),
+        source_type: data.source_type,
+        post_url: data.post_url,
+      })
+      await supabase.from('social_leads').update({
+        metadata: { ...existingMeta, additional_messages: additionalMessages },
+      }).eq('id', existing.id)
+      return
+    }
+  }
+
+  // --- Auto-scoring: DMs get higher priority than comments ---
+  const priority = data.source_type === 'dm' ? 'high' : 'normal'
+
+  const { data: lead } = await supabase.from('social_leads').insert({
     workspace_id: wsId,
     platform: data.platform,
     source_type: data.source_type,
@@ -100,8 +135,9 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
     author_username: data.author_username,
     message: data.message?.slice(0, 2000),
     post_url: data.post_url,
-    metadata: data.metadata || {},
-  })
+    status: 'new',
+    metadata: { ...(data.metadata || {}), priority },
+  }).select('id').single()
 
   // Notify workspace owner
   const { data: ws } = await supabase.from('workspaces').select('owner_id').eq('id', wsId).single()
@@ -111,8 +147,22 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
       type: 'system',
       title: `New ${data.platform} lead: ${data.author_name}`,
       body: data.message?.slice(0, 100) || 'New social media interaction',
-      priority: 'medium',
+      priority: priority === 'high' ? 'high' : 'medium',
       action_url: '/leads',
     })
+
+    // --- Fire automation trigger ---
+    if (lead) {
+      await fireTrigger(supabase, {
+        workspaceId: wsId,
+        triggerType: 'lead_created',
+        leadId: lead.id,
+        leadName: data.author_name,
+        leadPlatform: data.platform,
+        leadMessage: data.message?.slice(0, 500),
+        userId: ws.owner_id,
+        metadata: { source_type: data.source_type, priority },
+      })
+    }
   }
 }

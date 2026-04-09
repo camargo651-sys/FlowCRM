@@ -260,6 +260,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.ai_setup': 'Configurar con IA',
     'nav.campaigns': 'Campañas',
     'nav.wa_campaigns': 'Campañas WA',
+    'nav.wa_inbox': 'Bandeja WA',
     'nav.extensions': 'Extensiones',
     'nav.import': 'Importar',
 
@@ -344,6 +345,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.ai_setup': 'AI Setup',
     'nav.campaigns': 'Campaigns',
     'nav.wa_campaigns': 'WA Campaigns',
+    'nav.wa_inbox': 'WA Inbox',
     'nav.extensions': 'Extensions',
     'nav.import': 'Import',
     'section.sales': 'Sales',
@@ -829,6 +831,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.ai_setup': 'Configurar com IA',
     'nav.campaigns': 'Campanhas',
     'nav.wa_campaigns': 'Campanhas WA',
+    'nav.wa_inbox': 'Caixa WA',
     'nav.extensions': 'Extensões',
     'nav.import': 'Importar',
 
@@ -1117,6 +1120,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.ai_setup': 'Configuration IA',
     'nav.campaigns': 'Campagnes',
     'nav.wa_campaigns': 'Campagnes WA',
+    'nav.wa_inbox': 'Boîte WA',
     'nav.extensions': 'Extensions',
     'nav.import': 'Importer',
 
@@ -1405,6 +1409,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.ai_setup': 'KI-Einrichtung',
     'nav.campaigns': 'Kampagnen',
     'nav.wa_campaigns': 'WA-Kampagnen',
+    'nav.wa_inbox': 'WA-Posteingang',
     'nav.extensions': 'Erweiterungen',
     'nav.import': 'Importieren',
 

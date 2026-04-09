@@ -639,7 +639,8 @@ create table if not exists automations (
     'task_overdue','task_due_soon',
     'quote_sent','quote_accepted','quote_rejected',
     'whatsapp_received','email_received',
-    'schedule_daily','schedule_weekly','schedule_monthly'
+    'schedule_daily','schedule_weekly','schedule_monthly',
+    'lead_created','lead_qualified','lead_converted','form_submitted'
   )),
   trigger_config  jsonb default '{}',
   action_type     text not null check (action_type in (
@@ -1683,5 +1684,19 @@ alter table social_leads enable row level security;
 drop policy if exists "ws owner social_leads" on social_leads;
 create policy "ws owner social_leads" on social_leads
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
+
+-- ============================================================
+-- MIGRATION: Add lead/form trigger types to automations
+-- ============================================================
+alter table automations drop constraint if exists automations_trigger_type_check;
+alter table automations add constraint automations_trigger_type_check check (trigger_type in (
+  'deal_stage_changed','deal_created','deal_idle','deal_won','deal_lost',
+  'contact_created','contact_birthday',
+  'task_overdue','task_due_soon',
+  'quote_sent','quote_accepted','quote_rejected',
+  'whatsapp_received','email_received',
+  'schedule_daily','schedule_weekly','schedule_monthly',
+  'lead_created','lead_qualified','lead_converted','form_submitted'
+));
 
 -- Done! Your Tracktio database is ready.

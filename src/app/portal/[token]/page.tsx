@@ -10,9 +10,10 @@ export default function PortalPage() {
     invoices: { id: string; invoice_number: string; issue_date: string; total: number; balance_due: number; status: string }[]
     quotes: { id: string; title: string; quote_number: string; total: number; valid_until?: string; status: string; view_token?: string }[]
     contracts: { id: string; title: string; contract_number: string; start_date?: string; end_date?: string; value: number; status: string }[]
+    deals: { id: string; title: string; value: number; status: string; probability?: number; expected_close_date?: string; pipeline_stages?: { name: string; color: string } | null }[]
   } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'invoices'|'quotes'|'contracts'>('invoices')
+  const [tab, setTab] = useState<'invoices'|'quotes'|'contracts'|'deals'>('invoices')
 
   useEffect(() => {
     fetch(`/api/portal?token=${token}`).then(r => r.json()).then(d => {
@@ -34,6 +35,7 @@ export default function PortalPage() {
   const STATUS_COLORS: Record<string, string> = {
     draft: '#94a3b8', sent: '#3b82f6', paid: '#10b981', partial: '#f59e0b',
     overdue: '#ef4444', active: '#10b981', expired: '#ef4444', accepted: '#10b981',
+    open: '#3b82f6', won: '#10b981', lost: '#ef4444',
   }
 
   return (
@@ -53,8 +55,9 @@ export default function PortalPage() {
             { key: 'invoices', label: `Invoices (${data.invoices.length})` },
             { key: 'quotes', label: `Proposals (${data.quotes.length})` },
             { key: 'contracts', label: `Contracts (${data.contracts.length})` },
+            { key: 'deals', label: `Opportunities (${data.deals.length})` },
           ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as 'invoices'|'quotes'|'contracts')}
+            <button key={t.key} onClick={() => setTab(t.key as 'invoices'|'quotes'|'contracts'|'deals')}
               style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
                 background: tab === t.key ? 'white' : 'transparent', color: tab === t.key ? '#1e293b' : '#64748b',
                 boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
@@ -137,6 +140,40 @@ export default function PortalPage() {
                       <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{c.start_date || '—'} → {c.end_date || '—'}</td>
                       <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>${Number(c.value).toLocaleString()}</td>
                       <td style={{ padding: '10px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (STATUS_COLORS[c.status] || '#94a3b8') + '20', color: STATUS_COLORS[c.status] || '#94a3b8', textTransform: 'uppercase' }}>{c.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* Deals / Opportunities */}
+        {tab === 'deals' && (
+          <div>
+            {data.deals.length === 0 ? <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>No opportunities</p> : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>Opportunity</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Stage</th>
+                  <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Value</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Close Date</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Status</th>
+                </tr></thead>
+                <tbody>
+                  {data.deals.map((d) => (
+                    <tr key={d.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 600 }}>{d.title}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {d.pipeline_stages ? (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (d.pipeline_stages.color || '#6172f3') + '20', color: d.pipeline_stages.color || '#6172f3', textTransform: 'uppercase' }}>
+                            {d.pipeline_stages.name}
+                          </span>
+                        ) : <span style={{ fontSize: 12, color: '#94a3b8' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>{d.value ? `$${Number(d.value).toLocaleString()}` : '—'}</td>
+                      <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{d.expected_close_date || '—'}</td>
+                      <td style={{ padding: '10px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (STATUS_COLORS[d.status] || '#94a3b8') + '20', color: STATUS_COLORS[d.status] || '#94a3b8', textTransform: 'uppercase' }}>{d.status}</span></td>
                     </tr>
                   ))}
                 </tbody>

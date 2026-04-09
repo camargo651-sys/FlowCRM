@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Filter, X, DollarSign, Calendar, User } from 'lucide-react'
+import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -184,6 +184,205 @@ function DealCard({ deal, onClick }: { deal: DealWithContact; onClick: () => voi
   )
 }
 
+// --- WHATSAPP MESSAGE COMPONENT ---
+interface WaMessage {
+  id: string
+  direction: 'inbound' | 'outbound'
+  body: string
+  received_at: string
+}
+
+function DealWhatsApp({ deal, onClose }: { deal: DealWithContact; onClose: () => void }) {
+  const supabase = createClient()
+  const [messages, setMessages] = useState<WaMessage[]>([])
+  const [newMsg, setNewMsg] = useState('')
+  const [sending, setSending] = useState(false)
+  const [loadingMsgs, setLoadingMsgs] = useState(true)
+  const [activeTab, setActiveTab] = useState<'details' | 'whatsapp'>('details')
+  const [portalCopied, setPortalCopied] = useState(false)
+
+  useEffect(() => {
+    if (!deal.contact_id) { setLoadingMsgs(false); return }
+    supabase
+      .from('whatsapp_messages')
+      .select('id, direction, body, received_at')
+      .eq('contact_id', deal.contact_id)
+      .order('received_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setMessages((data || []).reverse() as WaMessage[])
+        setLoadingMsgs(false)
+      })
+  }, [deal.contact_id])
+
+  const sendMessage = async () => {
+    if (!newMsg.trim() || !deal.contact_id) return
+    setSending(true)
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId: deal.contact_id, message: newMsg }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setMessages(prev => [...prev, {
+          id: data.message?.id || Date.now().toString(),
+          direction: 'outbound',
+          body: newMsg,
+          received_at: new Date().toISOString(),
+        }])
+        setNewMsg('')
+        toast.success('Message sent')
+      } else {
+        toast.error(data.error || 'Failed to send')
+      }
+    } catch {
+      toast.error('Failed to send message')
+    }
+    setSending(false)
+  }
+
+  const shareViaPortal = async () => {
+    if (!deal.contact_id) return
+    try {
+      const { data: existing } = await supabase
+        .from('portal_tokens')
+        .select('token')
+        .eq('contact_id', deal.contact_id)
+        .eq('active', true)
+        .single()
+
+      let portalToken = existing?.token
+      if (!portalToken) {
+        portalToken = crypto.randomUUID()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+        if (!ws) return
+        await supabase.from('portal_tokens').insert({
+          workspace_id: ws.id,
+          contact_id: deal.contact_id,
+          token: portalToken,
+          active: true,
+        })
+      }
+
+      const url = `${window.location.origin}/portal/${portalToken}`
+      await navigator.clipboard.writeText(url)
+      setPortalCopied(true)
+      toast.success('Portal URL copied to clipboard')
+      setTimeout(() => setPortalCopied(false), 2000)
+    } catch {
+      toast.error('Failed to create portal link')
+    }
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-panel max-w-lg">
+        <div className="modal-header">
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-100">
+              <ArrowLeft className="w-4 h-4 text-surface-500" />
+            </button>
+            <div>
+              <h2 className="text-sm font-bold text-surface-900">{deal.title}</h2>
+              {deal.contacts?.name && <p className="text-[10px] text-surface-400">{deal.contacts.name}</p>}
+            </div>
+          </div>
+          <button onClick={onClose} className="modal-close"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-surface-100">
+          <button onClick={() => setActiveTab('details')}
+            className={cn('px-4 py-2 text-xs font-semibold border-b-2 transition-colors',
+              activeTab === 'details' ? 'border-brand-600 text-brand-600' : 'border-transparent text-surface-400 hover:text-surface-600')}>
+            Details
+          </button>
+          {deal.contact_id && (
+            <button onClick={() => setActiveTab('whatsapp')}
+              className={cn('px-4 py-2 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1',
+                activeTab === 'whatsapp' ? 'border-green-600 text-green-600' : 'border-transparent text-surface-400 hover:text-surface-600')}>
+              <MessageCircle className="w-3 h-3" /> WhatsApp
+              {messages.length > 0 && <span className="text-[9px] bg-green-100 text-green-700 px-1 rounded-full">{messages.length}</span>}
+            </button>
+          )}
+        </div>
+
+        <div className="modal-body">
+          {activeTab === 'details' && (
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Value</p><p className="text-sm font-bold">{deal.value ? formatCurrency(deal.value) : '—'}</p></div>
+                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Status</p><p className="text-sm font-semibold capitalize">{deal.status}</p></div>
+                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Close Date</p><p className="text-sm">{deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : '—'}</p></div>
+                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Contact</p><p className="text-sm">{deal.contacts?.name || '—'}</p></div>
+              </div>
+              {deal.contact_id && (
+                <button onClick={shareViaPortal}
+                  className="btn-secondary btn-sm w-full flex items-center justify-center gap-1.5 mt-3">
+                  <Share2 className="w-3.5 h-3.5" />
+                  {portalCopied ? 'URL Copied!' : 'Share via Portal'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'whatsapp' && (
+            <div className="flex flex-col" style={{ height: 380 }}>
+              {loadingMsgs ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-green-200 border-t-green-600 rounded-full animate-spin" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-center">
+                  <div>
+                    <MessageCircle className="w-8 h-8 text-surface-300 mx-auto mb-2" />
+                    <p className="text-xs text-surface-400">No WhatsApp messages with this contact</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto space-y-2 py-2">
+                  {messages.map(msg => (
+                    <div key={msg.id} className={cn('flex', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}>
+                      <div className={cn('max-w-[80%] rounded-xl px-3 py-2',
+                        msg.direction === 'outbound'
+                          ? 'bg-green-600 text-white rounded-br-sm'
+                          : 'bg-surface-100 text-surface-800 rounded-bl-sm')}>
+                        <p className="text-xs whitespace-pre-wrap">{msg.body}</p>
+                        <p className={cn('text-[9px] mt-1', msg.direction === 'outbound' ? 'text-green-200' : 'text-surface-400')}>
+                          {msg.direction === 'inbound' ? 'IN' : 'OUT'} · {new Date(msg.received_at).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Quick-reply input */}
+              <div className="flex gap-2 pt-2 border-t border-surface-100 mt-auto">
+                <input
+                  className="input flex-1 text-xs"
+                  placeholder="Type a message..."
+                  value={newMsg}
+                  onChange={e => setNewMsg(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                />
+                <button onClick={sendMessage} disabled={sending || !newMsg.trim()}
+                  className="btn-primary btn-sm flex items-center gap-1">
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // --- MAIN PAGE ---
 interface PipelineInfo {
   id: string
@@ -203,6 +402,7 @@ export default function PipelinePage() {
   const [contacts, setContacts] = useState<Pick<Contact, 'id' | 'name' | 'email'>[]>([])
   const [workspaceId, setWorkspaceId] = useState<string>('')
   const [showNewDeal, setShowNewDeal] = useState(false)
+  const [selectedDeal, setSelectedDeal] = useState<DealWithContact | null>(null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -403,7 +603,7 @@ export default function PipelinePage() {
                             {(provided, snapshot) => (
                               <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
                                 className={cn(snapshot.isDragging && 'opacity-80 rotate-1 scale-105')}>
-                                <DealCard deal={deal} onClick={() => {}} />
+                                <DealCard deal={deal} onClick={() => setSelectedDeal(deal)} />
                               </div>
                             )}
                           </Draggable>
@@ -439,6 +639,10 @@ export default function PipelinePage() {
           onClose={() => setShowNewDeal(false)}
           onSave={handleCreateDeal}
         />
+      )}
+
+      {selectedDeal && (
+        <DealWhatsApp deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
       )}
     </div>
   )

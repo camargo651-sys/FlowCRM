@@ -116,6 +116,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/leads', icon: Users, label: t('nav.leads') },
       { href: '/campaigns', icon: Mail, label: t('nav.campaigns') },
       { href: '/whatsapp-campaigns', icon: MessageCircle, label: t('nav.wa_campaigns') },
+      { href: '/whatsapp', icon: MessageCircle, label: t('nav.wa_inbox') },
       { href: '/contracts', icon: FileSignature, label: t('nav.contracts') },
       { href: '/tickets', icon: Ticket, label: t('nav.tickets') },
     ]},

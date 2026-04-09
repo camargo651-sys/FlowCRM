@@ -32,14 +32,16 @@ export async function GET(request: NextRequest) {
   const { data: contact } = await supabase.from('contacts')
     .select('name, email').eq('id', portal.contact_id).single()
 
-  // Get their invoices, quotes, contracts
-  const [invoices, quotes, contracts] = await Promise.all([
+  // Get their invoices, quotes, contracts, deals
+  const [invoices, quotes, contracts, deals] = await Promise.all([
     supabase.from('invoices').select('id, invoice_number, total, balance_due, status, issue_date, due_date, currency')
       .eq('workspace_id', portal.workspace_id).eq('contact_id', portal.contact_id).order('created_at', { ascending: false }),
     supabase.from('quotes').select('id, quote_number, title, total, status, valid_until, view_token, currency')
       .eq('workspace_id', portal.workspace_id).eq('contact_id', portal.contact_id).order('created_at', { ascending: false }),
     supabase.from('contracts').select('id, contract_number, title, status, start_date, end_date, value, currency')
       .eq('workspace_id', portal.workspace_id).eq('contact_id', portal.contact_id).order('created_at', { ascending: false }),
+    supabase.from('deals').select('id, title, value, status, probability, expected_close_date, pipeline_stages(name, color)')
+      .eq('contact_id', portal.contact_id).order('created_at', { ascending: false }),
   ])
 
   return NextResponse.json({
@@ -48,5 +50,6 @@ export async function GET(request: NextRequest) {
     invoices: invoices.data || [],
     quotes: quotes.data || [],
     contracts: contracts.data || [],
+    deals: deals.data || [],
   })
 }

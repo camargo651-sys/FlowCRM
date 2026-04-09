@@ -610,7 +610,8 @@ create table if not exists automations (
     'task_overdue','task_due_soon',
     'quote_sent','quote_accepted','quote_rejected',
     'whatsapp_received','email_received',
-    'schedule_daily','schedule_weekly','schedule_monthly'
+    'schedule_daily','schedule_weekly','schedule_monthly',
+    'lead_created','lead_qualified','lead_converted','form_submitted'
   )),
   trigger_config  jsonb default '{}',
   action_type     text not null check (action_type in (
@@ -1617,5 +1618,22 @@ create index if not exists idx_email_messages_account_date on email_messages(ema
 create index if not exists idx_email_messages_workspace on email_messages(workspace_id, received_at desc);
 create index if not exists idx_products_workspace_status on products(workspace_id, status);
 create index if not exists idx_audit_log_workspace on audit_log(workspace_id, created_at desc);
+
+-- WhatsApp bot configuration
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS whatsapp_bot_config jsonb default null;
+
+-- ============================================================
+-- MIGRATION: Add lead/form trigger types to automations
+-- ============================================================
+alter table automations drop constraint if exists automations_trigger_type_check;
+alter table automations add constraint automations_trigger_type_check check (trigger_type in (
+  'deal_stage_changed','deal_created','deal_idle','deal_won','deal_lost',
+  'contact_created','contact_birthday',
+  'task_overdue','task_due_soon',
+  'quote_sent','quote_accepted','quote_rejected',
+  'whatsapp_received','email_received',
+  'schedule_daily','schedule_weekly','schedule_monthly',
+  'lead_created','lead_qualified','lead_converted','form_submitted'
+));
 
 -- Done! Your Tracktio database is ready.

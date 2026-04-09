@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { LOCALES } from '@/lib/i18n/translations'
@@ -49,7 +49,7 @@ interface CustomField {
 export default function SettingsPage() {
   const supabase = createClient()
   const { t, locale, setLocale } = useI18n()
-  const [tab, setTab] = useState<'pipelines' | 'terminology' | 'fields' | 'brand' | 'language' | 'team'>('pipelines')
+  const [tab, setTab] = useState<'pipelines' | 'terminology' | 'fields' | 'brand' | 'language' | 'team' | 'whatsapp_bot'>('pipelines')
   const [pipelines, setPipelines] = useState<(Pipeline & { stages: PipelineStage[] })[]>([])
   const [expandedPipeline, setExpandedPipeline] = useState<string | null>(null)
   const [companies, setCompanies] = useState<CompanyContact[]>([])
@@ -70,6 +70,12 @@ export default function SettingsPage() {
   const [customFields, setCustomFields] = useState<CustomField[]>([])
   const [fieldEntity, setFieldEntity] = useState<'deal' | 'contact'>('deal')
 
+  // WhatsApp Bot
+  const [botEnabled, setBotEnabled] = useState(false)
+  const [botGreeting, setBotGreeting] = useState('Hi! Thanks for contacting us. Let me ask a few questions to help you better.')
+  const [botQuestions, setBotQuestions] = useState<string[]>([])
+  const [botQualifyKeyword, setBotQualifyKeyword] = useState('')
+
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -79,6 +85,15 @@ export default function SettingsPage() {
     setWorkspaceName(ws.name)
     setPrimaryColor(ws.primary_color || '#6172f3')
     setLogoUrl(ws.logo_url || '')
+
+    // Load WhatsApp bot config
+    if (ws.whatsapp_bot_config) {
+      const bot = ws.whatsapp_bot_config as { enabled: boolean; greeting: string; questions: string[]; qualify_keyword: string }
+      setBotEnabled(bot.enabled ?? false)
+      if (bot.greeting) setBotGreeting(bot.greeting)
+      if (bot.questions) setBotQuestions(bot.questions)
+      if (bot.qualify_keyword) setBotQualifyKeyword(bot.qualify_keyword)
+    }
 
     // Load terminology
     if (ws.terminology) {
@@ -291,6 +306,22 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  // --- WHATSAPP BOT ---
+  const saveBotConfig = async () => {
+    setSaving(true)
+    await supabase.from('workspaces').update({
+      whatsapp_bot_config: {
+        enabled: botEnabled,
+        greeting: botGreeting,
+        questions: botQuestions.filter(q => q.trim()),
+        qualify_keyword: botQualifyKeyword,
+      },
+    }).eq('id', workspaceId)
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
   const TABS = [
     { id: 'pipelines', label: pipelineLabel.plural, icon: Kanban },
     { id: 'terminology', label: 'Terminology', icon: Type },
@@ -298,6 +329,7 @@ export default function SettingsPage() {
     { id: 'brand', label: t('settings.brand'), icon: Palette },
     { id: 'language', label: t('settings.language'), icon: Globe },
     { id: 'team', label: t('settings.team'), icon: Users },
+    { id: 'whatsapp_bot', label: 'WhatsApp Bot', icon: MessageCircle },
   ] as const
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
@@ -623,6 +655,91 @@ export default function SettingsPage() {
                 {locale === loc.code && <CheckCircle2 className="w-5 h-5 text-brand-600" />}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ==================== WHATSAPP BOT TAB ==================== */}
+      {tab === 'whatsapp_bot' && (
+        <div className="card p-6">
+          <h2 className="font-semibold text-surface-900 mb-1">WhatsApp Bot Auto-Reply</h2>
+          <p className="text-xs text-surface-500 mb-6">Automatically greet new contacts and ask qualification questions when they send their first message.</p>
+
+          <div className="space-y-6">
+            {/* Enable toggle */}
+            <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100">
+              <div>
+                <p className="text-sm font-semibold text-surface-900">Enable Bot Auto-Reply</p>
+                <p className="text-xs text-surface-400 mt-0.5">When enabled, new contacts receive an automatic greeting on their first message</p>
+              </div>
+              <button onClick={() => setBotEnabled(!botEnabled)}
+                className={cn('relative w-11 h-6 rounded-full transition-colors', botEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
+                <span className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform', botEnabled ? 'translate-x-5.5 left-0.5' : 'left-0.5')} />
+              </button>
+            </div>
+
+            {/* Greeting message */}
+            <div>
+              <label className="label">Greeting Message</label>
+              <textarea
+                className="input resize-none"
+                rows={3}
+                value={botGreeting}
+                onChange={e => setBotGreeting(e.target.value)}
+                placeholder="Hi! Thanks for contacting us. Let me ask a few questions to help you better."
+              />
+              <p className="text-[11px] text-surface-400 mt-1">This message is sent first when a new contact writes for the first time.</p>
+            </div>
+
+            {/* Qualification questions */}
+            <div>
+              <label className="label">Qualification Questions</label>
+              <p className="text-[11px] text-surface-400 mb-2">These are sent as a numbered list right after the greeting.</p>
+              <div className="space-y-2 mb-3">
+                {botQuestions.map((q, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-surface-400 font-bold w-5 text-right">{i + 1}.</span>
+                    <input
+                      className="input flex-1"
+                      value={q}
+                      onChange={e => {
+                        const updated = [...botQuestions]
+                        updated[i] = e.target.value
+                        setBotQuestions(updated)
+                      }}
+                      placeholder="e.g. What product are you interested in?"
+                    />
+                    <button
+                      onClick={() => setBotQuestions(botQuestions.filter((_, idx) => idx !== i))}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-surface-300 hover:text-red-500 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setBotQuestions([...botQuestions, ''])}
+                className="btn-ghost btn-sm w-full justify-center border border-dashed border-surface-200">
+                <Plus className="w-3.5 h-3.5" /> Add Question
+              </button>
+            </div>
+
+            {/* Qualify keyword */}
+            <div>
+              <label className="label">Qualify Keyword (optional)</label>
+              <input
+                className="input"
+                value={botQualifyKeyword}
+                onChange={e => setBotQualifyKeyword(e.target.value)}
+                placeholder="e.g. interested"
+              />
+              <p className="text-[11px] text-surface-400 mt-1">If set, leads that reply with this keyword are auto-marked as qualified.</p>
+            </div>
+
+            <button onClick={saveBotConfig} disabled={saving} className="btn-primary">
+              {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
+              {saved ? t('settings.saved') : 'Save Bot Configuration'}
+            </button>
           </div>
         </div>
       )}

@@ -4,7 +4,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, X, UserPlus, MessageCircle, ArrowRight, ExternalLink } from 'lucide-react'
+import { Plus, Search, X, UserPlus, MessageCircle, ArrowRight, ExternalLink, DollarSign, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const PLATFORM_ICONS: Record<string, string> = {
@@ -26,14 +26,42 @@ export default function LeadsPage() {
   const [showNew, setShowNew] = useState(false)
   const [form, setForm] = useState({ author_name: '', author_username: '', platform: 'instagram', source_type: 'comment', message: '', post_url: '' })
 
+  // Feature 2: Convert to Deal
+  const [showDealModal, setShowDealModal] = useState<DbRow | null>(null)
+  const [dealForm, setDealForm] = useState({ title: '', value: '', pipeline_id: '', stage_id: '' })
+  const [pipelines, setPipelines] = useState<DbRow[]>([])
+  const [stages, setStages] = useState<DbRow[]>([])
+
+  // Feature 3: Lead Assignment
+  const [currentUserId, setCurrentUserId] = useState('')
+  const [currentUserName, setCurrentUserName] = useState('')
+  const [filterAssignment, setFilterAssignment] = useState('all')
+  const [profiles, setProfiles] = useState<DbRow[]>([])
+
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    setCurrentUserId(user.id)
     const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const { data } = await supabase.from('social_leads').select('*').eq('workspace_id', ws.id).order('created_at', { ascending: false })
     setLeads(data || [])
+
+    // Load pipelines & stages for Convert to Deal
+    const { data: pipelinesData } = await supabase.from('pipelines').select('*').eq('workspace_id', ws.id).order('order_index')
+    setPipelines(pipelinesData || [])
+    if (pipelinesData && pipelinesData.length > 0) {
+      const { data: stagesData } = await supabase.from('pipeline_stages').select('*').eq('workspace_id', ws.id).order('order_index')
+      setStages(stagesData || [])
+    }
+
+    // Load profiles for assignment
+    const { data: profilesData } = await supabase.from('profiles').select('id, full_name, email').eq('workspace_id', ws.id)
+    setProfiles(profilesData || [])
+    const myProfile = (profilesData || []).find((p: DbRow) => p.id === user.id)
+    if (myProfile) setCurrentUserName(myProfile.full_name || myProfile.email || 'Me')
+
     setLoading(false)
   }, [])
 
@@ -51,7 +79,26 @@ export default function LeadsPage() {
   }
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from('social_leads').update({ status }).eq('id', id)
+    // Use API route for qualified/converted to fire automation triggers
+    if (status === 'qualified' || status === 'converted') {
+      try {
+        const res = await fetch('/api/leads/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ leadId: id, status }),
+        })
+        const data = await res.json()
+        if (!data.success) {
+          toast.error(data.error || 'Failed to update status')
+          return
+        }
+      } catch {
+        toast.error('Failed to update status')
+        return
+      }
+    } else {
+      await supabase.from('social_leads').update({ status }).eq('id', id)
+    }
     toast.success(`Lead marked as ${status}`)
     load()
   }
@@ -71,9 +118,70 @@ export default function LeadsPage() {
     }
   }
 
+  const openDealModal = (lead: DbRow) => {
+    setDealForm({
+      title: lead.message ? lead.message.slice(0, 80) : `Deal from ${lead.author_name}`,
+      value: '',
+      pipeline_id: pipelines[0]?.id || '',
+      stage_id: stages.filter(s => s.pipeline_id === pipelines[0]?.id)[0]?.id || '',
+    })
+    setShowDealModal(lead)
+  }
+
+  const convertToDeal = async () => {
+    if (!showDealModal || !dealForm.pipeline_id || !dealForm.stage_id) return
+    const lead = showDealModal
+
+    // 1. Create contact (same as convertToContact)
+    const { data: contact } = await supabase.from('contacts').insert({
+      workspace_id: workspaceId, name: lead.author_name,
+      notes: `From ${lead.platform}: ${lead.message || ''}`,
+      tags: [lead.platform, 'social-lead'],
+      type: 'person',
+    }).select('id').single()
+
+    if (!contact) return
+
+    // 2. Create deal linked to contact
+    const { data: deal } = await supabase.from('deals').insert({
+      workspace_id: workspaceId,
+      title: dealForm.title || `Deal from ${lead.author_name}`,
+      value: dealForm.value ? parseFloat(dealForm.value) : null,
+      pipeline_id: dealForm.pipeline_id,
+      stage_id: dealForm.stage_id,
+      contact_id: contact.id,
+      owner_id: currentUserId,
+    }).select('id').single()
+
+    // 3. Update lead as converted with both IDs
+    await supabase.from('social_leads').update({
+      status: 'converted',
+      contact_id: contact.id,
+      deal_id: deal?.id || null,
+    }).eq('id', lead.id)
+
+    toast.success(`${lead.author_name} converted to contact + deal`)
+    setShowDealModal(null)
+    load()
+  }
+
+  const assignLead = async (leadId: string, userId: string | null) => {
+    await supabase.from('social_leads').update({ assigned_to: userId }).eq('id', leadId)
+    toast.success(userId ? 'Lead assigned' : 'Lead unassigned')
+    load()
+  }
+
+  const getAssigneeName = (userId: string | null) => {
+    if (!userId) return null
+    const profile = profiles.find(p => p.id === userId)
+    return profile?.full_name || profile?.email || 'Unknown'
+  }
+
   const filtered = leads.filter(l => {
     if (filterStatus !== 'all' && l.status !== filterStatus) return false
     if (filterPlatform !== 'all' && l.platform !== filterPlatform) return false
+    if (filterAssignment === 'mine' && l.assigned_to !== currentUserId) return false
+    if (filterAssignment === 'unassigned' && l.assigned_to) return false
     if (search && !l.author_name?.toLowerCase().includes(search.toLowerCase()) && !l.message?.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -106,6 +214,11 @@ export default function LeadsPage() {
           <option value="all">All Platforms</option>
           {platforms.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
+        <select className="input w-auto text-xs" value={filterAssignment} onChange={e => setFilterAssignment(e.target.value)}>
+          <option value="all">All Leads</option>
+          <option value="mine">My Leads</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
       </div>
 
       {filtered.length === 0 ? (
@@ -131,13 +244,34 @@ export default function LeadsPage() {
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-[10px] text-surface-300">{new Date(lead.created_at).toLocaleString()}</span>
                   {lead.post_url && <a href={lead.post_url} target="_blank" className="text-[10px] text-brand-600 hover:underline flex items-center gap-0.5"><ExternalLink className="w-2.5 h-2.5" /> View post</a>}
+                  {lead.assigned_to && (
+                    <span className="text-[10px] text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                      <User className="w-2.5 h-2.5" /> {getAssigneeName(lead.assigned_to)}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="flex gap-1 flex-shrink-0">
+              <div className="flex gap-1 flex-shrink-0 items-center">
                 {lead.status === 'new' && <button onClick={() => updateStatus(lead.id, 'contacted')} className="btn-secondary btn-sm text-[10px]">Contacted</button>}
                 {(lead.status === 'new' || lead.status === 'contacted') && <button onClick={() => updateStatus(lead.id, 'qualified')} className="btn-secondary btn-sm text-[10px]">Qualify</button>}
                 {lead.status !== 'converted' && lead.status !== 'discarded' && (
                   <button onClick={() => convertToContact(lead)} className="btn-sm bg-brand-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><UserPlus className="w-3 h-3" /> Convert</button>
+                )}
+                {lead.status !== 'converted' && lead.status !== 'discarded' && pipelines.length > 0 && (
+                  <button onClick={() => openDealModal(lead)} className="btn-sm bg-emerald-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><DollarSign className="w-3 h-3" /> Convert to Deal</button>
+                )}
+                {lead.status !== 'converted' && lead.status !== 'discarded' && (
+                  <select
+                    className="input w-auto text-[10px] py-1 px-1.5 h-auto"
+                    value={lead.assigned_to || ''}
+                    onChange={e => assignLead(lead.id, e.target.value || null)}
+                  >
+                    <option value="">Assign...</option>
+                    <option value={currentUserId}>Assign to me</option>
+                    {profiles.filter(p => p.id !== currentUserId).map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name || p.email}</option>
+                    ))}
+                  </select>
                 )}
                 {lead.status !== 'discarded' && lead.status !== 'converted' && (
                   <button onClick={() => updateStatus(lead.id, 'discarded')} className="btn-ghost btn-sm text-[10px] text-red-500">Discard</button>
@@ -177,6 +311,51 @@ export default function LeadsPage() {
               <div className="flex gap-2">
                 <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>
                 <button onClick={createLead} disabled={!form.author_name} className="btn-primary flex-1">Add Lead</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDealModal && (
+        <div className="modal-overlay">
+          <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
+            <div className="flex items-center justify-between p-5 border-b border-surface-100">
+              <h2 className="font-semibold text-surface-900">Convert to Contact + Deal</h2>
+              <button onClick={() => setShowDealModal(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-surface-50 rounded-xl border border-surface-100">
+                <p className="text-xs text-surface-500">Converting lead:</p>
+                <p className="text-sm font-bold text-surface-900">{showDealModal.author_name}</p>
+              </div>
+              <div>
+                <label className="label">Deal Title</label>
+                <input className="input" value={dealForm.title} onChange={e => setDealForm(f => ({ ...f, title: e.target.value }))} placeholder="Deal title" />
+              </div>
+              <div>
+                <label className="label">Deal Value</label>
+                <input className="input" type="number" value={dealForm.value} onChange={e => setDealForm(f => ({ ...f, value: e.target.value }))} placeholder="0.00" />
+              </div>
+              <div>
+                <label className="label">Pipeline</label>
+                <select className="input" value={dealForm.pipeline_id} onChange={e => {
+                  const pid = e.target.value
+                  setDealForm(f => ({ ...f, pipeline_id: pid, stage_id: stages.filter(s => s.pipeline_id === pid)[0]?.id || '' }))
+                }}>
+                  {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Stage</label>
+                <select className="input" value={dealForm.stage_id} onChange={e => setDealForm(f => ({ ...f, stage_id: e.target.value }))}>
+                  {stages.filter(s => s.pipeline_id === dealForm.pipeline_id).map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowDealModal(null)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={convertToDeal} disabled={!dealForm.pipeline_id || !dealForm.stage_id} className="btn-primary flex-1">Create Contact + Deal</button>
               </div>
             </div>
           </div>

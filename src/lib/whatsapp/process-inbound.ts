@@ -1,6 +1,13 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { matchPhoneNumber, normalizePhone } from './client'
+import { matchPhoneNumber, normalizePhone, sendWhatsAppMessage, decryptToken } from './client'
 import { emitSignal } from '@/lib/ai/signal-emitter'
+
+interface WhatsAppBotConfig {
+  enabled: boolean
+  greeting: string
+  questions: string[]
+  qualify_keyword: string
+}
 
 interface InboundMessage {
   wamid: string
@@ -21,6 +28,7 @@ export async function processInboundWhatsAppMessage(
     user_id: string
     phone_number_id: string
     display_phone?: string
+    access_token?: string
   },
 ) {
   const senderPhone = normalizePhone(message.from)
@@ -100,6 +108,84 @@ export async function processInboundWhatsAppMessage(
     contact_id: contactId,
     received_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
   }, { onConflict: 'whatsapp_account_id,wamid' })
+
+  // 2b. WhatsApp Bot Auto-Reply for first-time contacts
+  if (contactId) {
+    const { data: wsConfig } = await supabase
+      .from('workspaces')
+      .select('whatsapp_bot_config')
+      .eq('id', account.workspace_id)
+      .single()
+
+    const botConfig = wsConfig?.whatsapp_bot_config as WhatsAppBotConfig | null
+
+    if (botConfig?.enabled) {
+      // Check if this is the contact's first inbound message
+      const { count } = await supabase
+        .from('whatsapp_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', account.workspace_id)
+        .eq('contact_id', contactId)
+        .eq('direction', 'inbound')
+
+      if (count === 1) {
+        // This is the first message - send bot auto-reply
+        const accessToken = decryptToken(account.access_token ?? '')
+        const greetingText = botConfig.greeting || 'Hi! Thanks for contacting us.'
+
+        // Send greeting
+        const { messageId: greetingMsgId } = await sendWhatsAppMessage(
+          accessToken,
+          account.phone_number_id,
+          senderPhone,
+          greetingText,
+        )
+
+        // Store greeting in whatsapp_messages
+        await supabase.from('whatsapp_messages').insert({
+          workspace_id: account.workspace_id,
+          whatsapp_account_id: account.id,
+          wamid: greetingMsgId,
+          from_number: account.display_phone || account.phone_number_id,
+          to_number: message.from,
+          direction: 'outbound',
+          message_type: 'text',
+          body: greetingText,
+          status: 'sent',
+          contact_id: contactId,
+          received_at: new Date().toISOString(),
+        })
+
+        // Send qualification questions if configured
+        if (botConfig.questions && botConfig.questions.length > 0) {
+          const questionsText = botConfig.questions
+            .map((q, i) => `${i + 1}. ${q}`)
+            .join('\n')
+
+          const { messageId: questionsMsgId } = await sendWhatsAppMessage(
+            accessToken,
+            account.phone_number_id,
+            senderPhone,
+            questionsText,
+          )
+
+          await supabase.from('whatsapp_messages').insert({
+            workspace_id: account.workspace_id,
+            whatsapp_account_id: account.id,
+            wamid: questionsMsgId,
+            from_number: account.display_phone || account.phone_number_id,
+            to_number: message.from,
+            direction: 'outbound',
+            message_type: 'text',
+            body: questionsText,
+            status: 'sent',
+            contact_id: contactId,
+            received_at: new Date().toISOString(),
+          })
+        }
+      }
+    }
+  }
 
   // 3. Log activity
   if (contactId) {
