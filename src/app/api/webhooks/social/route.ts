@@ -128,6 +128,10 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
   // --- Auto-scoring: DMs get higher priority than comments ---
   const priority = data.source_type === 'dm' ? 'high' : 'normal'
 
+  // --- Phone gate: extract phone from metadata if available ---
+  const phone = data.metadata?.phone || data.metadata?.phone_number || data.metadata?.whatsapp || null
+  const hasPhone = !!phone
+
   const { data: lead } = await supabase.from('social_leads').insert({
     workspace_id: wsId,
     platform: data.platform,
@@ -136,8 +140,8 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
     author_username: data.author_username,
     message: data.message?.slice(0, 2000),
     post_url: data.post_url,
-    status: 'new',
-    metadata: { ...(data.metadata || {}), priority },
+    status: hasPhone ? 'new' : 'incomplete',
+    metadata: { ...(data.metadata || {}), priority, phone, has_phone: hasPhone },
   }).select('id').single()
 
   // Notify workspace owner
@@ -152,7 +156,7 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
       action_url: '/leads',
     })
 
-    // --- Fire automation trigger ---
+    // --- Fire automation trigger + routing (only if lead has phone) ---
     if (lead) {
       await fireTrigger(supabase, {
         workspaceId: wsId,
@@ -162,11 +166,13 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
         leadPlatform: data.platform,
         leadMessage: data.message?.slice(0, 500),
         userId: ws.owner_id,
-        metadata: { source_type: data.source_type, priority },
+        metadata: { source_type: data.source_type, priority, has_phone: hasPhone },
       })
 
-      // --- Route lead to rep ---
-      await routeNewLead(supabase, wsId, lead.id)
+      // Only route and activate flows if lead has phone number
+      if (hasPhone) {
+        await routeNewLead(supabase, wsId, lead.id)
+      }
     }
   }
 }

@@ -83,9 +83,15 @@ export default function SettingsPage() {
 
   // Lead Routing
   const [routingEnabled, setRoutingEnabled] = useState(false)
-  const [routingMode, setRoutingMode] = useState<'round_robin' | 'least_loaded' | 'manual'>('round_robin')
+  const [routingMode, setRoutingMode] = useState<'round_robin' | 'least_loaded' | 'smart' | 'manual'>('round_robin')
   const [routingReps, setRoutingReps] = useState<string[]>([])
   const [routingLastIndex, setRoutingLastIndex] = useState(0)
+  const [routingRepConfigs, setRoutingRepConfigs] = useState<Record<string, { services: string; startHour: number; endHour: number }>>({})
+  const [routingFallback, setRoutingFallback] = useState('')
+  const [autoSequenceEnabled, setAutoSequenceEnabled] = useState(false)
+  const [autoSequenceId, setAutoSequenceId] = useState('')
+  const [autoSequenceHours, setAutoSequenceHours] = useState(24)
+  const [sequences, setSequences] = useState<{ id: string; name: string }[]>([])
   const [teamProfiles, setTeamProfiles] = useState<{ id: string; full_name: string; email: string }[]>([])
 
   const load = useCallback(async () => {
@@ -112,16 +118,33 @@ export default function SettingsPage() {
 
     // Load lead routing config
     if (ws.lead_routing_config) {
-      const rc = ws.lead_routing_config as { enabled: boolean; mode: 'round_robin' | 'least_loaded' | 'manual'; reps: string[]; last_assigned_index: number }
+      const rc = ws.lead_routing_config as { enabled: boolean; mode: 'round_robin' | 'least_loaded' | 'smart' | 'manual'; reps: string[]; last_assigned_index: number; rep_configs?: { id: string; services?: string[]; schedule?: { start: number; end: number } }[]; fallback_rep?: string; auto_sequence?: { enabled: boolean; sequence_id: string; no_reply_hours: number } }
       setRoutingEnabled(rc.enabled ?? false)
       setRoutingMode(rc.mode ?? 'round_robin')
       setRoutingReps(rc.reps ?? [])
       setRoutingLastIndex(rc.last_assigned_index ?? 0)
+      setRoutingFallback(rc.fallback_rep ?? '')
+      if (rc.auto_sequence) {
+        setAutoSequenceEnabled(rc.auto_sequence.enabled ?? false)
+        setAutoSequenceId(rc.auto_sequence.sequence_id ?? '')
+        setAutoSequenceHours(rc.auto_sequence.no_reply_hours ?? 24)
+      }
+      if (rc.rep_configs) {
+        const configs: Record<string, { services: string; startHour: number; endHour: number }> = {}
+        for (const rpc of rc.rep_configs) {
+          configs[rpc.id] = { services: (rpc.services || []).join(', '), startHour: rpc.schedule?.start ?? 9, endHour: rpc.schedule?.end ?? 18 }
+        }
+        setRoutingRepConfigs(configs)
+      }
     }
 
     // Load team profiles for routing
     const { data: teamData } = await supabase.from('profiles').select('id, full_name, email').eq('workspace_id', ws.id)
     setTeamProfiles((teamData || []) as { id: string; full_name: string; email: string }[])
+
+    // Load sequences for auto-enrollment
+    const { data: seqData } = await supabase.from('sequences').select('id, name').eq('workspace_id', ws.id).eq('enabled', true)
+    setSequences((seqData || []) as { id: string; name: string }[])
 
     // Load terminology
     if (ws.terminology) {
@@ -362,6 +385,17 @@ export default function SettingsPage() {
         mode: routingMode,
         reps: routingReps,
         last_assigned_index: routingLastIndex,
+        fallback_rep: routingFallback || null,
+        auto_sequence: {
+          enabled: autoSequenceEnabled,
+          sequence_id: autoSequenceId,
+          no_reply_hours: autoSequenceHours,
+        },
+        rep_configs: routingReps.map(id => ({
+          id,
+          services: (routingRepConfigs[id]?.services || '').split(',').map(s => s.trim()).filter(Boolean),
+          schedule: { start: routingRepConfigs[id]?.startHour ?? 9, end: routingRepConfigs[id]?.endHour ?? 18 },
+        })),
       },
     }).eq('id', workspaceId)
     setSaving(false)
@@ -895,6 +929,7 @@ export default function SettingsPage() {
                 {([
                   { id: 'round_robin', label: 'Round Robin' },
                   { id: 'least_loaded', label: 'Least Loaded' },
+                  { id: 'smart', label: 'Smart' },
                   { id: 'manual', label: 'Manual' },
                 ] as const).map(mode => (
                   <button key={mode.id} onClick={() => setRoutingMode(mode.id)}
@@ -907,6 +942,7 @@ export default function SettingsPage() {
               <p className="text-[11px] text-surface-400 mt-2">
                 {routingMode === 'round_robin' && 'Leads are distributed evenly in order across selected reps.'}
                 {routingMode === 'least_loaded' && 'Each new lead goes to the rep with the fewest open leads.'}
+                {routingMode === 'smart' && 'Routes by service keywords + working hours + workload. Configure each rep below.'}
                 {routingMode === 'manual' && 'Leads are not auto-assigned. Use this to disable auto-routing while keeping the config.'}
               </p>
             </div>
@@ -945,6 +981,56 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Smart routing: per-rep config */}
+            {routingMode === 'smart' && routingReps.length > 0 && (
+              <div>
+                <label className="label">Rep Configuration (Smart Mode)</label>
+                <p className="text-[11px] text-surface-400 mb-3">Configure service keywords and working hours for each rep.</p>
+                <div className="space-y-3">
+                  {routingReps.map(repId => {
+                    const profile = teamProfiles.find(p => p.id === repId)
+                    const rc = routingRepConfigs[repId] || { services: '', startHour: 9, endHour: 18 }
+                    return (
+                      <div key={repId} className="p-3 rounded-xl border border-surface-200 space-y-2">
+                        <p className="text-sm font-semibold text-surface-900">{profile?.full_name || 'Rep'}</p>
+                        <div>
+                          <label className="text-[11px] text-surface-500">Service keywords (comma-separated)</label>
+                          <input className="input text-xs" placeholder="e.g. immigration, visa, legal" value={rc.services}
+                            onChange={e => setRoutingRepConfigs(prev => ({ ...prev, [repId]: { ...rc, services: e.target.value } }))} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] text-surface-500">Start hour</label>
+                            <select className="input text-xs" value={rc.startHour}
+                              onChange={e => setRoutingRepConfigs(prev => ({ ...prev, [repId]: { ...rc, startHour: parseInt(e.target.value) } }))}>
+                              {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-surface-500">End hour</label>
+                            <select className="input text-xs" value={rc.endHour}
+                              onChange={e => setRoutingRepConfigs(prev => ({ ...prev, [repId]: { ...rc, endHour: parseInt(e.target.value) } }))}>
+                              {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-3">
+                  <label className="text-[11px] text-surface-500">Fallback rep (outside hours / no keyword match)</label>
+                  <select className="input text-xs" value={routingFallback} onChange={e => setRoutingFallback(e.target.value)}>
+                    <option value="">First available</option>
+                    {routingReps.map(id => {
+                      const p = teamProfiles.find(tp => tp.id === id)
+                      return <option key={id} value={id}>{p?.full_name || id}</option>
+                    })}
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Current rotation status */}
             {routingEnabled && routingReps.length > 0 && (
               <div className="p-4 bg-brand-50 rounded-xl border border-brand-200">
@@ -953,6 +1039,40 @@ export default function SettingsPage() {
                 <p className="text-xs text-brand-600 mt-0.5">{routingReps.length} rep{routingReps.length !== 1 ? 's' : ''} in rotation</p>
               </div>
             )}
+
+            {/* Auto-enroll non-responders in sequence */}
+            <div className="border-t border-surface-100 pt-5">
+              <h3 className="font-semibold text-surface-900 mb-1">Auto Follow-up Sequence</h3>
+              <p className="text-xs text-surface-400 mb-4">Automatically enroll leads in a follow-up sequence if they don&apos;t respond within a set time.</p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-surface-900">Enable Auto Follow-up</p>
+                  <p className="text-[11px] text-surface-400">Non-responding leads will be auto-enrolled</p>
+                </div>
+                <button onClick={() => setAutoSequenceEnabled(!autoSequenceEnabled)}
+                  className={cn('relative w-11 h-6 rounded-full transition-colors', autoSequenceEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
+                  <span className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform', autoSequenceEnabled ? 'translate-x-5.5 left-0.5' : 'left-0.5')} />
+                </button>
+              </div>
+              {autoSequenceEnabled && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] text-surface-500">Follow-up sequence</label>
+                    <select className="input text-xs" value={autoSequenceId} onChange={e => setAutoSequenceId(e.target.value)}>
+                      <option value="">Select a sequence...</option>
+                      {sequences.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    {sequences.length === 0 && <p className="text-[10px] text-amber-500 mt-1">Create a sequence first at /sequences</p>}
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-surface-500">Wait time before enrolling (hours)</label>
+                    <input type="number" className="input text-xs w-32" value={autoSequenceHours} min={1} max={168}
+                      onChange={e => setAutoSequenceHours(parseInt(e.target.value) || 24)} />
+                    <p className="text-[10px] text-surface-400 mt-1">If lead doesn&apos;t respond within {autoSequenceHours}h, they&apos;ll be enrolled in the sequence.</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button onClick={saveRoutingConfig} disabled={saving} className="btn-primary">
               {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}

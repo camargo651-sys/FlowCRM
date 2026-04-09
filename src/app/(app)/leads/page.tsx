@@ -11,7 +11,7 @@ const PLATFORM_ICONS: Record<string, string> = {
   instagram: '📸', facebook: '📘', tiktok: '🎵', linkedin: '💼', twitter: '🐦', youtube: '📺', other: '🌐',
 }
 const STATUS_STYLES: Record<string, string> = {
-  new: 'badge-blue', contacted: 'badge-yellow', qualified: 'badge-violet', converted: 'badge-green', discarded: 'badge-gray',
+  new: 'badge-blue', contacted: 'badge-yellow', qualified: 'badge-violet', converted: 'badge-green', discarded: 'badge-gray', incomplete: 'badge-orange',
 }
 
 export default function LeadsPage() {
@@ -214,7 +214,7 @@ export default function LeadsPage() {
       <div className="flex gap-3 mb-6">
         <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" /><input className="input pl-9 text-xs" placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} /></div>
         <select className="input w-auto text-xs" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="all">All Status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="qualified">Qualified</option><option value="converted">Converted</option><option value="discarded">Discarded</option>
+          <option value="all">All Status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="qualified">Qualified</option><option value="converted">Converted</option><option value="discarded">Discarded</option><option value="incomplete">Incomplete (no phone)</option>
         </select>
         <select className="input w-auto text-xs" value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)}>
           <option value="all">All Platforms</option>

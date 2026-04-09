@@ -1591,7 +1591,7 @@ create table if not exists social_leads (
   author_username text,
   author_avatar   text,
   message         text,
-  status          text default 'new' check (status in ('new','contacted','qualified','converted','discarded')),
+  status          text default 'new' check (status in ('new','contacted','qualified','converted','discarded','incomplete')),
   contact_id      uuid references contacts(id) on delete set null,
   deal_id         uuid references deals(id) on delete set null,
   assigned_to     uuid references auth.users(id),
