@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getTemplate } from '@/lib/industry-templates'
 import { seedWorkspaceData } from '@/lib/seed/demo-data'
+import { sendTransactionalEmail, welcomeEmail } from '@/lib/email/transactional'
 
 function getSupabase() {
   const cookieStore = cookies()
@@ -238,6 +239,16 @@ export async function POST(request: Request) {
   await supabase.from('workspaces').update({
     onboarding_completed: true,
   }).eq('id', ws.id)
+
+  // 7. Send welcome email
+  try {
+    const userName = user.user_metadata?.full_name || ''
+    const email = user.email
+    if (email) {
+      const { subject, html } = welcomeEmail(userName)
+      await sendTransactionalEmail({ to: email, subject, html })
+    }
+  } catch {}
 
   return NextResponse.json({
     success: true,
