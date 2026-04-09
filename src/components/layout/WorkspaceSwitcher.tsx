@@ -23,7 +23,9 @@ export default function WorkspaceSwitcher({ currentName, currentColor }: { curre
         const { data, error } = await supabase.from('workspaces').select('id, name, primary_color').eq('owner_id', user.id)
         if (!error && data) {
           setWorkspaces(data)
-          if (data[0]) setCurrentId(data[0].id)
+          const activeId = localStorage.getItem('tracktio_active_workspace')
+          const active = data.find(w => w.id === activeId)
+          setCurrentId(active?.id || data[0]?.id || '')
         }
       } catch {}
     }
@@ -60,14 +62,21 @@ export default function WorkspaceSwitcher({ currentName, currentColor }: { curre
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full mt-1.5 w-52 bg-white rounded-xl shadow-float border border-surface-100 z-50 p-1.5 animate-scale-in">
             {workspaces.map(ws => (
-              <div key={ws.id}
-                className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-xs',
+              <button key={ws.id} onClick={() => {
+                if (ws.id !== currentId) {
+                  localStorage.setItem('tracktio_active_workspace', ws.id)
+                  setCurrentId(ws.id)
+                  setOpen(false)
+                  window.location.reload()
+                }
+              }}
+                className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors',
                   ws.id === currentId ? 'bg-brand-50 text-brand-700' : 'text-surface-700 hover:bg-surface-50')}>
                 <div className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-bold"
                   style={{ backgroundColor: ws.primary_color || '#6172f3' }}>{ws.name.charAt(0)}</div>
-                <span className="flex-1 truncate font-medium">{ws.name}</span>
+                <span className="flex-1 truncate font-medium text-left">{ws.name}</span>
                 {ws.id === currentId && <Check className="w-3 h-3 text-brand-600" />}
-              </div>
+              </button>
             ))}
             <div className="border-t border-surface-100 mt-1 pt-1">
               {showNew ? (

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { LOCALES } from '@/lib/i18n/translations'
 import type { PipelineStage } from '@/types'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const STAGE_COLORS = ['#6172f3','#8b5cf6','#ec4899','#f97316','#f59e0b','#10b981','#06b6d4','#64748b']
 const BRAND_COLORS = ['#6172f3','#8b5cf6','#ec4899','#ef4444','#f97316','#f59e0b','#10b981','#06b6d4','#3b82f6','#64748b']
@@ -97,7 +98,7 @@ export default function SettingsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('*').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, '*')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     setWorkspaceName(ws.name)

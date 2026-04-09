@@ -9,6 +9,7 @@ import { Toaster } from 'sonner'
 import KeyboardShortcuts from '@/components/shared/KeyboardShortcuts'
 import InactivityLock from '@/components/shared/InactivityLock'
 import InstallPrompt from '@/components/shared/InstallPrompt'
+import ErrorBoundary from '@/components/shared/ErrorBoundary'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -32,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 lg:px-10 py-6 lg:py-8 pt-14 lg:pt-8">
           <Breadcrumbs />
-          {children}
+          <ErrorBoundary>{children}</ErrorBoundary>
         </div>
       </main>
       <GlobalSearch />

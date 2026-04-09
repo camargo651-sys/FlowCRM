@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Save, FileText, Eye, Trash2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 /** Strip dangerous tags/attributes from HTML to prevent XSS */
 function sanitizeHTML(html: string): string {
@@ -82,7 +83,7 @@ export default function TemplatesPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const { data } = await supabase.from('document_templates').select('*').eq('workspace_id', ws.id).order('name')

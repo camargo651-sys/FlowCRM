@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, GripVertical, Save, X, Type, Hash, Calendar, ToggleLeft, List, Link2, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface FieldDef {
   id: string
@@ -50,7 +51,7 @@ export default function FormBuilderPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 

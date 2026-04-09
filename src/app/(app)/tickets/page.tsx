@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Ticket, X, MessageCircle, Clock, User, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const STATUS_STYLES: Record<string, string> = {
   open: 'badge-blue', in_progress: 'badge-yellow', waiting: 'badge-gray',
@@ -33,7 +34,7 @@ export default function TicketsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const [ticketsRes, contactsRes] = await Promise.all([

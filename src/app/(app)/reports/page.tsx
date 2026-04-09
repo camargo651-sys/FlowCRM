@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FileText, TrendingUp, TrendingDown, DollarSign, Download, Calendar, Users, Target, Award } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import type { DbRow } from '@/types'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 export default function ReportsPage() {
   const { t } = useI18n()
@@ -47,7 +48,7 @@ export default function ReportsPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSalesLoading(false); return }
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setSalesLoading(false); return }
 
     const [leadsRes, dealsRes, profilesRes] = await Promise.all([

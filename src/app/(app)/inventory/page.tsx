@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { cn, formatCurrency } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface Product {
   id: string; sku: string; name: string; description: string;
@@ -82,7 +83,7 @@ export default function InventoryPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 

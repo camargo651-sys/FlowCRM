@@ -10,6 +10,7 @@ import {
   Zap, ArrowLeft, UserCircle, ChevronDown,
 } from 'lucide-react'
 import Link from 'next/link'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface Message {
   id: string
@@ -146,7 +147,7 @@ export default function WhatsAppInboxPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       setCurrentUserId(user.id)
-      const { data: ws } = await supabase.from('workspaces').select('id, whatsapp_bot_config').eq('owner_id', user.id).single()
+      const ws = await getActiveWorkspace(supabase, user.id, 'id, whatsapp_bot_config')
       if (ws) {
         setWorkspaceId(ws.id)
         // Load quick replies from workspace config

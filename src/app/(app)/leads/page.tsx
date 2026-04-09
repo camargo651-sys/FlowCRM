@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, X, UserPlus, MessageCircle, ArrowRight, ExternalLink, DollarSign, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const PLATFORM_ICONS: Record<string, string> = {
   instagram: '📸', facebook: '📘', tiktok: '🎵', linkedin: '💼', twitter: '🐦', youtube: '📺', other: '🌐',
@@ -42,7 +43,7 @@ export default function LeadsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setCurrentUserId(user.id)
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const { data } = await supabase.from('social_leads').select('*').eq('workspace_id', ws.id).order('created_at', { ascending: false })

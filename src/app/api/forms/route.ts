@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit } from '@/lib/api/rate-limit'
 
 function getSupabase() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -39,6 +40,10 @@ export async function GET(request: NextRequest) {
 
 // POST: Submit form (creates contact + optional deal)
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const { allowed } = checkRateLimit(ip, 'forms')
+  if (!allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
   const supabase = getSupabase()
   if (!supabase) return NextResponse.json({ error: 'Not configured' }, { status: 503 })
 

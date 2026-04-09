@@ -23,7 +23,16 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const loadLocale = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: ws } = await supabase.from('workspaces').select('language').eq('owner_id', user.id).single()
+      const activeWsId = typeof window !== 'undefined' ? localStorage.getItem('tracktio_active_workspace') : null
+      let ws: { language?: string } | null = null
+      if (activeWsId) {
+        const { data } = await supabase.from('workspaces').select('language').eq('id', activeWsId).single()
+        ws = data
+      }
+      if (!ws) {
+        const { data } = await supabase.from('workspaces').select('language').eq('owner_id', user.id).order('created_at').limit(1).single()
+        ws = data
+      }
       if (ws?.language) setLocaleState(ws.language as Locale)
     }
     loadLocale()
@@ -33,7 +42,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     setLocaleState(newLocale)
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('workspaces').update({ language: newLocale }).eq('owner_id', user.id)
+      const activeWsId = typeof window !== 'undefined' ? localStorage.getItem('tracktio_active_workspace') : null
+      if (activeWsId) {
+        await supabase.from('workspaces').update({ language: newLocale }).eq('id', activeWsId)
+      } else {
+        await supabase.from('workspaces').update({ language: newLocale }).eq('owner_id', user.id)
+      }
     }
   }, [])
 

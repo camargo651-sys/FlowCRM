@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Sparkles, Bot, User, CheckCircle2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { toast } from 'sonner'
 
 interface Message {
@@ -124,7 +125,7 @@ export default function AISetupPage() {
     const config = JSON.parse(stored)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) return
 
     await supabase.from('workspaces').update({

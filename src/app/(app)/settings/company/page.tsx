@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Building2, Save, CheckCircle2, Globe, DollarSign, FileText, Key, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const CURRENCIES = ['USD','EUR','GBP','COP','MXN','BRL','ARS','CLP','PEN','CAD','AUD','JPY','CNY','INR']
 const TIMEZONES = ['America/Bogota','America/Mexico_City','America/Lima','America/Buenos_Aires','America/Sao_Paulo','America/New_York','America/Chicago','America/Los_Angeles','Europe/London','Europe/Madrid','Europe/Berlin','Asia/Tokyo','Asia/Shanghai']
@@ -24,7 +25,7 @@ export default function CompanySettingsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('*').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, '*')
     if (!ws) { setLoading(false); return }
     setForm(ws)
 

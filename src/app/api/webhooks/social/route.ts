@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { fireTrigger } from '@/lib/automations/engine'
 import { routeNewLead } from '@/lib/leads/router'
+import { checkRateLimit } from '@/lib/api/rate-limit'
 import type { DbRow } from '@/types'
 
 function getSupabase() {
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
 
 // POST: Receive social media events (Instagram comments, Facebook messages, etc.)
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const { allowed } = checkRateLimit(ip, 'social')
+  if (!allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
   const supabase = getSupabase()
   if (!supabase) return NextResponse.json({ status: 'ok' })
 

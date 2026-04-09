@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { cn } from '@/lib/utils'
 import type { DbRow } from '@/types'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const COLORS = ['#6172f3', '#34d399', '#f59e0b', '#f87171', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
 
@@ -37,7 +38,7 @@ export default function AnalyticsPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
 
     const [leadsRes, dealsRes, stagesRes, activitiesRes] = await Promise.all([

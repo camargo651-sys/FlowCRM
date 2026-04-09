@@ -2,25 +2,12 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { fireTrigger } from '@/lib/automations/engine'
 import { sendWhatsAppMessage, normalizePhone, decryptToken } from '@/lib/whatsapp/client'
+import { checkRateLimit } from '@/lib/api/rate-limit'
 
 function getSupabase() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!key) return null
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key)
-}
-
-// Simple in-memory rate limiter: IP -> { count, resetAt }
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + 3600000 })
-    return false
-  }
-  entry.count++
-  return entry.count > 10
 }
 
 // CORS headers for cross-origin widget requests
@@ -45,7 +32,8 @@ export async function POST(request: NextRequest) {
     || request.headers.get('x-real-ip')
     || 'unknown'
 
-  if (isRateLimited(ip)) {
+  const { allowed } = checkRateLimit(ip, 'widget')
+  if (!allowed) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429, headers: CORS_HEADERS }

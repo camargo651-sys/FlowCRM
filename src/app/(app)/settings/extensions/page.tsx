@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Plug, Check, ChevronDown, ChevronRight, Eye, EyeOff, ExternalLink, X } from 'lucide-react'
 import { getCategories, getProvidersByCategory, getProviderDef, type ServiceCategory, type ProviderDef } from '@/lib/providers/registry'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface SavedProvider {
   category: string
@@ -28,7 +29,7 @@ export default function ExtensionsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id, providers').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id, providers')
     if (!ws) return
     setWorkspaceId(ws.id)
     if (ws.providers && Array.isArray(ws.providers)) {

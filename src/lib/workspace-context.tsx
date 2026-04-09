@@ -34,9 +34,26 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setConfig(c => ({ ...c, loading: false })); return }
 
-      const { data: ws } = await supabase.from('workspaces')
-        .select('id, name, industry, plan, primary_color, logo_url, terminology')
-        .eq('owner_id', user.id).single()
+      // Load active workspace (from localStorage or first owned)
+      const activeWsId = typeof window !== 'undefined' ? localStorage.getItem('tracktio_active_workspace') : null
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let ws: any = null
+      if (activeWsId) {
+        const { data } = await supabase.from('workspaces')
+          .select('id, name, industry, plan, primary_color, logo_url, terminology')
+          .eq('id', activeWsId).eq('owner_id', user.id).single()
+        ws = data
+      }
+      if (!ws) {
+        const { data } = await supabase.from('workspaces')
+          .select('id, name, industry, plan, primary_color, logo_url, terminology')
+          .eq('owner_id', user.id).order('created_at').limit(1).single()
+        ws = data
+        if (ws && typeof window !== 'undefined') {
+          localStorage.setItem('tracktio_active_workspace', ws.id as string)
+        }
+      }
       if (!ws) { setConfig(c => ({ ...c, loading: false })); return }
 
       // Start from industry template, then override with custom terminology

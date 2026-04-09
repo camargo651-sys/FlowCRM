@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Send, Users, Mail, Filter, Eye, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const TEMPLATES = [
   { name: 'Blank', subject: '', body: '' },
@@ -49,7 +50,7 @@ export default function CampaignsPage() {
   const loadCount = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) return
     const { count } = await supabase.from('contacts').select('id', { count: 'exact', head: true })
       .eq('workspace_id', ws.id).not('email', 'is', null)

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Shield, Plus, X, Save, Trash2, CheckCircle2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ALL_MODULES, ALL_ACTIONS, ROLE_TEMPLATES } from '@/lib/rbac/permissions'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface CustomRole {
   id: string; name: string; description: string; color: string;
@@ -28,7 +29,7 @@ export default function RolesPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 

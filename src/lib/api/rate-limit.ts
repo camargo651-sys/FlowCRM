@@ -10,13 +10,17 @@ interface RateLimitEntry {
 
 const store = new Map<string, RateLimitEntry>()
 
-// Clean up expired entries periodically
-setInterval(() => {
-  const now = Date.now()
-  store.forEach((entry, key) => {
-    if (entry.resetAt < now) store.delete(key)
-  })
-}, 60000)
+// Clean up expired entries periodically (only at runtime, not during build)
+if (typeof globalThis !== 'undefined' && typeof globalThis.setInterval === 'function') {
+  try {
+    setInterval(() => {
+      const now = Date.now()
+      store.forEach((entry, key) => {
+        if (entry.resetAt < now) store.delete(key)
+      })
+    }, 60000)
+  } catch { /* ignore during build */ }
+}
 
 interface RateLimitConfig {
   windowMs: number  // Time window in milliseconds
@@ -26,8 +30,13 @@ interface RateLimitConfig {
 const LIMITS: Record<string, RateLimitConfig> = {
   api: { windowMs: 60000, max: 100 },       // 100 req/min for API
   auth: { windowMs: 300000, max: 10 },       // 10 req/5min for auth
+  demo: { windowMs: 60000, max: 5 },        // 5 req/min for demo login
   import: { windowMs: 3600000, max: 10 },    // 10 imports/hour
   webhook: { windowMs: 1000, max: 50 },      // 50 req/sec for webhooks
+  widget: { windowMs: 60000, max: 30 },      // 30 req/min for widget chat
+  social: { windowMs: 60000, max: 30 },      // 30 req/min for social webhooks
+  portal: { windowMs: 60000, max: 30 },      // 30 req/min for portal
+  forms: { windowMs: 60000, max: 30 },       // 30 req/min for form submissions
 }
 
 /**

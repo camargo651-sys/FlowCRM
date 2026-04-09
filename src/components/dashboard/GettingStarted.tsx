@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Circle, ArrowRight, X, Rocket, Zap, Users, TrendingUp, Package, Receipt, Plug, UserPlus } from 'lucide-react'
+import { CheckCircle2, Circle, ArrowRight, X, Rocket, Zap, Users, TrendingUp, Package, Receipt, Plug, UserPlus, MessageSquare, Bot, Smartphone } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +11,9 @@ interface OnboardingData {
   invoices: number
   integrations: number
   members: number
+  hasWhatsApp: boolean
+  hasBotConfig: boolean
+  pipelineStages: number
 }
 
 interface CheckItem {
@@ -25,10 +28,14 @@ interface CheckItem {
 
 const CHECKLIST: CheckItem[] = [
   { key: 'contact', label: 'Add your first contact', description: 'Import a CSV or create a contact manually', href: '/contacts', icon: Users, color: 'bg-brand-50 text-brand-600', check: d => d.contacts > 0 },
-  { key: 'deal', label: 'Create your first deal', description: 'Track an opportunity through your pipeline', href: '/pipeline', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600', check: d => d.deals > 0 },
+  { key: 'deal', label: 'Create a deal', description: 'Track an opportunity through your pipeline', href: '/pipeline', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600', check: d => d.deals > 0 },
+  { key: 'whatsapp', label: 'Connect WhatsApp', description: 'Receive and reply to messages directly from the CRM', href: '/integrations', icon: MessageSquare, color: 'bg-green-50 text-green-600', check: d => d.hasWhatsApp },
+  { key: 'pipeline', label: 'Set up your pipeline', description: 'Customize stages to match your sales process', href: '/pipeline', icon: TrendingUp, color: 'bg-indigo-50 text-indigo-600', check: d => d.pipelineStages > 3 },
+  { key: 'bot', label: 'Configure your bot', description: 'Automate WhatsApp replies with an AI-powered bot', href: '/whatsapp/bot', icon: Bot, color: 'bg-purple-50 text-purple-600', check: d => d.hasBotConfig },
   { key: 'product', label: 'Set up a product or service', description: 'Build your catalog for quotes and invoices', href: '/inventory', icon: Package, color: 'bg-violet-50 text-violet-600', check: d => d.products > 0 },
   { key: 'invoice', label: 'Send your first invoice', description: 'Get paid faster with professional invoices', href: '/invoices', icon: Receipt, color: 'bg-amber-50 text-amber-600', check: d => d.invoices > 0 },
-  { key: 'integration', label: 'Connect your email or WhatsApp', description: 'Enable zero data entry by syncing your channels', href: '/integrations', icon: Plug, color: 'bg-blue-50 text-blue-600', check: d => d.integrations > 0 },
+  { key: 'integration', label: 'Connect your email', description: 'Enable zero data entry by syncing Gmail or Outlook', href: '/integrations', icon: Plug, color: 'bg-blue-50 text-blue-600', check: d => d.integrations > 0 },
+  { key: 'mobile', label: 'Install the mobile app', description: 'Add Tracktio to your home screen for on-the-go access', href: '/settings', icon: Smartphone, color: 'bg-cyan-50 text-cyan-600', check: () => false },
   { key: 'team', label: 'Invite a team member', description: 'Collaborate in real time with your team', href: '/team', icon: UserPlus, color: 'bg-rose-50 text-rose-600', check: d => d.members > 1 },
 ]
 
@@ -52,14 +59,28 @@ export default function GettingStarted() {
         const stored = localStorage.getItem('tracktio_getting_started_dismissed')
         if (stored === 'true') { setDismissed(true); setLoading(false); return }
 
-        const [contacts, deals, products, invoices, integrations, members] = await Promise.all([
+        const [contacts, deals, products, invoices, integrations, members, waAccounts, botConfig, stages] = await Promise.all([
           supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id),
           supabase.from('deals').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id),
           supabase.from('products').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id),
           supabase.from('invoices').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id),
           supabase.from('integrations').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id).eq('enabled', true),
           supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id),
+          supabase.from('whatsapp_accounts').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id).eq('status', 'active'),
+          supabase.from('whatsapp_bot_config').select('id').eq('workspace_id', ws.id).limit(1),
+          supabase.from('pipeline_stages').select('id', { count: 'exact', head: true }).eq('pipeline_id', ws.id),
         ])
+
+        // Get actual pipeline stage count
+        let stageCount = stages.count || 0
+        if (stageCount === 0) {
+          // Try to get stages from the first pipeline
+          const { data: pipeline } = await supabase.from('pipelines').select('id').eq('workspace_id', ws.id).limit(1).single()
+          if (pipeline) {
+            const { count } = await supabase.from('pipeline_stages').select('id', { count: 'exact', head: true }).eq('pipeline_id', pipeline.id)
+            stageCount = count || 0
+          }
+        }
 
         setData({
           contacts: contacts.count || 0,
@@ -68,6 +89,9 @@ export default function GettingStarted() {
           invoices: invoices.count || 0,
           integrations: integrations.count || 0,
           members: members.count || 0,
+          hasWhatsApp: (waAccounts.count || 0) > 0,
+          hasBotConfig: (botConfig.data?.length || 0) > 0,
+          pipelineStages: stageCount,
         })
       } catch {}
       setLoading(false)

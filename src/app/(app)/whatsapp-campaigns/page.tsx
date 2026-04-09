@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Send, MessageCircle, Users, Filter, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const TEMPLATES = [
   { name: 'Custom', message: '' },
@@ -26,7 +27,7 @@ export default function WhatsAppCampaignsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) return
     setWorkspaceId(ws.id)
     const { data } = await supabase.from('contacts').select('id, name, phone, score_label, tags')

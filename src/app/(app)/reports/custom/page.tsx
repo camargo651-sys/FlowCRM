@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Play, Download, FileText, BarChart2 } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import type { DbRow } from '@/types'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 type Entity = 'contacts' | 'deals' | 'invoices' | 'activities' | 'social_leads'
 type Metric = 'count' | 'sum' | 'avg'
@@ -95,7 +96,7 @@ export default function CustomReportsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setError('Not authenticated'); setLoading(false); return }
-      const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+      const ws = await getActiveWorkspace(supabase, user.id, 'id')
       if (!ws) { setError('No workspace'); setLoading(false); return }
 
       // Build date filter

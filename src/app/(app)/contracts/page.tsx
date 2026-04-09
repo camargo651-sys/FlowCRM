@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, FileSignature, X, Clock, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'badge-gray', active: 'badge-green', expired: 'badge-red', cancelled: 'badge-gray', renewed: 'badge-blue',
@@ -27,7 +28,7 @@ export default function ContractsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const [contractsRes, contactsRes] = await Promise.all([

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, CheckSquare, Square, Calendar, Search, X, AlarmClock } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import type { Activity } from '@/types'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const TYPES = ['call','email','meeting','note','task'] as const
 const TYPE_COLORS: Record<string, string> = {
@@ -79,7 +80,7 @@ export default function TasksPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const { data } = await supabase.from('activities').select('*').eq('workspace_id', ws.id).order('due_date', { ascending: true })

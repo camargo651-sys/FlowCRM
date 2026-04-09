@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ShoppingBag, Search, Truck, CheckCircle2, XCircle, Clock, Package } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const STATUS_FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered']
 const STATUS_STYLES: Record<string, string> = {
@@ -25,7 +26,7 @@ export default function StoreOrdersPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id, slug, store_enabled').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id, slug, store_enabled')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     setStoreEnabled(ws.store_enabled || false)

@@ -4,9 +4,10 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, XCircle, ExternalLink, ChevronRight, Search, Shield, Save, X, Star, RefreshCw, Mail, Trash2, Zap } from 'lucide-react'
+import { CheckCircle2, XCircle, ExternalLink, ChevronRight, Search, Shield, Save, X, Star, RefreshCw, Mail, Trash2, Zap, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { INTEGRATIONS_CATALOG, CATEGORIES, type IntegrationDef } from '@/lib/integrations-catalog'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface SavedIntegration {
   key: string
@@ -42,7 +43,7 @@ export default function IntegrationsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 
@@ -224,12 +225,20 @@ export default function IntegrationsPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-sm text-surface-900 truncate">{def.name}</h3>
                       {def.popular && <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
+                      {def.status === 'coming_soon' && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-600 flex-shrink-0">
+                          <Clock className="w-2.5 h-2.5" />
+                          Coming Soon
+                        </span>
+                      )}
                     </div>
-                    <div className={cn('inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold',
-                      isConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-surface-100 text-surface-400')}>
-                      {isConnected ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
-                      {isConnected ? 'Connected' : 'Off'}
-                    </div>
+                    {def.status === 'active' && (
+                      <div className={cn('inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold',
+                        isConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-surface-100 text-surface-400')}>
+                        {isConnected ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
+                        {isConnected ? 'Connected' : 'Off'}
+                      </div>
+                    )}
                     {!selected && <p className="text-xs text-surface-500 mt-1.5 line-clamp-2">{def.description}</p>}
                   </div>
                   {selected && <ChevronRight className="w-4 h-4 text-surface-300 flex-shrink-0 mt-1" />}
@@ -263,22 +272,33 @@ export default function IntegrationsPage() {
                 <button onClick={() => setSelected(null)} className="text-surface-400 hover:text-surface-600 text-sm">Close</button>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-surface-400" />
-                  <span className="text-sm font-medium text-surface-700">Enable {selected.name}</span>
+              {selected.status === 'coming_soon' && (
+                <div className="flex items-center gap-2 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                  <p className="text-sm text-amber-700 font-medium">
+                    This integration is coming soon. We are working on it and will notify you when it is ready.
+                  </p>
                 </div>
-                <button onClick={() => toggleIntegration(selected.key)}
-                  className={cn('w-11 h-6 rounded-full transition-all relative',
-                    saved.get(selected.key)?.enabled ? 'bg-emerald-500' : 'bg-surface-300')}>
-                  <div className={cn('w-5 h-5 bg-white rounded-full shadow-sm absolute top-0.5 transition-all',
-                    saved.get(selected.key)?.enabled ? 'left-[22px]' : 'left-0.5')} />
-                </button>
-              </div>
+              )}
+
+              {selected.status === 'active' && (
+                <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-surface-400" />
+                    <span className="text-sm font-medium text-surface-700">Enable {selected.name}</span>
+                  </div>
+                  <button onClick={() => toggleIntegration(selected.key)}
+                    className={cn('w-11 h-6 rounded-full transition-all relative',
+                      saved.get(selected.key)?.enabled ? 'bg-emerald-500' : 'bg-surface-300')}>
+                    <div className={cn('w-5 h-5 bg-white rounded-full shadow-sm absolute top-0.5 transition-all',
+                      saved.get(selected.key)?.enabled ? 'left-[22px]' : 'left-0.5')} />
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Setup */}
-            <div className="card p-6">
+            {/* Setup — only for active integrations */}
+            {selected.status === 'active' && <div className="card p-6">
               <h3 className="font-semibold text-surface-900 mb-1">Setup Instructions</h3>
               <p className="text-xs text-surface-500 mb-4">Follow these steps to connect {selected.name}</p>
               <div className="space-y-3">
@@ -292,10 +312,10 @@ export default function IntegrationsPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
 
-            {/* Config — OAuth or Manual */}
-            {selected.oauthFlow ? (
+            {/* Config — OAuth or Manual (only for active integrations) */}
+            {selected.status === 'active' && (selected.oauthFlow ? (
               <div className="card p-6">
                 <h3 className="font-semibold text-surface-900 mb-1">Connection</h3>
                 <p className="text-xs text-surface-500 mb-4">
@@ -421,7 +441,7 @@ export default function IntegrationsPage() {
                   </div>
                 )}
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>

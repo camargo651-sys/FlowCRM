@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ShoppingCart, Plus, Minus, Trash2, Search, DollarSign, CreditCard, X, Receipt, Banknote } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface CartItem {
   product_id: string
@@ -38,7 +39,7 @@ export default function POSPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id, default_tax_rate').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id, default_tax_rate')
     if (!ws) { setLoading(false); return }
     setTaxRate((ws.default_tax_rate || 0) / 100)
     setWorkspaceId(ws.id)

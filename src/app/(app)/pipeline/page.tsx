@@ -8,6 +8,7 @@ import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
 import type { Deal, PipelineStage, Contact, DbRow } from '@/types'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -280,7 +281,7 @@ function DealWhatsApp({ deal, onClose }: { deal: DealWithContact; onClose: () =>
         portalToken = crypto.randomUUID()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+        const ws = await getActiveWorkspace(supabase, user.id, 'id')
         if (!ws) return
         await supabase.from('portal_tokens').insert({
           workspace_id: ws.id,
@@ -469,7 +470,7 @@ export default function PipelinePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 

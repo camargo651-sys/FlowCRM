@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Save, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const MODULES = [
   { key: 'crm', label: 'CRM / Sales', desc: 'Pipeline, contacts, deals, quotes', icon: '🔀', default: true },
@@ -29,7 +30,7 @@ export default function ModulesPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id, enabled_modules').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id, enabled_modules')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 

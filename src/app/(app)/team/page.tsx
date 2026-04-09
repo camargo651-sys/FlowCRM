@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Mail, Clock, X, Trash2, CheckCircle2 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface Member {
   id: string
@@ -42,7 +43,7 @@ export default function TeamPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
 
     const [membersRes, invitesRes, rolesRes] = await Promise.all([
@@ -65,7 +66,7 @@ export default function TeamPage() {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) return
 
     const token = crypto.randomUUID()

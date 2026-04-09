@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Upload, CheckCircle2, Loader2, Package, Users, TrendingUp, Sparkles, Brain, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 // ============================================================
 // Types
@@ -227,7 +228,7 @@ export default function ImportPage() {
     setStep('importing')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { toast.error('Not logged in'); setStep('review'); return }
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { toast.error('No workspace'); setStep('review'); return }
 
     const results: typeof result = {}

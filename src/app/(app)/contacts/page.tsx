@@ -12,6 +12,7 @@ import { deleteWithUndo } from '@/lib/utils/undo'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
 import type { Contact, DbRow } from '@/types'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const AVATAR_COLORS = ['bg-brand-500','bg-violet-500','bg-emerald-500','bg-amber-500','bg-rose-500','bg-cyan-500']
 const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
@@ -184,7 +185,7 @@ export default function ContactsPage() {
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const { data } = await supabase.from('contacts').select('*').eq('workspace_id', ws.id).order('name')

@@ -6,6 +6,7 @@ import { Plus, Search, FileText, Send, CheckCircle2, XCircle, Clock, Eye, Trash2
 import { formatCurrency, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface QuoteItem {
   id: string
@@ -487,7 +488,7 @@ export default function QuotesPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 

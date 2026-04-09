@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit } from '@/lib/api/rate-limit'
 
 const DEMO_EMAIL = 'demo@tracktio.app'
 const DEMO_PASSWORD = 'demo-tracktio-2026'
@@ -11,7 +12,11 @@ function getServiceSupabase() {
 }
 
 // POST: Create or login to demo account
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const { allowed } = checkRateLimit(ip, 'demo')
+  if (!allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
   const supabase = getServiceSupabase()
   if (!supabase) return NextResponse.json({ error: 'Demo not available' }, { status: 503 })
 
@@ -225,6 +230,34 @@ async function seedRichDemoData(supabase: any, wsId: string, userId: string) {
       contact_id: a.contact !== null ? (contactIds[a.contact] || null) : null,
       due_date: new Date(Date.now() + a.days * 86400000).toISOString(),
     })
+  }
+
+  // ── SEQUENCES (1) ──
+  await supabase.from('sequences').insert({
+    workspace_id: wsId, name: 'Welcome Follow-up',
+    description: 'Automatic follow-up for new leads',
+    enabled: true,
+    steps: [
+      { order: 0, channel: 'whatsapp', message: 'Hi {{name}}! Thanks for your interest. How can we help?', delay_hours: 0 },
+      { order: 1, channel: 'whatsapp', message: 'Hi {{first_name}}, just following up. Do you have any questions?', delay_hours: 24, condition: 'no_reply' },
+      { order: 2, channel: 'whatsapp', message: '{{first_name}}, we don\'t want you to miss out! Last chance to book a free consultation.', delay_hours: 72, condition: 'no_reply' },
+    ],
+    enrolled_count: 8, completed_count: 3,
+  })
+
+  // ── SOCIAL LEADS (8) ──
+  const socialLeads = [
+    { author_name: 'Laura Gómez', author_username: 'lauragmz', platform: 'instagram', source_type: 'comment', message: 'Me interesa! Cómo puedo agendar?', status: 'converted' },
+    { author_name: 'Diego Torres', author_username: 'diegot_', platform: 'facebook', source_type: 'dm', message: 'Hola, quisiera información sobre sus servicios', status: 'qualified' },
+    { author_name: 'Camila Ruiz', author_username: 'camilaruiz', platform: 'instagram', source_type: 'comment', message: 'Precio?', status: 'new' },
+    { author_name: 'Andrés Peña', author_username: 'andrespena', platform: 'tiktok', source_type: 'comment', message: 'Muy bueno el video! Cómo contacto?', status: 'contacted' },
+    { author_name: 'Sofia Chen', author_username: 'sofiac', platform: 'facebook', source_type: 'form', message: 'Interested in consultation', status: 'converted' },
+    { author_name: 'Manuel López', author_username: 'mlopez', platform: 'instagram', source_type: 'dm', message: 'Tienen disponibilidad esta semana?', status: 'qualified' },
+    { author_name: 'Isabella Vargas', author_username: 'isav', platform: 'tiktok', source_type: 'comment', message: 'Info por favor', status: 'new', metadata: { has_phone: false } },
+    { author_name: 'Roberto Sánchez', author_username: 'robsanchez', platform: 'linkedin', source_type: 'dm', message: 'Looking for legal consulting services', status: 'contacted' },
+  ]
+  for (const lead of socialLeads) {
+    await supabase.from('social_leads').insert({ workspace_id: wsId, ...lead, metadata: (lead as Record<string, unknown>).metadata || {} })
   }
 
   // ── CHART OF ACCOUNTS ──

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 type Channel = 'whatsapp' | 'sms' | 'email'
 
@@ -82,7 +83,7 @@ export default function SequencesPage() {
   const loadSequences = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) return
     setWorkspaceId(ws.id)
 

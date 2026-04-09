@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, X, BookOpen, TrendingUp, TrendingDown, DollarSign, FileText } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const ACCOUNT_TYPE_COLORS: Record<string, string> = {
   asset: 'text-blue-600 bg-blue-50', liability: 'text-red-600 bg-red-50',
@@ -36,7 +37,7 @@ export default function AccountingPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
 

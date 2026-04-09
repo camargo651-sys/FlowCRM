@@ -6,6 +6,7 @@ import { Copy, Check, Save, Eye, MessageCircle, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
+import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface WidgetConfig {
   greeting: string
@@ -37,7 +38,7 @@ export default function WidgetSettingsPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: ws } = await supabase.from('workspaces').select('id, widget_config, primary_color').eq('owner_id', user.id).single()
+    const ws = await getActiveWorkspace(supabase, user.id, 'id, widget_config, primary_color')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     if (ws.widget_config) {

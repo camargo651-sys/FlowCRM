@@ -5,6 +5,7 @@ export interface IntegrationDef {
   category: string
   color: string
   icon: string // emoji for simplicity across the catalog
+  status: 'active' | 'coming_soon'
   popular?: boolean
   oauthFlow?: boolean // true = uses OAuth connect button instead of manual fields
   oauthUrl?: string   // API route to initiate OAuth
@@ -29,7 +30,7 @@ export const CATEGORIES = [
 export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
   // === COMMUNICATION ===
   {
-    key: 'whatsapp', name: 'WhatsApp Business', category: 'communication', color: '#25D366', icon: '💬', popular: true,
+    key: 'whatsapp', name: 'WhatsApp Business', category: 'communication', color: '#25D366', icon: '💬', status: 'active', popular: true,
     description: 'Capture WhatsApp conversations automatically. Contacts are created, messages logged, and you can reply directly from Tracktio.',
     fields: [
       { key: 'phone_number_id', label: 'Phone Number ID', placeholder: '1234567890', help: 'WhatsApp Manager > API Setup > Phone Number ID' },
@@ -45,7 +46,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'telegram', name: 'Telegram Bot', category: 'communication', color: '#0088CC', icon: '✈️',
+    key: 'telegram', name: 'Telegram Bot', category: 'communication', color: '#0088CC', icon: '✈️', status: 'coming_soon',
     description: 'Receive leads and send notifications via Telegram bot.',
     fields: [
       { key: 'bot_token', label: 'Bot Token', placeholder: '123456:ABC-DEF...', type: 'password', help: 'From @BotFather on Telegram' },
@@ -58,7 +59,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'slack', name: 'Slack', category: 'communication', color: '#4A154B', icon: '#️⃣', popular: true,
+    key: 'slack', name: 'Slack', category: 'communication', color: '#4A154B', icon: '#️⃣', status: 'active', popular: true,
     description: 'Get real-time notifications in Slack when deals move, tasks are due, or contacts are added.',
     fields: [
       { key: 'bot_token', label: 'Bot Token', placeholder: 'xoxb-...', type: 'password', help: 'OAuth & Permissions page' },
@@ -73,7 +74,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'teams', name: 'Microsoft Teams', category: 'communication', color: '#6264A7', icon: '👥',
+    key: 'teams', name: 'Microsoft Teams', category: 'communication', color: '#6264A7', icon: '👥', status: 'coming_soon',
     description: 'Send deal updates and task notifications to Microsoft Teams channels.',
     fields: [
       { key: 'webhook_url', label: 'Incoming Webhook URL', placeholder: 'https://outlook.office.com/webhook/...', help: 'From Teams channel connector settings' },
@@ -85,7 +86,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'twilio', name: 'Twilio (SMS)', category: 'communication', color: '#F22F46', icon: '📱',
+    key: 'twilio', name: 'Twilio (SMS)', category: 'communication', color: '#F22F46', icon: '📱', status: 'active',
     description: 'Send SMS messages to leads and clients. Automate reminders and follow-ups.',
     fields: [
       { key: 'account_sid', label: 'Account SID', placeholder: 'ACxxxxxxxxxxxxxxx', help: 'Twilio Console dashboard' },
@@ -101,7 +102,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === EMAIL & CALENDAR ===
   {
-    key: 'gmail', name: 'Gmail', category: 'email', color: '#EA4335', icon: '📧', popular: true,
+    key: 'gmail', name: 'Gmail', category: 'email', color: '#EA4335', icon: '📧', status: 'active', popular: true,
     oauthFlow: true, oauthUrl: '/api/auth/gmail',
     description: 'Automatically sync emails with contacts and deals. Zero manual data entry — emails are captured, contacts are created, and activities are logged automatically.',
     fields: [],
@@ -112,7 +113,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'outlook', name: 'Outlook / Office 365', category: 'email', color: '#0078D4', icon: '📬',
+    key: 'outlook', name: 'Outlook / Office 365', category: 'email', color: '#0078D4', icon: '📬', status: 'active',
     oauthFlow: true, oauthUrl: '/api/auth/outlook',
     description: 'Automatically sync Outlook emails with contacts and deals. Zero manual data entry — emails are captured, contacts are created, and activities are logged automatically.',
     fields: [],
@@ -123,7 +124,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'google_calendar', name: 'Google Calendar', category: 'email', color: '#4285F4', icon: '📅', popular: true,
+    key: 'google_calendar', name: 'Google Calendar', category: 'email', color: '#4285F4', icon: '📅', status: 'active', popular: true,
     description: 'Sync meetings and events. Auto-create activities when you schedule calls.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', help: 'Same as Gmail if configured' },
@@ -135,7 +136,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'calendly', name: 'Calendly', category: 'email', color: '#006BFF', icon: '🗓️', popular: true,
+    key: 'calendly', name: 'Calendly', category: 'email', color: '#006BFF', icon: '🗓️', status: 'active', popular: true,
     description: 'Auto-create contacts and activities when someone books a Calendly meeting.',
     fields: [
       { key: 'api_key', label: 'Personal Access Token', placeholder: 'eyJhb...', type: 'password', help: 'Calendly > Integrations > API & Webhooks' },
@@ -147,7 +148,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'zoom', name: 'Zoom', category: 'email', color: '#2D8CFF', icon: '📹',
+    key: 'zoom', name: 'Zoom', category: 'email', color: '#2D8CFF', icon: '📹', status: 'coming_soon',
     description: 'Create Zoom meetings from deals. Auto-log meeting recordings and notes.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxxxx', help: 'Zoom App Marketplace > Your App' },
@@ -160,7 +161,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'google_meet', name: 'Google Meet', category: 'email', color: '#00897B', icon: '🎥',
+    key: 'google_meet', name: 'Google Meet', category: 'email', color: '#00897B', icon: '🎥', status: 'coming_soon',
     description: 'Generate Google Meet links automatically when scheduling meetings.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', help: 'Same as Google Calendar' },
@@ -173,7 +174,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === SOCIAL MEDIA ===
   {
-    key: 'instagram', name: 'Instagram DMs', category: 'social', color: '#E4405F', icon: '📸', popular: true,
+    key: 'instagram', name: 'Instagram DMs', category: 'social', color: '#E4405F', icon: '📸', status: 'coming_soon', popular: true,
     description: 'Receive Instagram DMs as leads. Reply to comments and messages from the CRM.',
     fields: [
       { key: 'page_id', label: 'Facebook Page ID', placeholder: '1234567890', help: 'Your Facebook Page linked to Instagram' },
@@ -187,7 +188,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'facebook_messenger', name: 'Facebook Messenger', category: 'social', color: '#0084FF', icon: '💭',
+    key: 'facebook_messenger', name: 'Facebook Messenger', category: 'social', color: '#0084FF', icon: '💭', status: 'coming_soon',
     description: 'Receive Messenger messages as leads. Automate responses and capture contacts.',
     fields: [
       { key: 'page_id', label: 'Page ID', placeholder: '1234567890', help: 'Your Facebook Page ID' },
@@ -201,7 +202,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'linkedin', name: 'LinkedIn', category: 'social', color: '#0A66C2', icon: '💼',
+    key: 'linkedin', name: 'LinkedIn', category: 'social', color: '#0A66C2', icon: '💼', status: 'active',
     oauthFlow: true, oauthUrl: '/api/auth/linkedin',
     description: 'Connect your LinkedIn account to import contacts with their company, title, and profile data automatically.',
     fields: [],
@@ -214,7 +215,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === AUTOMATION ===
   {
-    key: 'zapier', name: 'Zapier', category: 'automation', color: '#FF4F00', icon: '⚡', popular: true,
+    key: 'zapier', name: 'Zapier', category: 'automation', color: '#FF4F00', icon: '⚡', status: 'coming_soon', popular: true,
     description: 'Connect with 5,000+ apps. Automate any workflow without writing code.',
     fields: [
       { key: 'api_key', label: 'Tracktio API Key', placeholder: 'Auto-generated', help: 'Use this key in Zapier' },
@@ -226,7 +227,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'make', name: 'Make (Integromat)', category: 'automation', color: '#6D00CC', icon: '🔄',
+    key: 'make', name: 'Make (Integromat)', category: 'automation', color: '#6D00CC', icon: '🔄', status: 'coming_soon',
     description: 'Visual automation builder. Create complex workflows with branching logic.',
     fields: [
       { key: 'api_key', label: 'Tracktio API Key', placeholder: 'Auto-generated', help: 'Use this key in Make' },
@@ -238,7 +239,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'n8n', name: 'n8n', category: 'automation', color: '#EA4B71', icon: '🔧',
+    key: 'n8n', name: 'n8n', category: 'automation', color: '#EA4B71', icon: '🔧', status: 'coming_soon',
     description: 'Self-hosted automation. Full control over your data and workflows.',
     fields: [
       { key: 'webhook_url', label: 'n8n Webhook URL', placeholder: 'https://your-n8n.com/webhook/...', help: 'From your n8n workflow' },
@@ -252,7 +253,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === PAYMENTS ===
   {
-    key: 'stripe', name: 'Stripe', category: 'payments', color: '#635BFF', icon: '💳', popular: true,
+    key: 'stripe', name: 'Stripe', category: 'payments', color: '#635BFF', icon: '💳', status: 'active', popular: true,
     description: 'Track payments and revenue. Update deal status when payments are received.',
     fields: [
       { key: 'secret_key', label: 'Secret Key', placeholder: 'sk_live_...', type: 'password', help: 'Stripe Dashboard > Developers > API keys' },
@@ -266,7 +267,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'mercadopago', name: 'MercadoPago', category: 'payments', color: '#009EE3', icon: '🏦',
+    key: 'mercadopago', name: 'MercadoPago', category: 'payments', color: '#009EE3', icon: '🏦', status: 'coming_soon',
     description: 'Process payments in Latin America. Generate payment links from quotes.',
     fields: [
       { key: 'access_token', label: 'Access Token', placeholder: 'APP_USR-...', type: 'password', help: 'MercadoPago Developers > Your apps' },
@@ -278,7 +279,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'paypal', name: 'PayPal', category: 'payments', color: '#003087', icon: '💰',
+    key: 'paypal', name: 'PayPal', category: 'payments', color: '#003087', icon: '💰', status: 'coming_soon',
     description: 'Accept PayPal payments. Generate invoices and payment links.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxxxx', help: 'PayPal Developer Dashboard' },
@@ -292,7 +293,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === PRODUCTIVITY ===
   {
-    key: 'google_sheets', name: 'Google Sheets', category: 'productivity', color: '#0F9D58', icon: '📊', popular: true,
+    key: 'google_sheets', name: 'Google Sheets', category: 'productivity', color: '#0F9D58', icon: '📊', status: 'coming_soon', popular: true,
     description: 'Import/export contacts, deals, and reports. Keep spreadsheets in sync.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', help: 'Google Cloud Console' },
@@ -305,7 +306,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'notion', name: 'Notion', category: 'productivity', color: '#000000', icon: '📝',
+    key: 'notion', name: 'Notion', category: 'productivity', color: '#000000', icon: '📝', status: 'coming_soon',
     description: 'Sync deal notes and meeting summaries to Notion databases.',
     fields: [
       { key: 'api_key', label: 'Integration Token', placeholder: 'secret_...', type: 'password', help: 'notion.so/my-integrations' },
@@ -317,7 +318,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'trello', name: 'Trello', category: 'productivity', color: '#0052CC', icon: '📋',
+    key: 'trello', name: 'Trello', category: 'productivity', color: '#0052CC', icon: '📋', status: 'coming_soon',
     description: 'Sync deals as Trello cards. Move cards when deal stages change.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'xxxxxxxx', help: 'trello.com/app-key' },
@@ -332,7 +333,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === ANALYTICS ===
   {
-    key: 'google_analytics', name: 'Google Analytics', category: 'analytics', color: '#E37400', icon: '📈',
+    key: 'google_analytics', name: 'Google Analytics', category: 'analytics', color: '#E37400', icon: '📈', status: 'coming_soon',
     description: 'Track lead sources and conversion paths from your website to CRM.',
     fields: [
       { key: 'measurement_id', label: 'Measurement ID', placeholder: 'G-XXXXXXXXXX', help: 'GA4 > Admin > Data Streams' },
@@ -344,7 +345,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'facebook_pixel', name: 'Facebook Pixel', category: 'analytics', color: '#1877F2', icon: '📊',
+    key: 'facebook_pixel', name: 'Facebook Pixel', category: 'analytics', color: '#1877F2', icon: '📊', status: 'coming_soon',
     description: 'Track conversions from Facebook/Instagram ads to closed deals.',
     fields: [
       { key: 'pixel_id', label: 'Pixel ID', placeholder: '1234567890', help: 'Meta Events Manager' },
@@ -358,7 +359,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === E-COMMERCE ===
   {
-    key: 'shopify', name: 'Shopify', category: 'ecommerce', color: '#96BF48', icon: '🛍️',
+    key: 'shopify', name: 'Shopify', category: 'ecommerce', color: '#96BF48', icon: '🛍️', status: 'coming_soon',
     description: 'Import Shopify customers as contacts. Track orders as deals.',
     fields: [
       { key: 'shop_url', label: 'Shop URL', placeholder: 'your-store.myshopify.com', help: 'Your Shopify store URL' },
@@ -371,7 +372,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'woocommerce', name: 'WooCommerce', category: 'ecommerce', color: '#96588A', icon: '🛒',
+    key: 'woocommerce', name: 'WooCommerce', category: 'ecommerce', color: '#96588A', icon: '🛒', status: 'coming_soon',
     description: 'Sync WooCommerce customers and orders with your CRM.',
     fields: [
       { key: 'store_url', label: 'Store URL', placeholder: 'https://your-store.com', help: 'Your WordPress site URL' },
@@ -386,7 +387,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === DOCUMENTS ===
   {
-    key: 'docusign', name: 'DocuSign', category: 'documents', color: '#FFCD00', icon: '✍️',
+    key: 'docusign', name: 'DocuSign', category: 'documents', color: '#FFCD00', icon: '✍️', status: 'coming_soon',
     description: 'Send contracts for e-signature. Track document status from deals.',
     fields: [
       { key: 'integration_key', label: 'Integration Key', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', help: 'DocuSign Admin > Integrations' },
@@ -400,7 +401,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'pandadoc', name: 'PandaDoc', category: 'documents', color: '#38B249', icon: '📄',
+    key: 'pandadoc', name: 'PandaDoc', category: 'documents', color: '#38B249', icon: '📄', status: 'coming_soon',
     description: 'Create proposals and contracts from deal data. Track document analytics.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'xxxxxxxx', type: 'password', help: 'PandaDoc > Settings > Integrations > API' },
@@ -412,7 +413,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === EMAIL MARKETING ===
   {
-    key: 'mailchimp', name: 'Mailchimp', category: 'email', color: '#FFE01B', icon: '🐵',
+    key: 'mailchimp', name: 'Mailchimp', category: 'email', color: '#FFE01B', icon: '🐵', status: 'coming_soon',
     description: 'Sync contacts to Mailchimp audiences. Trigger email campaigns from deal stages.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'xxxxxxxx-us1', type: 'password', help: 'Mailchimp > Account > Extras > API keys' },
@@ -426,7 +427,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === DEVELOPER ===
   {
-    key: 'webhooks', name: 'Custom Webhooks', category: 'developer', color: '#333333', icon: '🔗', popular: true,
+    key: 'webhooks', name: 'Custom Webhooks', category: 'developer', color: '#333333', icon: '🔗', status: 'coming_soon', popular: true,
     description: 'Send real-time events to any URL. Build custom integrations with any system.',
     fields: [
       { key: 'url', label: 'Webhook URL', placeholder: 'https://your-app.com/webhooks/tracktio', help: 'URL that receives POST requests' },
@@ -440,7 +441,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'rest_api', name: 'REST API', category: 'developer', color: '#10B981', icon: '🛠️',
+    key: 'rest_api', name: 'REST API', category: 'developer', color: '#10B981', icon: '🛠️', status: 'coming_soon',
     description: 'Full API access to your CRM data. Build custom apps and dashboards.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'Auto-generated', help: 'Use this key in your API requests' },
