@@ -52,6 +52,5 @@ export async function fireOutgoingWebhooks(
       body,
     })
   } catch (err: unknown) {
-    console.error(`Webhook delivery failed for ${event}:`, err instanceof Error ? err.message : err)
   }
 }

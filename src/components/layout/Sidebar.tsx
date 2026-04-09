@@ -114,8 +114,8 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/pos', icon: ShoppingCart, label: t('nav.pos') },
       { href: '/store-orders', icon: ShoppingBag, label: t('nav.ecommerce') },
       { href: '/leads', icon: Users, label: t('nav.leads') },
-      { href: '/campaigns', icon: Mail, label: 'Campaigns' },
-      { href: '/whatsapp-campaigns', icon: MessageCircle, label: 'WA Campaigns' },
+      { href: '/campaigns', icon: Mail, label: t('nav.campaigns') },
+      { href: '/whatsapp-campaigns', icon: MessageCircle, label: t('nav.wa_campaigns') },
       { href: '/contracts', icon: FileSignature, label: t('nav.contracts') },
       { href: '/tickets', icon: Ticket, label: t('nav.tickets') },
     ]},
@@ -144,9 +144,9 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/ai-setup', icon: Sparkles, label: t('nav.ai_setup') },
       { href: '/roles', icon: Shield, label: t('nav.roles') },
       { href: '/team', icon: UserPlus, label: t('nav.team') },
-      { href: '/settings/extensions', icon: Plug, label: 'Extensions' },
+      { href: '/settings/extensions', icon: Plug, label: t('nav.extensions') },
       { href: '/integrations', icon: Plug, label: t('nav.integrations') },
-      { href: '/import', icon: Package, label: 'Import' },
+      { href: '/import', icon: Package, label: t('nav.import') },
       { href: '/automations', icon: Zap, label: t('nav.automations') },
       { href: '/api-docs', icon: Code, label: t('nav.api_docs') },
       { href: '/audit-log', icon: Shield, label: t('nav.audit_log') },
@@ -177,6 +177,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       {/* Search trigger */}
       <div className="px-3 mb-2">
         <button onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+          aria-label="Search"
           className="w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] text-surface-400 hover:bg-surface-50 hover:text-surface-600 transition-all duration-150 group">
           <Search className="w-4 h-4" />
           <span className="flex-1 text-left">Search...</span>

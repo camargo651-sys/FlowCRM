@@ -11,7 +11,6 @@ interface SendEmailParams {
 
 export async function sendTransactionalEmail({ to, subject, html }: SendEmailParams) {
   if (!resend) {
-    console.log(`[Email skipped - no RESEND_API_KEY] To: ${to}, Subject: ${subject}`)
     return { success: false, reason: 'not_configured' }
   }
 
@@ -23,12 +22,10 @@ export async function sendTransactionalEmail({ to, subject, html }: SendEmailPar
       html,
     })
     if (error) {
-      console.error('Resend error:', error)
       return { success: false, reason: error.message }
     }
     return { success: true, id: data?.id }
-  } catch (err) {
-    console.error('Email send failed:', err)
+  } catch {
     return { success: false, reason: 'unknown_error' }
   }
 }

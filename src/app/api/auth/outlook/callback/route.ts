@@ -65,7 +65,6 @@ export async function GET(request: NextRequest) {
 
   if (!tokenRes.ok) {
     const err = await tokenRes.text()
-    console.error('Outlook token exchange failed:', err)
     return NextResponse.redirect(new URL('/integrations?error=token_exchange_failed', request.url))
   }
 
@@ -99,7 +98,6 @@ export async function GET(request: NextRequest) {
   }, { onConflict: 'workspace_id,email_address' })
 
   if (dbError) {
-    console.error('Failed to save email account:', dbError)
     return NextResponse.redirect(new URL('/integrations?error=db_error', request.url))
   }
 

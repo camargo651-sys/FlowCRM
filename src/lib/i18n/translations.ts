@@ -258,6 +258,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.form_builder': 'Constructor de Formularios',
     'nav.templates': 'Plantillas',
     'nav.ai_setup': 'Configurar con IA',
+    'nav.campaigns': 'Campañas',
+    'nav.wa_campaigns': 'Campañas WA',
+    'nav.extensions': 'Extensiones',
+    'nav.import': 'Importar',
 
     // Tickets
     'tickets.title': 'Tickets de Servicio',
@@ -338,6 +342,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.form_builder': 'Form Builder',
     'nav.templates': 'Templates',
     'nav.ai_setup': 'AI Setup',
+    'nav.campaigns': 'Campaigns',
+    'nav.wa_campaigns': 'WA Campaigns',
+    'nav.extensions': 'Extensions',
+    'nav.import': 'Import',
     'section.sales': 'Sales',
     'section.operations': 'Operations',
     'section.finance': 'Finance',
@@ -819,6 +827,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.form_builder': 'Construtor de Formulários',
     'nav.templates': 'Modelos',
     'nav.ai_setup': 'Configurar com IA',
+    'nav.campaigns': 'Campanhas',
+    'nav.wa_campaigns': 'Campanhas WA',
+    'nav.extensions': 'Extensões',
+    'nav.import': 'Importar',
 
     // Tickets
     'tickets.title': 'Tickets de Serviço',
@@ -1103,6 +1115,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.form_builder': 'Constructeur de formulaires',
     'nav.templates': 'Modèles',
     'nav.ai_setup': 'Configuration IA',
+    'nav.campaigns': 'Campagnes',
+    'nav.wa_campaigns': 'Campagnes WA',
+    'nav.extensions': 'Extensions',
+    'nav.import': 'Importer',
 
     // Tickets
     'tickets.title': 'Tickets de service',
@@ -1387,6 +1403,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.form_builder': 'Formular-Editor',
     'nav.templates': 'Vorlagen',
     'nav.ai_setup': 'KI-Einrichtung',
+    'nav.campaigns': 'Kampagnen',
+    'nav.wa_campaigns': 'WA-Kampagnen',
+    'nav.extensions': 'Erweiterungen',
+    'nav.import': 'Importieren',
 
     // Tickets
     'tickets.title': 'Service-Tickets',

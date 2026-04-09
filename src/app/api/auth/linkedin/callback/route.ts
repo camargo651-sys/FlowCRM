@@ -59,7 +59,6 @@ export async function GET(request: NextRequest) {
   })
 
   if (!tokenRes.ok) {
-    console.error('LinkedIn token exchange failed:', await tokenRes.text())
     return NextResponse.redirect(new URL('/integrations?error=token_exchange_failed', request.url))
   }
 
@@ -71,7 +70,6 @@ export async function GET(request: NextRequest) {
   })
 
   if (!profileRes.ok) {
-    console.error('LinkedIn profile fetch failed:', await profileRes.text())
     return NextResponse.redirect(new URL('/integrations?error=profile_failed', request.url))
   }
 
@@ -98,7 +96,6 @@ export async function GET(request: NextRequest) {
   }, { onConflict: 'workspace_id,linkedin_id' })
 
   if (dbError) {
-    console.error('Failed to save LinkedIn account:', dbError)
     return NextResponse.redirect(new URL('/integrations?error=db_error', request.url))
   }
 

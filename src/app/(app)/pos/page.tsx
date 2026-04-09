@@ -174,7 +174,7 @@ export default function POSPage() {
             <button key={product.id} onClick={() => addToCart(product)}
               className="card p-3 text-left hover:shadow-card-hover hover:border-brand-200 transition-all active:scale-95">
               <div className="w-full h-16 bg-surface-100 rounded-lg flex items-center justify-center mb-2">
-                {product.image_url ? <img src={product.image_url} className="w-full h-full object-cover rounded-lg" /> : <ShoppingCart className="w-6 h-6 text-surface-300" />}
+                {product.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-lg" /> : <ShoppingCart className="w-6 h-6 text-surface-300" />}
               </div>
               <p className="text-xs font-semibold text-surface-800 truncate">{product.name}</p>
               <div className="flex items-center justify-between mt-1">

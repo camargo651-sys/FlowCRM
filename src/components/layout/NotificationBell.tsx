@@ -124,7 +124,7 @@ export default function NotificationBell() {
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen(!open)} className="relative p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+      <button onClick={() => setOpen(!open)} aria-label="Notifications" className="relative p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
         <Bell className="w-4 h-4 text-surface-400" />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-surface-900">

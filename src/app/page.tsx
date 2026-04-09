@@ -344,7 +344,7 @@ export default async function Home() {
         <div className="max-w-md mx-auto px-6 text-center">
           <h2 className="text-2xl font-bold text-surface-900 mb-2">Questions? Let's talk.</h2>
           <p className="text-surface-500 text-sm mb-8">We respond within 24 hours.</p>
-          <form action="https://formspree.io/f/placeholder" method="POST" className="space-y-3">
+          <form action={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@tracktio.app'}`} method="POST" encType="text/plain" className="space-y-3">
             <input type="text" name="name" required placeholder="Your name" className="input" />
             <input type="email" name="email" required placeholder="Work email" className="input" />
             <textarea name="message" required rows={3} placeholder="How can we help?" className="input resize-none" />

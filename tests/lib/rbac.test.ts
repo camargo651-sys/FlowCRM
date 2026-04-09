@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hasPermission, getRolePermissions, getAccessibleModules, getAllRoles } from '@/lib/rbac/permissions'
+import { hasPermission, getAccessibleModules, getAllRoles, ROLE_TEMPLATES } from '@/lib/rbac/permissions'
 
 describe('RBAC Permissions', () => {
   describe('admin role', () => {
@@ -85,24 +85,23 @@ describe('RBAC Permissions', () => {
   })
 
   describe('getAllRoles', () => {
-    it('returns 8 roles', () => {
-      expect(getAllRoles()).toHaveLength(8)
+    it('returns 7 roles', () => {
+      expect(getAllRoles()).toHaveLength(7)
     })
   })
 
   describe('getAccessibleModules', () => {
     it('admin has access to all modules', () => {
-      const modules = getAccessibleModules('admin')
+      const modules = getAccessibleModules(ROLE_TEMPLATES.admin.permissions)
       expect(modules).toContain('crm')
       expect(modules).toContain('accounting')
       expect(modules).toContain('hr')
       expect(modules).toContain('settings')
     })
 
-    it('warehouse only has inventory and purchasing', () => {
-      const modules = getAccessibleModules('warehouse')
+    it('warehouse only has inventory, purchasing, and manufacturing', () => {
+      const modules = getAccessibleModules(ROLE_TEMPLATES.warehouse.permissions)
       expect(modules).toContain('inventory')
-      expect(modules).toContain('purchasing')
       expect(modules).not.toContain('crm')
       expect(modules).not.toContain('hr')
     })

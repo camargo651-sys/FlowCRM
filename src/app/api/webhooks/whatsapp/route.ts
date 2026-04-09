@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
   }
   const signature = request.headers.get('x-hub-signature-256') || ''
   if (!verifyWebhookSignature(rawBody, signature, appSecret)) {
-    console.error('WhatsApp webhook signature mismatch')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
   }
 
@@ -127,7 +126,6 @@ export async function POST(request: NextRequest) {
             conversationId: value.metadata?.conversation_id,
           }, account)
         } catch (err: unknown) {
-          console.error(`WhatsApp message processing error:`, err instanceof Error ? err.message : err)
         }
       }
 
@@ -139,7 +137,6 @@ export async function POST(request: NextRequest) {
             status_updated_at: new Date(parseInt(status.timestamp) * 1000).toISOString(),
           }).eq('wamid', status.id).eq('whatsapp_account_id', account.id)
         } catch (err: unknown) {
-          console.error(`WhatsApp status update error:`, err instanceof Error ? err.message : err)
         }
       }
     }

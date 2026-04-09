@@ -165,7 +165,6 @@ Rules:
 
     if (!response.ok) {
       const err = await response.text()
-      console.error('AI API error:', response.status, err)
       return NextResponse.json({ error: `AI API error: ${response.status} - ${err}` }, { status: 500 })
     }
 

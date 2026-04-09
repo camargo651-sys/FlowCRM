@@ -60,7 +60,6 @@ export async function fireTrigger(
         trigger_count: (automation.trigger_count || 0) + 1,
       }).eq('id', automation.id)
     } catch (err: unknown) {
-      console.error(`Automation "${automation.name}" failed:`, err instanceof Error ? err.message : err)
     }
   }
 }

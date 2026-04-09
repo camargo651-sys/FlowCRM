@@ -52,9 +52,13 @@ export async function POST(request: NextRequest) {
 
   if (!file || !type) return NextResponse.json({ error: 'Missing file or type' }, { status: 400 })
 
+  // Limit file size to 5MB
+  if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: 'File too large. Max 5MB.' }, { status: 400 })
+
   const text = await file.text()
   const rows = parseCSV(text)
   if (!rows.length) return NextResponse.json({ error: 'No valid rows found' }, { status: 400 })
+  if (rows.length > 10000) return NextResponse.json({ error: 'Too many rows. Max 10,000 per import.' }, { status: 400 })
 
   let imported = 0
   let skipped = 0

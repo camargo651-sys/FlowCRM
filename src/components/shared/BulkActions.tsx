@@ -19,7 +19,7 @@ export default function BulkActions({ count, onDelete, onExport, onTag, onClear 
         <span className="text-sm font-semibold tabular-nums">{count} selected</span>
         <div className="w-px h-5 bg-surface-700" />
         {onExport && (
-          <button onClick={onExport} className="flex items-center gap-1.5 text-xs font-medium hover:text-brand-300 transition-colors px-1">
+          <button onClick={onExport} aria-label="Export selected" className="flex items-center gap-1.5 text-xs font-medium hover:text-brand-300 transition-colors px-1">
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         )}
@@ -32,12 +32,12 @@ export default function BulkActions({ count, onDelete, onExport, onTag, onClear 
           </button>
         )}
         {onDelete && (
-          <button onClick={onDelete} className="flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors px-1">
+          <button onClick={onDelete} aria-label="Delete selected" className="flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors px-1">
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
         )}
         <div className="w-px h-5 bg-surface-700" />
-        <button onClick={onClear} className="text-surface-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+        <button onClick={onClear} aria-label="Clear selection" className="text-surface-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
       </div>
     </div>
   )

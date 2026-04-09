@@ -66,7 +66,7 @@ export default function AccountingPage() {
     if (!lines.length) return
     const totalDebit = lines.reduce((s: number, l: JournalLine) => s + (parseFloat(l.debit) || 0), 0)
     const totalCredit = lines.reduce((s: number, l: JournalLine) => s + (parseFloat(l.credit) || 0), 0)
-    if (Math.abs(totalDebit - totalCredit) > 0.01) { alert('Debits must equal credits'); return }
+    if (Math.abs(totalDebit - totalCredit) > 0.01) { toast.error('Debits must equal credits'); return }
 
     setSaving(true)
     const num = entries.length + 1

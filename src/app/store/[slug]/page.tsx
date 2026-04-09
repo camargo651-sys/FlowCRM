@@ -92,7 +92,7 @@ export default function StorefrontPage() {
       {/* Header */}
       <header style={{ background: 'white', borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 40 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {store.logo && <img src={store.logo} style={{ width: 32, height: 32, borderRadius: 8 }} />}
+          {store.logo && <img src={store.logo} alt={store.name || 'Store logo'} style={{ width: 32, height: 32, borderRadius: 8 }} />}
           <span style={{ fontWeight: 800, fontSize: 18 }}>{store.name}</span>
         </div>
         <button onClick={() => setShowCart(true)} style={{ position: 'relative', padding: '8px 16px', background: store.color || '#6172f3', color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -112,7 +112,7 @@ export default function StorefrontPage() {
         {products.map(product => (
           <div key={product.id} style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '1px solid #e2e8f0', transition: 'box-shadow 0.2s' }}>
             <div style={{ height: 180, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {product.image_url ? <img src={product.image_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 40, opacity: 0.3 }}>📦</span>}
+              {product.image_url ? <img src={product.image_url} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 40, opacity: 0.3 }}>📦</span>}
             </div>
             <div style={{ padding: 16 }}>
               <h3 style={{ fontWeight: 700, fontSize: 14 }}>{product.name}</h3>

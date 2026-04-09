@@ -25,19 +25,26 @@ export async function authenticateRequest(request: NextRequest): Promise<ApiCont
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
+    const keyHash = hashApiKey(apiKey)
     const { data: keyRecord } = await supabase
       .from('api_keys')
-      .select('workspace_id, user_id, scopes, active')
-      .eq('key_hash', hashApiKey(apiKey))
+      .select('workspace_id, user_id, scopes, active, expires_at')
+      .eq('key_hash', keyHash)
       .eq('active', true)
+      .limit(1)
       .single()
 
     if (!keyRecord) {
       return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
     }
 
+    // Check expiration
+    if (keyRecord.expires_at && new Date(keyRecord.expires_at) < new Date()) {
+      return NextResponse.json({ error: 'API key expired' }, { status: 401 })
+    }
+
     // Update last_used
-    await supabase.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('key_hash', hashApiKey(apiKey))
+    await supabase.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('key_hash', keyHash)
 
     // Get user role
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', keyRecord.user_id).single()

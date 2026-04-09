@@ -40,7 +40,7 @@ export default function PortalPage() {
     <div style={{ fontFamily: '-apple-system, sans-serif', color: '#1e293b', background: '#f8fafc', minHeight: '100vh' }}>
       <header style={{ background: 'white', borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {data.company?.logo_url && <img src={data.company.logo_url} style={{ width: 32, height: 32, borderRadius: 8 }} />}
+          {data.company?.logo_url && <img src={data.company.logo_url} alt={data.company.name || 'Company logo'} style={{ width: 32, height: 32, borderRadius: 8 }} />}
           <span style={{ fontWeight: 800, fontSize: 16 }}>{data.company?.name}</span>
         </div>
         <span style={{ fontSize: 13, color: '#64748b' }}>Welcome, {data.contact?.name}</span>

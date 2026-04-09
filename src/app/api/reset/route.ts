@@ -26,8 +26,9 @@ export async function POST(request: Request) {
   const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
-  const { confirm } = await request.json()
+  const { confirm, confirmEmail } = await request.json()
   if (confirm !== 'RESET') return NextResponse.json({ error: 'Must confirm with "RESET"' }, { status: 400 })
+  if (confirmEmail !== user.email) return NextResponse.json({ error: 'Must confirm with your email address' }, { status: 400 })
 
   // Delete all data in order (respecting foreign keys)
   const tables = [

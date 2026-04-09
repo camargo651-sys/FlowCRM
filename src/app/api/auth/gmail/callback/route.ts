@@ -25,12 +25,17 @@ export async function GET(request: NextRequest) {
   const stateParam = url.searchParams.get('state')
   const error = url.searchParams.get('error')
 
+  const clearStateCookie = (response: NextResponse) => {
+    response.cookies.delete('oauth_state')
+    return response
+  }
+
   if (error) {
-    return NextResponse.redirect(new URL(`/integrations?error=${error}`, request.url))
+    return clearStateCookie(NextResponse.redirect(new URL(`/integrations?error=${error}`, request.url)))
   }
 
   if (!code || !stateParam) {
-    return NextResponse.redirect(new URL('/integrations?error=missing_params', request.url))
+    return clearStateCookie(NextResponse.redirect(new URL('/integrations?error=missing_params', request.url)))
   }
 
   // Validate CSRF state
@@ -41,11 +46,11 @@ export async function GET(request: NextRequest) {
   try {
     state = JSON.parse(Buffer.from(stateParam, 'base64url').toString())
   } catch {
-    return NextResponse.redirect(new URL('/integrations?error=invalid_state', request.url))
+    return clearStateCookie(NextResponse.redirect(new URL('/integrations?error=invalid_state', request.url)))
   }
 
   if (!savedNonce || savedNonce !== state.nonce) {
-    return NextResponse.redirect(new URL('/integrations?error=csrf_mismatch', request.url))
+    return clearStateCookie(NextResponse.redirect(new URL('/integrations?error=csrf_mismatch', request.url)))
   }
 
   // Exchange code for tokens
@@ -63,8 +68,7 @@ export async function GET(request: NextRequest) {
 
   if (!tokenRes.ok) {
     const err = await tokenRes.text()
-    console.error('Gmail token exchange failed:', err)
-    return NextResponse.redirect(new URL('/integrations?error=token_exchange_failed', request.url))
+    return clearStateCookie(NextResponse.redirect(new URL('/integrations?error=token_exchange_failed', request.url)))
   }
 
   const tokens = await tokenRes.json()
@@ -96,8 +100,7 @@ export async function GET(request: NextRequest) {
   }, { onConflict: 'workspace_id,email_address' })
 
   if (dbError) {
-    console.error('Failed to save email account:', dbError)
-    return NextResponse.redirect(new URL('/integrations?error=db_error', request.url))
+    return clearStateCookie(NextResponse.redirect(new URL('/integrations?error=db_error', request.url)))
   }
 
   // Update integrations table

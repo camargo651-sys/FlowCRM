@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { DbRow } from '@/types'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -74,13 +75,16 @@ export default function CompanySettingsPage() {
   const resetDatabase = async () => {
     const input = prompt('Type RESET to confirm. This will delete ALL data in your workspace.')
     if (input !== 'RESET') return
+    const emailConfirm = prompt('Type your email address to confirm this irreversible action.')
+    if (!emailConfirm) return
     setResetting(true)
-    const res = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'RESET' }) })
+    const res = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'RESET', confirmEmail: emailConfirm }) })
     if (res.ok) {
-      alert('Database reset complete. The page will reload.')
-      window.location.href = '/dashboard'
+      toast.success('Database reset complete. Reloading...')
+      setTimeout(() => { window.location.href = '/dashboard' }, 1000)
     } else {
-      alert('Reset failed')
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error || 'Reset failed')
     }
     setResetting(false)
   }

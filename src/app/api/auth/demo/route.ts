@@ -40,7 +40,6 @@ export async function POST() {
   })
 
   if (signUpError) {
-    console.error('Demo user creation failed:', signUpError.message)
     return NextResponse.json({ error: 'Could not create demo' }, { status: 500 })
   }
 
@@ -60,8 +59,8 @@ export async function POST() {
     if (ws) {
       await seedRichDemoData(supabase, ws.id, userId)
     }
-  } catch (e) {
-    console.error('Demo seed error:', e)
+  } catch {
+    // Seed may fail if data already exists — non-critical
   }
 
   return NextResponse.json({

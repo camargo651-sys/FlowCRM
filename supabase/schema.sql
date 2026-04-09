@@ -1603,4 +1603,19 @@ alter table social_leads enable row level security;
 create policy "ws owner social_leads" on social_leads
   using (workspace_id in (select id from workspaces where owner_id = auth.uid()));
 
+-- ============================================================
+-- PERFORMANCE INDEXES
+-- ============================================================
+create index if not exists idx_contacts_workspace_created on contacts(workspace_id, created_at desc);
+create index if not exists idx_deals_workspace_status on deals(workspace_id, status);
+create index if not exists idx_deals_workspace_pipeline on deals(workspace_id, pipeline_id);
+create index if not exists idx_invoices_workspace_contact on invoices(workspace_id, contact_id);
+create index if not exists idx_invoices_workspace_status on invoices(workspace_id, status);
+create index if not exists idx_activities_workspace_contact on activities(workspace_id, contact_id);
+create index if not exists idx_activities_workspace_due on activities(workspace_id, due_date);
+create index if not exists idx_email_messages_account_date on email_messages(email_account_id, received_at desc);
+create index if not exists idx_email_messages_workspace on email_messages(workspace_id, received_at desc);
+create index if not exists idx_products_workspace_status on products(workspace_id, status);
+create index if not exists idx_audit_log_workspace on audit_log(workspace_id, created_at desc);
+
 -- Done! Your Tracktio database is ready.

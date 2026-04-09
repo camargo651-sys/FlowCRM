@@ -112,7 +112,6 @@ export async function POST(request: NextRequest) {
         ...extractResult,
       })
     } catch (err: unknown) {
-      console.error(`Email sync failed for ${account.email_address}:`, err instanceof Error ? err.message : err)
 
       // Mark account as error if token refresh failed
       if (err instanceof Error && err.message.includes('token refresh failed')) {
