@@ -34,6 +34,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setConfig(c => ({ ...c, loading: false })); return }
 
+      // Ensure workspace/profile exist (safety net for when DB trigger fails)
+      try { await fetch('/api/auth/ensure-workspace', { method: 'POST' }) } catch {}
+
       // Load active workspace (from localStorage or first owned)
       const activeWsId = typeof window !== 'undefined' ? localStorage.getItem('tracktio_active_workspace') : null
 
