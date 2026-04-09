@@ -166,7 +166,7 @@ export default function SettingsPage() {
     setPipelines(prev => prev.map(p => p.id === pipelineId ? { ...p, stages: [...p.stages, newStage] } : p))
   }
 
-  const updateStage = (pipelineId: string, stageId: string, field: string, value: string | boolean | number) => {
+  const updateStage = (pipelineId: string, stageId: string, field: string, value: string | boolean | number | string[]) => {
     setPipelines(prev => prev.map(p => p.id === pipelineId
       ? { ...p, stages: p.stages.map(s => s.id === stageId ? { ...s, [field]: value } : s) }
       : p
@@ -372,7 +372,8 @@ export default function SettingsPage() {
                   {/* Stages */}
                   <div className="space-y-2 mb-4">
                     {pipeline.stages.map(stage => (
-                      <div key={stage.id} className="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-100">
+                      <div key={stage.id}>
+                      <div className="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-100">
                         <GripVertical className="w-4 h-4 text-surface-300 flex-shrink-0 cursor-grab" />
                         <div className="relative flex-shrink-0">
                           <div className="w-7 h-7 rounded-lg border-2 border-white shadow-sm cursor-pointer" style={{ backgroundColor: stage.color }}>
@@ -395,6 +396,29 @@ export default function SettingsPage() {
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      </div>
+                      <div className="flex gap-2 ml-5 mt-1 flex-wrap">
+                        <span className="text-[9px] text-surface-400 font-semibold uppercase">Require:</span>
+                        {[
+                          { key: 'value', label: 'Value' },
+                          { key: 'contact', label: 'Contact' },
+                          { key: 'close_date', label: 'Close date' },
+                          { key: 'probability', label: 'Probability' },
+                        ].map(rf => {
+                          const reqs = (stage.required_fields as string[]) || []
+                          const checked = reqs.includes(rf.key)
+                          return (
+                            <label key={rf.key} className="flex items-center gap-1 cursor-pointer">
+                              <input type="checkbox" checked={checked} className="w-3 h-3"
+                                onChange={() => {
+                                  const updated = checked ? reqs.filter((r: string) => r !== rf.key) : [...reqs, rf.key]
+                                  updateStage(pipeline.id, stage.id, 'required_fields', updated)
+                                }} />
+                              <span className="text-[10px] text-surface-500">{rf.label}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
                       </div>
                     ))}
                   </div>

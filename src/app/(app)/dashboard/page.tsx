@@ -4,6 +4,7 @@ import Link from 'next/link'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import AICommandCenter from '@/components/dashboard/AICommandCenter'
 import GettingStarted from '@/components/dashboard/GettingStarted'
+import DashboardWidgets from '@/components/dashboard/DashboardWidgets'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
 import { SupabaseClient } from '@supabase/supabase-js'
 import type { DbRow } from '@/types'
@@ -121,28 +122,25 @@ export default async function DashboardPage() {
       <DashboardClient />
       <GettingStarted />
 
-      {/* Industry KPIs */}
-      {data.industryKPIs.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-          {data.industryKPIs.slice(0, 6).map((kpi) => (
-            <div key={kpi.key || kpi.label} className="card p-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-surface-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">{kpi.icon || '📊'}</div>
-                <div className="min-w-0">
-                  <p className="text-lg font-bold text-surface-900 leading-tight">{kpi.value}</p>
-                  <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">{kpi.label}</p>
+      <DashboardWidgets
+        kpis={data.industryKPIs.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            {data.industryKPIs.slice(0, 6).map((kpi) => (
+              <div key={kpi.key || kpi.label} className="card p-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-surface-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">{kpi.icon || '📊'}</div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-bold text-surface-900 leading-tight">{kpi.value}</p>
+                    <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">{kpi.label}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* AI Command Center */}
-      <AICommandCenter />
-
-      {/* ERP Module Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-8">
+            ))}
+          </div>
+        ) : null}
+        ai={<AICommandCenter />}
+        modules={
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-8">
 
         {/* CRM Module */}
         <Link href="/pipeline" className="card-interactive p-5 group">
@@ -262,15 +260,18 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-3 mt-8 flex-wrap">
-        {quickActions.map(a => (
-          <Link key={a.label} href={a.href}
-            className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
-            <span>{a.icon}</span> {a.label}
-          </Link>
-        ))}
-      </div>
+        }
+        actions={
+          <div className="flex gap-3 mt-8 flex-wrap">
+            {quickActions.map(a => (
+              <Link key={a.label} href={a.href}
+                className="flex items-center gap-2.5 px-4 py-2.5 card-interactive text-sm font-medium text-surface-700">
+                <span>{a.icon}</span> {a.label}
+              </Link>
+            ))}
+          </div>
+        }
+      />
     </div>
   )
 }

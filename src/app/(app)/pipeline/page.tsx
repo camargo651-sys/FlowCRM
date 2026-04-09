@@ -260,10 +260,31 @@ export default function PipelinePage() {
   }
 
   const handleMoveDeal = async (dealId: string, newStageId: string) => {
-    await supabase.from('deals').update({ stage_id: newStageId }).eq('id', dealId)
+    // Check stage transition conditions
+    const targetStage = columns.find(c => c.id === newStageId)
+    const deal = columns.flatMap(c => c.deals).find(d => d.id === dealId)
+    if (!deal || !targetStage) return
+
+    const requiredFields = (targetStage.required_fields as string[]) || []
+    if (requiredFields.length > 0) {
+      const missing: string[] = []
+      if (requiredFields.includes('value') && !deal.value) missing.push('Value')
+      if (requiredFields.includes('contact') && !deal.contact_id) missing.push('Contact')
+      if (requiredFields.includes('close_date') && !deal.expected_close_date) missing.push('Close date')
+      if (requiredFields.includes('probability') && !deal.probability) missing.push('Probability')
+      if (missing.length > 0) {
+        toast.error(`Cannot move to "${targetStage.name}": missing ${missing.join(', ')}`)
+        return
+      }
+    }
+
+    await supabase.from('deals').update({
+      stage_id: newStageId,
+      ...(targetStage.is_won ? { status: 'won' } : {}),
+      ...(targetStage.is_lost ? { status: 'lost' } : {}),
+    }).eq('id', dealId)
+
     setColumns(prev => {
-      const deal = prev.flatMap(c => c.deals).find(d => d.id === dealId)
-      if (!deal) return prev
       return prev.map(col => ({
         ...col,
         deals: col.id === newStageId
@@ -271,6 +292,9 @@ export default function PipelinePage() {
           : col.deals.filter(d => d.id !== dealId),
       }))
     })
+
+    if (targetStage.is_won) toast.success(`Deal won! 🎉`)
+    if (targetStage.is_lost) toast.error(`Deal marked as lost`)
   }
 
   const filteredColumns = columns.map(col => ({

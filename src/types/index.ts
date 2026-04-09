@@ -46,6 +46,9 @@ export interface PipelineStage {
   color: string
   win_stage: boolean
   lost_stage: boolean
+  is_won?: boolean
+  is_lost?: boolean
+  required_fields?: string[]
   created_at: string
 }
 
