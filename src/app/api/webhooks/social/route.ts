@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { fireTrigger } from '@/lib/automations/engine'
+import { routeNewLead } from '@/lib/leads/router'
 import type { DbRow } from '@/types'
 
 function getSupabase() {
@@ -163,6 +164,9 @@ async function createLead(supabase: NonNullable<ReturnType<typeof getSupabase>>,
         userId: ws.owner_id,
         metadata: { source_type: data.source_type, priority },
       })
+
+      // --- Route lead to rep ---
+      await routeNewLead(supabase, wsId, lead.id)
     }
   }
 }

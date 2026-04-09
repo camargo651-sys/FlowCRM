@@ -7,6 +7,9 @@ interface WhatsAppBotConfig {
   greeting: string
   questions: string[]
   qualify_keyword: string
+  ai_enabled?: boolean
+  ai_instructions?: string
+  ai_threshold?: 'high' | 'medium' | 'all'
 }
 
 interface InboundMessage {
@@ -109,6 +112,15 @@ export async function processInboundWhatsAppMessage(
     received_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
   }, { onConflict: 'whatsapp_account_id,wamid' })
 
+  // 2a. Auto-pause any active sequence enrollments for this contact
+  if (contactId) {
+    await supabase.from('sequence_enrollments')
+      .update({ status: 'replied' })
+      .eq('workspace_id', account.workspace_id)
+      .eq('contact_id', contactId)
+      .eq('status', 'active')
+  }
+
   // 2b. WhatsApp Bot Auto-Reply for first-time contacts
   if (contactId) {
     const { data: wsConfig } = await supabase
@@ -182,6 +194,202 @@ export async function processInboundWhatsAppMessage(
             contact_id: contactId,
             received_at: new Date().toISOString(),
           })
+        }
+      }
+    }
+  }
+
+  // 2c. AI Auto-Reply for ongoing conversations
+  if (contactId && message.body) {
+    // Load bot config if not already loaded (it's loaded in 2b only when contactId exists)
+    const { data: wsAiConfig } = await supabase
+      .from('workspaces')
+      .select('whatsapp_bot_config, owner_id')
+      .eq('id', account.workspace_id)
+      .single()
+
+    const aiBotConfig = wsAiConfig?.whatsapp_bot_config as WhatsAppBotConfig | null
+    const workspaceOwnerId = wsAiConfig?.owner_id as string | undefined
+
+    if (aiBotConfig?.ai_enabled) {
+      // Check if contact has an active deal — if so, notify human instead
+      const { data: activeDeals } = await supabase
+        .from('deals')
+        .select('id, title')
+        .eq('contact_id', contactId)
+        .eq('workspace_id', account.workspace_id)
+        .eq('status', 'open')
+        .limit(1)
+
+      if (activeDeals && activeDeals.length > 0) {
+        // Contact has active deal — notify human rep, don't auto-reply
+        if (workspaceOwnerId) {
+          const preview = message.body.slice(0, 100)
+          await supabase.from('notifications').insert({
+            workspace_id: account.workspace_id,
+            user_id: workspaceOwnerId,
+            type: 'whatsapp',
+            title: `WhatsApp from ${contactName} (active deal)`,
+            body: `${contactName} sent: "${preview}" — Has active deal "${activeDeals[0].title}". Please respond manually.`,
+          })
+        }
+      } else {
+        // No active deal — proceed with AI auto-reply
+        // Load last 10 messages for conversation context
+        const { data: recentMessages } = await supabase
+          .from('whatsapp_messages')
+          .select('body, direction')
+          .eq('workspace_id', account.workspace_id)
+          .eq('contact_id', contactId)
+          .not('body', 'is', null)
+          .order('received_at', { ascending: false })
+          .limit(10)
+
+        const lastMessages = (recentMessages || [])
+          .reverse()
+          .map(m => ({ body: m.body as string, direction: m.direction as string }))
+
+        if (lastMessages.length > 0) {
+          try {
+            // Call Anthropic API directly (inline, no internal fetch needed)
+            const anthropicKey = process.env.ANTHROPIC_API_KEY
+            if (anthropicKey) {
+              // Load contact and deals info for context
+              const { data: contactInfo } = await supabase
+                .from('contacts')
+                .select('name, email, phone, tags, score_label, notes, type')
+                .eq('id', contactId)
+                .single()
+
+              const { data: linkedDeals } = await supabase
+                .from('deals')
+                .select('title, value, status, expected_close_date')
+                .eq('contact_id', contactId)
+                .eq('workspace_id', account.workspace_id)
+                .order('created_at', { ascending: false })
+                .limit(5)
+
+              const { data: wsInfo } = await supabase
+                .from('workspaces')
+                .select('name, industry')
+                .eq('id', account.workspace_id)
+                .single()
+
+              const contactContext = contactInfo
+                ? `Contact: ${contactInfo.name}${contactInfo.email ? ` (${contactInfo.email})` : ''}\nTags: ${(contactInfo.tags as string[] | null)?.join(', ') || 'none'}\nScore: ${contactInfo.score_label || 'unscored'}\nNotes: ${contactInfo.notes || 'none'}`
+                : ''
+
+              const dealsContext = linkedDeals?.length
+                ? `Linked deals:\n${linkedDeals.map(d => `- "${d.title}" | ${d.value ? '$' + d.value : 'no value'} | Status: ${d.status}`).join('\n')}`
+                : 'No linked deals'
+
+              const conversationHistory = lastMessages
+                .map(m => `${m.direction === 'inbound' ? 'Contact' : 'You'}: ${m.body}`)
+                .join('\n')
+
+              const customInstructions = aiBotConfig.ai_instructions || ''
+              const wsName = wsInfo?.name || 'our company'
+              const wsIndustry = wsInfo?.industry || ''
+
+              const systemPrompt = `You are a sales assistant for ${wsName}${wsIndustry ? ` (${wsIndustry} industry)` : ''}. Your job is to pre-qualify leads and schedule appointments via WhatsApp. WhatsApp is the primary communication channel — leads call and message here.${customInstructions ? '\n\nCustom instructions: ' + customInstructions : ''}\n\nBe conversational, friendly, and concise. Use the contact's language. If the contact seems ready, suggest scheduling a call/appointment. Never be pushy.`
+
+              const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': anthropicKey,
+                  'anthropic-version': '2023-06-01',
+                },
+                body: JSON.stringify({
+                  model: 'claude-haiku-4-5-20251001',
+                  max_tokens: 500,
+                  system: systemPrompt,
+                  messages: [{
+                    role: 'user',
+                    content: `Context:\n${contactContext}\n\n${dealsContext}\n\nConversation:\n${conversationHistory}\n\nRespond with JSON only (no markdown):\n{"reply":"your message","confidence":"high|medium|low","intent":"greeting|question|interested|scheduling|not_interested|other"}\n\nRules:\n- "high" for straightforward messages, "medium" for nuanced, "low" for ambiguous/sensitive\n- Keep reply short and natural — this is WhatsApp\n- Match the contact's language`,
+                  }],
+                }),
+              })
+
+              if (aiResponse.ok) {
+                const aiData = await aiResponse.json()
+                const text = aiData.content?.[0]?.text || ''
+                let parsed: { reply: string; confidence: string; intent: string } | null = null
+
+                try {
+                  const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+                  parsed = JSON.parse(jsonStr)
+                } catch {
+                  // Failed to parse AI response — skip auto-reply
+                }
+
+                if (parsed?.reply) {
+                  const threshold = aiBotConfig.ai_threshold || 'medium'
+                  const shouldSend =
+                    threshold === 'all' ||
+                    (threshold === 'medium' && (parsed.confidence === 'high' || parsed.confidence === 'medium')) ||
+                    (threshold === 'high' && parsed.confidence === 'high')
+
+                  if (shouldSend) {
+                    // Send the AI reply
+                    const accessToken = decryptToken(account.access_token ?? '')
+                    const { messageId: aiMsgId } = await sendWhatsAppMessage(
+                      accessToken,
+                      account.phone_number_id,
+                      senderPhone,
+                      parsed.reply,
+                    )
+
+                    // Store AI message
+                    await supabase.from('whatsapp_messages').insert({
+                      workspace_id: account.workspace_id,
+                      whatsapp_account_id: account.id,
+                      wamid: aiMsgId,
+                      from_number: account.display_phone || account.phone_number_id,
+                      to_number: message.from,
+                      direction: 'outbound',
+                      message_type: 'text',
+                      body: parsed.reply,
+                      status: 'sent',
+                      contact_id: contactId,
+                      received_at: new Date().toISOString(),
+                      metadata: {
+                        ai_generated: true,
+                        intent: parsed.intent,
+                        confidence: parsed.confidence,
+                      },
+                    })
+
+                    // For medium confidence, also notify the human
+                    if (parsed.confidence === 'medium' && workspaceOwnerId) {
+                      const replyPreview = parsed.reply.slice(0, 80)
+                      await supabase.from('notifications').insert({
+                        workspace_id: account.workspace_id,
+                        user_id: workspaceOwnerId,
+                        type: 'whatsapp',
+                        title: `AI replied to ${contactName}`,
+                        body: `"${replyPreview}..." — Intent: ${parsed.intent}. Review the conversation.`,
+                      })
+                    }
+                  } else {
+                    // Confidence too low — notify human instead of sending
+                    if (workspaceOwnerId) {
+                      const msgPreview = message.body.slice(0, 100)
+                      await supabase.from('notifications').insert({
+                        workspace_id: account.workspace_id,
+                        user_id: workspaceOwnerId,
+                        type: 'whatsapp',
+                        title: `New message from ${contactName} needs attention`,
+                        body: `"${msgPreview}" — AI confidence too low to auto-reply. Please respond manually.`,
+                      })
+                    }
+                  }
+                }
+              }
+            }
+          } catch {
+            // AI auto-reply failed silently — don't block message processing
+          }
         }
       }
     }

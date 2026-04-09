@@ -8,6 +8,7 @@ import Breadcrumbs from '@/components/shared/Breadcrumbs'
 import { Toaster } from 'sonner'
 import KeyboardShortcuts from '@/components/shared/KeyboardShortcuts'
 import InactivityLock from '@/components/shared/InactivityLock'
+import InstallPrompt from '@/components/shared/InstallPrompt'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -39,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Toaster position="bottom-right" richColors closeButton />
       <KeyboardShortcuts />
       <InactivityLock />
+      <InstallPrompt />
     </div>
   )
 }

@@ -1694,4 +1694,63 @@ ALTER TABLE email_tracking ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "ws owner email_tracking" ON email_tracking
   USING (workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid()));
 
+-- Lead routing configuration
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS lead_routing_config jsonb DEFAULT null;
+-- Config format: { enabled: boolean, mode: 'round_robin'|'least_loaded'|'manual', reps: string[], last_assigned_index: number }
+
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS widget_config jsonb DEFAULT null;
+-- Config format: { greeting: string, button_text: string, color: string, auto_whatsapp_reply: boolean, auto_reply_message: string }
+
+-- ============================================================
+-- SEQUENCES (multi-step drip campaigns)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS sequences (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  enabled boolean DEFAULT true,
+  steps jsonb NOT NULL DEFAULT '[]',
+  -- steps format: [{ order: 0, channel: 'whatsapp'|'sms'|'email', message: '...', delay_hours: 24, condition?: 'no_reply' }]
+  enrolled_count int DEFAULT 0,
+  completed_count int DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE sequences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ws owner sequences" ON sequences
+  USING (workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid()));
+
+CREATE TABLE IF NOT EXISTS sequence_enrollments (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sequence_id uuid NOT NULL REFERENCES sequences(id) ON DELETE CASCADE,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  contact_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  current_step int DEFAULT 0,
+  status text DEFAULT 'active' CHECK (status IN ('active','completed','paused','replied','unsubscribed')),
+  next_run_at timestamptz,
+  started_at timestamptz DEFAULT now(),
+  completed_at timestamptz,
+  log jsonb DEFAULT '[]'
+);
+ALTER TABLE sequence_enrollments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ws owner enrollments" ON sequence_enrollments
+  USING (workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid()));
+CREATE INDEX IF NOT EXISTS idx_enrollments_next ON sequence_enrollments(next_run_at) WHERE status = 'active';
+
+-- ============================================================
+-- PUSH SUBSCRIPTIONS (PWA)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  endpoint text NOT NULL,
+  keys jsonb NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, endpoint)
+);
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "user push subs" ON push_subscriptions USING (user_id = auth.uid());
+
 -- Done! Your Tracktio database is ready.

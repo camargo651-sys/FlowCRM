@@ -69,12 +69,18 @@ export default function LeadsPage() {
 
   const createLead = async () => {
     if (!form.author_name) return
-    await supabase.from('social_leads').insert({
+    const { data: newLead } = await supabase.from('social_leads').insert({
       workspace_id: workspaceId, ...form,
-    })
+    }).select('id').single()
     setForm({ author_name: '', author_username: '', platform: 'instagram', source_type: 'comment', message: '', post_url: '' })
     setShowNew(false)
     toast.success('Lead added')
+    // Route the new lead to a rep if routing is enabled
+    if (newLead) {
+      try {
+        await fetch('/api/leads/route-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: newLead.id }) })
+      } catch {}
+    }
     load()
   }
 

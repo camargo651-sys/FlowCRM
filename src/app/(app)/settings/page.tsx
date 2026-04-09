@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle, Route } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { LOCALES } from '@/lib/i18n/translations'
@@ -49,7 +49,7 @@ interface CustomField {
 export default function SettingsPage() {
   const supabase = createClient()
   const { t, locale, setLocale } = useI18n()
-  const [tab, setTab] = useState<'pipelines' | 'terminology' | 'fields' | 'brand' | 'language' | 'team' | 'whatsapp_bot'>('pipelines')
+  const [tab, setTab] = useState<'pipelines' | 'terminology' | 'fields' | 'brand' | 'language' | 'team' | 'whatsapp_bot' | 'lead_routing'>('pipelines')
   const [pipelines, setPipelines] = useState<(Pipeline & { stages: PipelineStage[] })[]>([])
   const [expandedPipeline, setExpandedPipeline] = useState<string | null>(null)
   const [companies, setCompanies] = useState<CompanyContact[]>([])
@@ -76,6 +76,18 @@ export default function SettingsPage() {
   const [botQuestions, setBotQuestions] = useState<string[]>([])
   const [botQualifyKeyword, setBotQualifyKeyword] = useState('')
 
+  // AI Auto-Reply
+  const [aiEnabled, setAiEnabled] = useState(false)
+  const [aiInstructions, setAiInstructions] = useState('')
+  const [aiThreshold, setAiThreshold] = useState<'high' | 'medium' | 'all'>('medium')
+
+  // Lead Routing
+  const [routingEnabled, setRoutingEnabled] = useState(false)
+  const [routingMode, setRoutingMode] = useState<'round_robin' | 'least_loaded' | 'manual'>('round_robin')
+  const [routingReps, setRoutingReps] = useState<string[]>([])
+  const [routingLastIndex, setRoutingLastIndex] = useState(0)
+  const [teamProfiles, setTeamProfiles] = useState<{ id: string; full_name: string; email: string }[]>([])
+
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -88,12 +100,28 @@ export default function SettingsPage() {
 
     // Load WhatsApp bot config
     if (ws.whatsapp_bot_config) {
-      const bot = ws.whatsapp_bot_config as { enabled: boolean; greeting: string; questions: string[]; qualify_keyword: string }
+      const bot = ws.whatsapp_bot_config as { enabled: boolean; greeting: string; questions: string[]; qualify_keyword: string; ai_enabled?: boolean; ai_instructions?: string; ai_threshold?: 'high' | 'medium' | 'all' }
       setBotEnabled(bot.enabled ?? false)
       if (bot.greeting) setBotGreeting(bot.greeting)
       if (bot.questions) setBotQuestions(bot.questions)
       if (bot.qualify_keyword) setBotQualifyKeyword(bot.qualify_keyword)
+      setAiEnabled(bot.ai_enabled ?? false)
+      if (bot.ai_instructions) setAiInstructions(bot.ai_instructions)
+      if (bot.ai_threshold) setAiThreshold(bot.ai_threshold)
     }
+
+    // Load lead routing config
+    if (ws.lead_routing_config) {
+      const rc = ws.lead_routing_config as { enabled: boolean; mode: 'round_robin' | 'least_loaded' | 'manual'; reps: string[]; last_assigned_index: number }
+      setRoutingEnabled(rc.enabled ?? false)
+      setRoutingMode(rc.mode ?? 'round_robin')
+      setRoutingReps(rc.reps ?? [])
+      setRoutingLastIndex(rc.last_assigned_index ?? 0)
+    }
+
+    // Load team profiles for routing
+    const { data: teamData } = await supabase.from('profiles').select('id, full_name, email').eq('workspace_id', ws.id)
+    setTeamProfiles((teamData || []) as { id: string; full_name: string; email: string }[])
 
     // Load terminology
     if (ws.terminology) {
@@ -315,11 +343,45 @@ export default function SettingsPage() {
         greeting: botGreeting,
         questions: botQuestions.filter(q => q.trim()),
         qualify_keyword: botQualifyKeyword,
+        ai_enabled: aiEnabled,
+        ai_instructions: aiInstructions,
+        ai_threshold: aiThreshold,
       },
     }).eq('id', workspaceId)
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  // --- LEAD ROUTING ---
+  const saveRoutingConfig = async () => {
+    setSaving(true)
+    await supabase.from('workspaces').update({
+      lead_routing_config: {
+        enabled: routingEnabled,
+        mode: routingMode,
+        reps: routingReps,
+        last_assigned_index: routingLastIndex,
+      },
+    }).eq('id', workspaceId)
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const toggleRoutingRep = (repId: string) => {
+    setRoutingReps(prev =>
+      prev.includes(repId) ? prev.filter(id => id !== repId) : [...prev, repId]
+    )
+  }
+
+  const getNextRepName = (): string => {
+    if (!routingEnabled || routingReps.length === 0) return 'N/A'
+    if (routingMode === 'manual') return 'Manual assignment'
+    if (routingMode === 'least_loaded') return 'Rep with fewest open leads'
+    const nextIndex = (routingLastIndex + 1) % routingReps.length
+    const nextRep = teamProfiles.find(p => p.id === routingReps[nextIndex])
+    return nextRep?.full_name || nextRep?.email || 'Unknown'
   }
 
   const TABS = [
@@ -330,6 +392,7 @@ export default function SettingsPage() {
     { id: 'language', label: t('settings.language'), icon: Globe },
     { id: 'team', label: t('settings.team'), icon: Users },
     { id: 'whatsapp_bot', label: 'WhatsApp Bot', icon: MessageCircle },
+    { id: 'lead_routing', label: 'Lead Routing', icon: Route },
   ] as const
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
@@ -736,9 +799,164 @@ export default function SettingsPage() {
               <p className="text-[11px] text-surface-400 mt-1">If set, leads that reply with this keyword are auto-marked as qualified.</p>
             </div>
 
+            {/* AI Auto-Reply Section */}
+            <div className="border-t border-surface-200 pt-6 mt-6">
+              <h3 className="font-semibold text-surface-900 mb-1">AI Auto-Reply</h3>
+              <p className="text-xs text-surface-500 mb-4">Use AI to automatically respond to WhatsApp messages. The AI understands conversation context and pre-qualifies leads for you.</p>
+
+              {/* AI Enable toggle */}
+              <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100 mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-surface-900">Enable AI auto-reply</p>
+                  <p className="text-xs text-surface-400 mt-0.5">AI will respond to incoming WhatsApp messages based on conversation context</p>
+                </div>
+                <button onClick={() => setAiEnabled(!aiEnabled)}
+                  className={cn('relative w-11 h-6 rounded-full transition-colors', aiEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
+                  <span className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform', aiEnabled ? 'translate-x-5.5 left-0.5' : 'left-0.5')} />
+                </button>
+              </div>
+
+              {aiEnabled && (
+                <div className="space-y-4">
+                  {/* Custom instructions */}
+                  <div>
+                    <label className="label">Custom instructions for AI</label>
+                    <textarea
+                      className="input resize-none"
+                      rows={4}
+                      value={aiInstructions}
+                      onChange={e => setAiInstructions(e.target.value)}
+                      placeholder="Tell the AI about your business, services, pricing, and how to qualify leads..."
+                    />
+                    <p className="text-[11px] text-surface-400 mt-1">Give the AI context about your business so it can have informed conversations with leads.</p>
+                  </div>
+
+                  {/* Confidence threshold */}
+                  <div>
+                    <label className="label">AI confidence threshold</label>
+                    <select
+                      className="input"
+                      value={aiThreshold}
+                      onChange={e => setAiThreshold(e.target.value as 'high' | 'medium' | 'all')}
+                    >
+                      <option value="high">High only — AI replies only when very confident</option>
+                      <option value="medium">Medium+ — AI replies when reasonably confident</option>
+                      <option value="all">All — AI always attempts a reply</option>
+                    </select>
+                    <p className="text-[11px] text-surface-400 mt-1">When confidence is below threshold, you get a notification instead of an auto-reply.</p>
+                  </div>
+
+                  {/* Info box */}
+                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                    <p className="text-xs text-blue-700 font-medium mb-1">How AI auto-reply works</p>
+                    <ul className="text-[11px] text-blue-600 space-y-1 list-disc list-inside">
+                      <li>AI reads the last 10 messages for context and generates a natural reply</li>
+                      <li>For contacts with <strong>active deals</strong>, AI will notify you instead of replying — your rep handles those</li>
+                      <li>Medium-confidence replies are sent but you also get a notification to review</li>
+                      <li>Low-confidence messages are never sent — you get a notification to respond manually</li>
+                      <li>WhatsApp is treated as the primary channel — AI understands voice calls happen here too</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button onClick={saveBotConfig} disabled={saving} className="btn-primary">
               {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
               {saved ? t('settings.saved') : 'Save Bot Configuration'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== LEAD ROUTING TAB ==================== */}
+      {tab === 'lead_routing' && (
+        <div className="card p-6">
+          <h2 className="font-semibold text-surface-900 mb-1">Lead Routing</h2>
+          <p className="text-xs text-surface-500 mb-6">Automatically assign new leads to team members using round-robin or least-loaded distribution.</p>
+
+          <div className="space-y-6">
+            {/* Enable toggle */}
+            <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100">
+              <div>
+                <p className="text-sm font-semibold text-surface-900">Enable Lead Routing</p>
+                <p className="text-xs text-surface-400 mt-0.5">When enabled, new leads are automatically assigned to selected team members</p>
+              </div>
+              <button onClick={() => setRoutingEnabled(!routingEnabled)}
+                className={cn('relative w-11 h-6 rounded-full transition-colors', routingEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
+                <span className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform', routingEnabled ? 'translate-x-5.5 left-0.5' : 'left-0.5')} />
+              </button>
+            </div>
+
+            {/* Mode selector */}
+            <div>
+              <label className="label">Routing Mode</label>
+              <div className="flex gap-2 p-1 bg-surface-100 rounded-xl w-fit">
+                {([
+                  { id: 'round_robin', label: 'Round Robin' },
+                  { id: 'least_loaded', label: 'Least Loaded' },
+                  { id: 'manual', label: 'Manual' },
+                ] as const).map(mode => (
+                  <button key={mode.id} onClick={() => setRoutingMode(mode.id)}
+                    className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                      routingMode === mode.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-surface-400 mt-2">
+                {routingMode === 'round_robin' && 'Leads are distributed evenly in order across selected reps.'}
+                {routingMode === 'least_loaded' && 'Each new lead goes to the rep with the fewest open leads.'}
+                {routingMode === 'manual' && 'Leads are not auto-assigned. Use this to disable auto-routing while keeping the config.'}
+              </p>
+            </div>
+
+            {/* Team member selector */}
+            <div>
+              <label className="label">Team Members in Rotation</label>
+              <p className="text-[11px] text-surface-400 mb-3">Select which team members should receive auto-assigned leads.</p>
+              <div className="space-y-2">
+                {teamProfiles.length === 0 && (
+                  <div className="text-center py-6 border-2 border-dashed border-surface-200 rounded-xl">
+                    <Users className="w-8 h-8 text-surface-300 mx-auto mb-2" />
+                    <p className="text-sm text-surface-500 font-medium">No team members found</p>
+                    <p className="text-xs text-surface-400 mt-0.5">Invite team members to your workspace first</p>
+                  </div>
+                )}
+                {teamProfiles.map(profile => (
+                  <label key={profile.id}
+                    className={cn('flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all',
+                      routingReps.includes(profile.id) ? 'border-brand-500 bg-brand-50' : 'border-surface-200 hover:border-surface-300')}>
+                    <input
+                      type="checkbox"
+                      checked={routingReps.includes(profile.id)}
+                      onChange={() => toggleRoutingRep(profile.id)}
+                      className="w-4 h-4 accent-brand-600"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-surface-900">{profile.full_name || 'Unnamed'}</p>
+                      {profile.email && <p className="text-xs text-surface-400">{profile.email}</p>}
+                    </div>
+                    {routingReps.includes(profile.id) && (
+                      <CheckCircle2 className="w-4 h-4 text-brand-600 flex-shrink-0" />
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Current rotation status */}
+            {routingEnabled && routingReps.length > 0 && (
+              <div className="p-4 bg-brand-50 rounded-xl border border-brand-200">
+                <p className="text-[10px] font-semibold text-brand-600 uppercase tracking-wide mb-1">Rotation Status</p>
+                <p className="text-sm font-medium text-brand-900">Next lead goes to: <span className="font-bold">{getNextRepName()}</span></p>
+                <p className="text-xs text-brand-600 mt-0.5">{routingReps.length} rep{routingReps.length !== 1 ? 's' : ''} in rotation</p>
+              </div>
+            )}
+
+            <button onClick={saveRoutingConfig} disabled={saving} className="btn-primary">
+              {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
+              {saved ? t('settings.saved') : 'Save Routing Configuration'}
             </button>
           </div>
         </div>
