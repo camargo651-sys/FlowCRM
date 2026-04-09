@@ -304,14 +304,20 @@ export default function WhatsAppInboxPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       setCurrentUserId(user.id)
-      const ws = await getActiveWorkspace(supabase, user.id, 'id, whatsapp_bot_config')
+      let ws = await getActiveWorkspace(supabase, user.id, 'id, whatsapp_bot_config')
+      if (!ws) {
+        // Fallback: column may not exist yet
+        ws = await getActiveWorkspace(supabase, user.id, 'id')
+      }
       if (ws) {
         setWorkspaceId(ws.id)
-        // Load quick replies from workspace config
-        const config = ws.whatsapp_bot_config as Record<string, unknown> | null
-        if (config?.quick_replies && Array.isArray(config.quick_replies) && config.quick_replies.length > 0) {
-          setQuickReplies(config.quick_replies as QuickReply[])
-        }
+        // Load quick replies from workspace config (safe if column doesn't exist)
+        try {
+          const config = ws.whatsapp_bot_config as Record<string, unknown> | null
+          if (config?.quick_replies && Array.isArray(config.quick_replies) && config.quick_replies.length > 0) {
+            setQuickReplies(config.quick_replies as QuickReply[])
+          }
+        } catch { /* column may not exist yet */ }
       }
     }
     load()

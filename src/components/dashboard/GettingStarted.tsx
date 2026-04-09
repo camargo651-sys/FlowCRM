@@ -67,7 +67,7 @@ export default function GettingStarted() {
           supabase.from('integrations').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id).eq('enabled', true),
           supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id),
           supabase.from('whatsapp_accounts').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id).eq('status', 'active'),
-          supabase.from('whatsapp_bot_config').select('id').eq('workspace_id', ws.id).limit(1),
+          supabase.from('workspaces').select('whatsapp_bot_config').eq('id', ws.id).single(),
           supabase.from('pipeline_stages').select('id', { count: 'exact', head: true }).eq('pipeline_id', ws.id),
         ])
 
@@ -90,7 +90,7 @@ export default function GettingStarted() {
           integrations: integrations.count || 0,
           members: members.count || 0,
           hasWhatsApp: (waAccounts.count || 0) > 0,
-          hasBotConfig: (botConfig.data?.length || 0) > 0,
+          hasBotConfig: !!botConfig.data?.whatsapp_bot_config,
           pipelineStages: stageCount,
         })
       } catch {}
