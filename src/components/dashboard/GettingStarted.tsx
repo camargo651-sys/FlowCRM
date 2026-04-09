@@ -75,9 +75,9 @@ export default function GettingStarted() {
         let stageCount = stages.count || 0
         if (stageCount === 0) {
           // Try to get stages from the first pipeline
-          const { data: pipeline } = await supabase.from('pipelines').select('id').eq('workspace_id', ws.id).limit(1).single()
-          if (pipeline) {
-            const { count } = await supabase.from('pipeline_stages').select('id', { count: 'exact', head: true }).eq('pipeline_id', pipeline.id)
+          const { data: pipelines } = await supabase.from('pipelines').select('id').eq('workspace_id', ws.id).limit(1)
+          if (pipelines?.[0]) {
+            const { count } = await supabase.from('pipeline_stages').select('id', { count: 'exact', head: true }).eq('pipeline_id', pipelines[0].id)
             stageCount = count || 0
           }
         }

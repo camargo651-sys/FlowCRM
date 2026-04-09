@@ -48,7 +48,8 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         if (!user) return
 
         // Get user's role
-        const { data: profile } = await supabase.from('profiles').select('role, custom_role_id').eq('id', user.id).single()
+        const { data: profileRows } = await supabase.from('profiles').select('role, custom_role_id').eq('id', user.id).limit(1)
+        const profile = profileRows?.[0] || null
 
         if (profile?.custom_role_id) {
           // Load custom role permissions from DB

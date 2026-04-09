@@ -45,14 +45,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       if (activeWsId) {
         const { data } = await supabase.from('workspaces')
           .select('id, name, industry, plan, primary_color, logo_url, terminology')
-          .eq('id', activeWsId).eq('owner_id', user.id).single()
-        ws = data
+          .eq('id', activeWsId).eq('owner_id', user.id).limit(1)
+        ws = data?.[0] || null
       }
       if (!ws) {
         const { data } = await supabase.from('workspaces')
           .select('id, name, industry, plan, primary_color, logo_url, terminology')
-          .eq('owner_id', user.id).order('created_at').limit(1).single()
-        ws = data
+          .eq('owner_id', user.id).order('created_at').limit(1)
+        ws = data?.[0] || null
         if (ws && typeof window !== 'undefined') {
           localStorage.setItem('tracktio_active_workspace', ws.id as string)
         }
