@@ -6,6 +6,20 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Save, FileText, Eye, Trash2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+/** Strip dangerous tags/attributes from HTML to prevent XSS */
+function sanitizeHTML(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[\s\S]*?>/gi, '')
+    .replace(/<link[\s\S]*?>/gi, '')
+    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\son\w+\s*=\s*[^\s>]*/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/data\s*:\s*text\/html/gi, '')
+}
+
 const TEMPLATE_TYPES = [
   { value: 'invoice', label: 'Invoice' },
   { value: 'quote', label: 'Quote / Proposal' },
@@ -125,7 +139,7 @@ export default function TemplatesPage() {
                 <div><h3 className="text-sm font-bold text-surface-900">{t.name}</h3><p className="text-[10px] text-surface-400 capitalize">{t.type}</p></div>
                 <div className="flex gap-1"><button onClick={() => editTemplate(t)} className="text-surface-300 hover:text-brand-600"><FileText className="w-3.5 h-3.5" /></button><button onClick={() => deleteTemplate(t.id)} className="text-surface-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button></div>
               </div>
-              <div className="h-24 bg-surface-50 rounded-lg overflow-hidden text-[6px] p-2 leading-tight text-surface-400" dangerouslySetInnerHTML={{ __html: t.html_content.slice(0, 500) }} />
+              <div className="h-24 bg-surface-50 rounded-lg overflow-hidden text-[6px] p-2 leading-tight text-surface-400" dangerouslySetInnerHTML={{ __html: sanitizeHTML(t.html_content.slice(0, 500)) }} />
               {t.variables?.length > 0 && <p className="text-[9px] text-surface-300 mt-2">{t.variables.length} variables</p>}
             </div>
           ))}
@@ -170,7 +184,7 @@ export default function TemplatesPage() {
               {/* Preview side */}
               {preview && (
                 <div className="w-1/2 border-l border-surface-100 overflow-y-auto bg-white p-4">
-                  <div dangerouslySetInnerHTML={{ __html: form.html_content
+                  <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(form.html_content
                     .replace(/\{\{company_name\}\}/g, 'Your Company')
                     .replace(/\{\{client_name\}\}/g, 'John Doe')
                     .replace(/\{\{invoice_number\}\}/g, 'INV-0001')
@@ -181,7 +195,7 @@ export default function TemplatesPage() {
                     .replace(/\{\{tax\}\}/g, '$0')
                     .replace(/\{\{total\}\}/g, '$1,000')
                     .replace(/\{\{\w+\}\}/g, '—')
-                  }} />
+                  ) }} />
                 </div>
               )}
             </div>

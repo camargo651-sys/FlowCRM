@@ -24,15 +24,15 @@ export async function POST(request: NextRequest) {
   const sig = request.headers.get('stripe-signature')
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
+  if (!webhookSecret || !sig) {
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 503 })
+  }
+
   let event: Stripe.Event
   try {
-    if (webhookSecret && sig) {
-      event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
-    } else {
-      event = JSON.parse(body)
-    }
-  } catch (err: unknown) {
-    return NextResponse.json({ error: `Webhook error: ${err instanceof Error ? err.message : 'Unknown error'}` }, { status: 400 })
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+  } catch {
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 403 })
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
     if (invoiceId && workspaceId) {
       const amount = (session.amount_total || 0) / 100
 
-      // Update invoice
-      const { data: invoice } = await supabase.from('invoices').select('total, amount_paid').eq('id', invoiceId).single()
+      // Verify invoice belongs to claimed workspace
+      const { data: invoice } = await supabase.from('invoices').select('total, amount_paid').eq('id', invoiceId).eq('workspace_id', workspaceId).single()
       if (invoice) {
         const newPaid = (invoice.amount_paid || 0) + amount
         const balance = invoice.total - newPaid

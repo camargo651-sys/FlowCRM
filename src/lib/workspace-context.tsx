@@ -7,6 +7,7 @@ interface WorkspaceConfig {
   id: string
   name: string
   industry: string
+  plan: string
   primaryColor: string
   logoUrl: string
   template: IndustryTemplate
@@ -17,13 +18,13 @@ interface WorkspaceConfig {
 const defaultTemplate = getTemplate('generic')
 
 const WorkspaceContext = createContext<WorkspaceConfig>({
-  id: '', name: '', industry: 'generic', primaryColor: '#6172f3',
+  id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#6172f3',
   logoUrl: '', template: defaultTemplate, customFields: [], loading: true,
 })
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<WorkspaceConfig>({
-    id: '', name: '', industry: 'generic', primaryColor: '#6172f3',
+    id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#6172f3',
     logoUrl: '', template: defaultTemplate, customFields: [], loading: true,
   })
 
@@ -34,7 +35,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       if (!user) { setConfig(c => ({ ...c, loading: false })); return }
 
       const { data: ws } = await supabase.from('workspaces')
-        .select('id, name, industry, primary_color, logo_url, terminology')
+        .select('id, name, industry, plan, primary_color, logo_url, terminology')
         .eq('owner_id', user.id).single()
       if (!ws) { setConfig(c => ({ ...c, loading: false })); return }
 
@@ -55,6 +56,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         id: ws.id,
         name: ws.name,
         industry: ws.industry || 'generic',
+        plan: ws.plan || 'free',
         primaryColor: ws.primary_color || '#6172f3',
         logoUrl: ws.logo_url || '',
         template,

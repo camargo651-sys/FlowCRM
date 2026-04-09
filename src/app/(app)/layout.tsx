@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/layout/Sidebar'
 import GlobalSearch from '@/components/layout/GlobalSearch'
+import QuickCreate from '@/components/layout/QuickCreate'
 import MobileNav from '@/components/layout/MobileNav'
 import Breadcrumbs from '@/components/shared/Breadcrumbs'
 import { Toaster } from 'sonner'
@@ -34,6 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </main>
       <GlobalSearch />
+      <QuickCreate />
       <Toaster position="bottom-right" richColors closeButton />
       <KeyboardShortcuts />
       <InactivityLock />

@@ -5,7 +5,7 @@ import {
   Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut,
   ChevronDown, ChevronRight, Plug, FileText, Package, UserPlus, Receipt, Truck,
   BookOpen, Briefcase, PieChart, ShoppingCart, Shield, Code, CreditCard, Factory,
-  Ticket, FileSignature, CalendarDays, Sparkles,
+  Ticket, FileSignature, CalendarDays, Sparkles, Search, Lock,
   ShoppingBag
 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
@@ -17,6 +17,8 @@ import { cn, getInitials } from '@/lib/utils'
 import { useState } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
+import { usePlan } from '@/lib/pricing/use-plan'
+import { ROUTE_TO_MODULE } from '@/lib/pricing/gate'
 
 interface SidebarProps {
   userEmail: string
@@ -34,6 +36,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
   const [enabledModules, setEnabledModules] = useState<string[] | null>(null)
   const { template, logoUrl, primaryColor, name: wsName } = useWorkspace()
   const { t } = useI18n()
+  const planGate = usePlan()
 
   const displayName = wsName || workspaceName || 'Tracktio'
 
@@ -168,6 +171,16 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         </div>
       </div>
 
+      {/* Search trigger */}
+      <div className="px-3 mb-2">
+        <button onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+          className="w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] text-surface-400 hover:bg-surface-50 hover:text-surface-600 transition-all duration-150 group">
+          <Search className="w-4 h-4" />
+          <span className="flex-1 text-left">Search...</span>
+          <kbd className="kbd text-[9px] hidden sm:flex">⌘K</kbd>
+        </button>
+      </div>
+
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 overflow-y-auto no-scrollbar">
         {SECTIONS.map(section => {
@@ -186,21 +199,28 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
               )}
               {!isCollapsed && (
                 <div className="space-y-0.5">
-                  {visibleItems.map(({ href, icon: Icon, label }) => (
-                    <Link key={href} href={href}
+                  {visibleItems.map(({ href, icon: Icon, label }) => {
+                    const mod = ROUTE_TO_MODULE[href]
+                    const locked = mod ? planGate.isLocked(mod) : false
+                    return (
+                    <Link key={href} href={locked ? '/pricing' : href}
                       className={cn(
                         'flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all duration-150 relative group',
-                        isActive(href)
-                          ? 'bg-brand-50 text-brand-700 font-semibold'
-                          : 'text-surface-500 hover:bg-surface-50 hover:text-surface-800'
+                        locked
+                          ? 'text-surface-300 hover:bg-surface-50'
+                          : isActive(href)
+                            ? 'bg-brand-50 text-brand-700 font-semibold'
+                            : 'text-surface-500 hover:bg-surface-50 hover:text-surface-800'
                       )}>
-                      {isActive(href) && (
+                      {isActive(href) && !locked && (
                         <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-brand-600" />
                       )}
-                      <Icon className={cn('w-4 h-4 flex-shrink-0 transition-colors', isActive(href) ? 'text-brand-600' : 'text-surface-400 group-hover:text-surface-600')} />
-                      <span className="truncate">{label}</span>
+                      <Icon className={cn('w-4 h-4 flex-shrink-0 transition-colors', locked ? 'text-surface-300' : isActive(href) ? 'text-brand-600' : 'text-surface-400 group-hover:text-surface-600')} />
+                      <span className="truncate flex-1">{label}</span>
+                      {locked && <Lock className="w-3 h-3 text-surface-300 flex-shrink-0" />}
                     </Link>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

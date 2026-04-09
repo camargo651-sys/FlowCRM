@@ -145,7 +145,7 @@ export default async function QuoteViewPage({ params }: { params: { token: strin
         {/* Tracking script */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
-            var token = "${params.token}";
+            var token = ${JSON.stringify(params.token)};
             var startTime = Date.now();
             var sectionsViewed = new Set();
 

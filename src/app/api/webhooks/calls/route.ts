@@ -15,6 +15,14 @@ function getServiceSupabase() {
 
 // POST: Twilio recording/transcription callback
 export async function POST(request: NextRequest) {
+  // Verify webhook auth token if configured
+  const webhookToken = process.env.TWILIO_WEBHOOK_TOKEN
+  if (webhookToken) {
+    const authHeader = request.headers.get('x-webhook-token') || request.nextUrl.searchParams.get('token') || ''
+    if (authHeader !== webhookToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+  }
   const contentType = request.headers.get('content-type') || ''
   let body: Record<string, string>
 

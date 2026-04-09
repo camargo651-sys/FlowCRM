@@ -69,15 +69,18 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ data: { ...data, key: rawKey } })
 }
 
-// DELETE: Revoke API key
+// DELETE: Revoke API key (scoped to user's workspace)
 export async function DELETE(request: NextRequest) {
   const supabase = getSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await request.json()
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+  if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
-  await supabase.from('api_keys').update({ active: false }).eq('id', id)
+  const { id } = await request.json()
+  if (!id || typeof id !== 'string') return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  await supabase.from('api_keys').update({ active: false }).eq('id', id).eq('workspace_id', ws.id)
   return NextResponse.json({ success: true })
 }

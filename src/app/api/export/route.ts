@@ -19,16 +19,20 @@ function getSupabase() {
   )
 }
 
+function sanitizeCSVField(val: unknown): string {
+  if (val == null) return ''
+  const str = Array.isArray(val) ? val.join('; ') : String(val)
+  // Prevent CSV formula injection: prefix dangerous chars with single quote
+  const sanitized = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str
+  return sanitized.includes(',') || sanitized.includes('"') || sanitized.includes('\n')
+    ? `"${sanitized.replace(/"/g, '""')}"` : sanitized
+}
+
 function toCSV(data: DbRow[]): string {
   if (!data.length) return ''
   const headers = Object.keys(data[0])
   const rows = data.map(row =>
-    headers.map(h => {
-      const val = row[h]
-      if (val == null) return ''
-      const str = Array.isArray(val) ? val.join('; ') : String(val)
-      return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str.replace(/"/g, '""')}"` : str
-    }).join(',')
+    headers.map(h => sanitizeCSVField(row[h])).join(',')
   )
   return [headers.join(','), ...rows].join('\n')
 }

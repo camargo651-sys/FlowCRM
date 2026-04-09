@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
     payment_method_types: ['card'],
     line_items: lineItems,
     mode: 'payment',
-    success_url: success_url || `${request.headers.get('origin')}/invoices?paid=${invoice_id}`,
-    cancel_url: cancel_url || `${request.headers.get('origin')}/invoices`,
+    success_url: success_url || `${process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || ''}/invoices?paid=${encodeURIComponent(invoice_id)}`,
+    cancel_url: cancel_url || `${process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || ''}/invoices`,
     customer_email: (invoice as { contacts?: { email?: string } }).contacts?.email || undefined,
     metadata: { invoice_id, workspace_id: invoice.workspace_id },
   })

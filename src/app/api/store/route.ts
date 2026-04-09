@@ -35,11 +35,36 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabase()
   if (!supabase) return NextResponse.json({ error: 'Service not configured' }, { status: 503 })
 
-  const body = await request.json()
-  const { slug, customer_name, customer_email, customer_phone, shipping_address, items } = body
+  let body: Record<string, unknown>
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  const { slug, customer_name, customer_email, customer_phone, shipping_address, items } = body as {
+    slug?: string; customer_name?: string; customer_email?: string;
+    customer_phone?: string; shipping_address?: string; items?: { product_id: string; quantity: number }[]
+  }
 
   if (!slug || !customer_name || !customer_email || !items?.length) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  // Input validation
+  if (typeof customer_name !== 'string' || customer_name.length > 200) {
+    return NextResponse.json({ error: 'Invalid customer name' }, { status: 400 })
+  }
+  if (typeof customer_email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer_email)) {
+    return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
+  }
+  if (customer_phone && (typeof customer_phone !== 'string' || customer_phone.length > 30)) {
+    return NextResponse.json({ error: 'Invalid phone' }, { status: 400 })
+  }
+  if (shipping_address && (typeof shipping_address !== 'string' || shipping_address.length > 500)) {
+    return NextResponse.json({ error: 'Invalid address' }, { status: 400 })
+  }
+  if (!Array.isArray(items) || items.length > 50) {
+    return NextResponse.json({ error: 'Invalid items' }, { status: 400 })
+  }
+  for (const item of items) {
+    if (!item.product_id || typeof item.product_id !== 'string') return NextResponse.json({ error: 'Invalid product_id' }, { status: 400 })
+    if (!item.quantity || typeof item.quantity !== 'number' || item.quantity < 1 || item.quantity > 9999) return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
   }
 
   const { data: ws } = await supabase.from('workspaces').select('id').eq('slug', slug).eq('store_enabled', true).single()

@@ -66,7 +66,8 @@ export async function POST(request: Request) {
 
       if (!res.ok) {
         const err = await res.text()
-        return NextResponse.json({ error: `Gmail send failed: ${err}` }, { status: 500 })
+        console.error('Gmail send failed:', err)
+        return NextResponse.json({ error: 'Failed to send email. Please try again.' }, { status: 500 })
       }
 
       const result = await res.json()

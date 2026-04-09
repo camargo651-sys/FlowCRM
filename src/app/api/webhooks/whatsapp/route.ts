@@ -41,14 +41,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const rawBody = await request.text()
 
-  // Verify signature if app secret is configured
+  // Verify signature — required when app secret is configured
   const appSecret = process.env.WHATSAPP_APP_SECRET
-  if (appSecret) {
-    const signature = request.headers.get('x-hub-signature-256') || ''
-    if (!verifyWebhookSignature(rawBody, signature, appSecret)) {
-      console.error('WhatsApp webhook signature mismatch')
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
-    }
+  if (!appSecret) {
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+  }
+  const signature = request.headers.get('x-hub-signature-256') || ''
+  if (!verifyWebhookSignature(rawBody, signature, appSecret)) {
+    console.error('WhatsApp webhook signature mismatch')
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
   }
 
   let payload: DbRow

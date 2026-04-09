@@ -1,7 +1,7 @@
 {
   "name": "Tracktio",
   "short_name": "Tracktio",
-  "description": "AI-Powered ERP — Zero Data Entry",
+  "description": "Run your business, not your software — 27 modules in one AI-powered platform",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

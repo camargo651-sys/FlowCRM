@@ -317,6 +317,16 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  /* Safe area for mobile bottom tab bar */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Mobile: add bottom padding to main content so it doesn't hide behind tab bar */
+  @media (max-width: 1023px) {
+    main { padding-bottom: 5rem !important; }
+  }
+
   /* Glass morphism for overlays */
   .glass {
     @apply bg-white/80 backdrop-blur-xl;

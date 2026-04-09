@@ -47,8 +47,8 @@ export default function SignupPage() {
           <span className="text-white font-bold text-lg">Tracktio</span>
         </div>
 
-        <h1 className="text-2xl font-bold text-white mb-1">Start running your business better</h1>
-        <p className="text-surface-400 text-sm mb-8">Free forever. No credit card. Ready in 60 seconds.</p>
+        <h1 className="text-2xl font-bold text-white mb-1">Create your workspace</h1>
+        <p className="text-surface-400 text-sm mb-8">Free forever on the starter plan. No credit card. Ready in 60 seconds.</p>
 
         {/* Step indicator */}
         <div className="flex gap-2 mb-8">

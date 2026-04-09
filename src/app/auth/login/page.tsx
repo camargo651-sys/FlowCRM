@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
   const supabase = createClient()
@@ -23,6 +24,28 @@ export default function LoginPage() {
     else router.push('/dashboard')
   }
 
+  const handleDemo = async () => {
+    setDemoLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/auth/demo', { method: 'POST' })
+      const data = await res.json()
+      if (data.access_token) {
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        })
+        router.push('/dashboard')
+      } else {
+        setError(data.error || 'Demo not available')
+        setDemoLoading(false)
+      }
+    } catch {
+      setError('Demo not available right now')
+      setDemoLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-surface-950 flex">
       {/* Left panel — branding */}
@@ -32,11 +55,12 @@ export default function LoginPage() {
           style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.15) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 50%)' }} />
         <div className="relative z-10">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-white/15 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/10">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="text-white font-bold text-xl tracking-tight">Tracktio</span>
           </div>
+          <p className="text-white/50 text-sm mt-3">Run your business, not your software.</p>
         </div>
         <div className="relative z-10 space-y-6">
           <blockquote className="text-white/90 text-2xl font-light leading-relaxed">
@@ -51,7 +75,7 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="relative z-10 flex gap-8">
-          {[['500+', 'Teams'], ['98%', 'Uptime'], ['4.9★', 'Rating']].map(([val, label]) => (
+          {[['27', 'Modules'], ['60s', 'Setup'], ['$0', 'To Start']].map(([val, label]) => (
             <div key={label}>
               <p className="text-white font-bold text-2xl">{val}</p>
               <p className="text-white/60 text-xs mt-0.5">{label}</p>
@@ -116,6 +140,20 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-surface-800" /></div>
+            <div className="relative flex justify-center text-xs"><span className="bg-surface-950 px-3 text-surface-500">or</span></div>
+          </div>
+
+          <button onClick={handleDemo} disabled={demoLoading}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-surface-700 text-surface-300 hover:text-white hover:border-surface-500 font-medium text-sm transition-all disabled:opacity-50">
+            {demoLoading ? (
+              <div className="w-4 h-4 border-2 border-surface-500 border-t-white rounded-full animate-spin" />
+            ) : (
+              <><Zap className="w-4 h-4" /> Try the live demo</>
+            )}
+          </button>
 
           <p className="text-center text-surface-500 text-sm mt-6">
             Don't have an account?{' '}
