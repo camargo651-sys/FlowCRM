@@ -22,13 +22,15 @@ export default function FacebookPixel() {
         const ws = await getActiveWorkspace(supabase, user.id, 'id')
         if (!ws) return
 
-        const { data: integration } = await supabase
+        const { data: integrations } = await supabase
           .from('integrations')
           .select('config, enabled')
           .eq('workspace_id', ws.id)
           .eq('key', 'facebook_pixel')
           .eq('enabled', true)
-          .single()
+          .limit(1)
+
+        const integration = integrations?.[0]
 
         if (integration) {
           const config = integration.config as Record<string, string>
