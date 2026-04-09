@@ -10,6 +10,8 @@ import KeyboardShortcuts from '@/components/shared/KeyboardShortcuts'
 import InactivityLock from '@/components/shared/InactivityLock'
 import InstallPrompt from '@/components/shared/InstallPrompt'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
+import GoogleAnalytics from '@/components/shared/GoogleAnalytics'
+import FacebookPixel from '@/components/shared/FacebookPixel'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -42,6 +44,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <KeyboardShortcuts />
       <InactivityLock />
       <InstallPrompt />
+      <GoogleAnalytics />
+      <FacebookPixel />
     </div>
   )
 }

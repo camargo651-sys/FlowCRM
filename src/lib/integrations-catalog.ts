@@ -46,7 +46,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'telegram', name: 'Telegram Bot', category: 'communication', color: '#0088CC', icon: '✈️', status: 'coming_soon',
+    key: 'telegram', name: 'Telegram Bot', category: 'communication', color: '#0088CC', icon: '✈️', status: 'active',
     description: 'Receive leads and send notifications via Telegram bot.',
     fields: [
       { key: 'bot_token', label: 'Bot Token', placeholder: '123456:ABC-DEF...', type: 'password', help: 'From @BotFather on Telegram' },
@@ -56,6 +56,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
       { step: 1, title: 'Create a Telegram Bot', description: 'Message @BotFather on Telegram and use /newbot to create a bot.' },
       { step: 2, title: 'Copy the bot token', description: 'BotFather will give you a token. Paste it below.' },
       { step: 3, title: 'Get your Chat ID', description: 'Add the bot to a group, then use @userinfobot to find the chat ID.' },
+      { step: 4, title: 'Configure Webhook', description: 'Set webhook URL to: https://your-domain.com/api/webhooks/telegram using the Telegram Bot API setWebhook method.' },
     ],
   },
   {
@@ -74,7 +75,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'teams', name: 'Microsoft Teams', category: 'communication', color: '#6264A7', icon: '👥', status: 'coming_soon',
+    key: 'teams', name: 'Microsoft Teams', category: 'communication', color: '#6264A7', icon: '👥', status: 'active',
     description: 'Send deal updates and task notifications to Microsoft Teams channels.',
     fields: [
       { key: 'webhook_url', label: 'Incoming Webhook URL', placeholder: 'https://outlook.office.com/webhook/...', help: 'From Teams channel connector settings' },
@@ -83,6 +84,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
       { step: 1, title: 'Open Teams channel', description: 'Go to the channel where you want notifications.' },
       { step: 2, title: 'Add connector', description: 'Click "..." > Connectors > Incoming Webhook > Configure.' },
       { step: 3, title: 'Copy webhook URL', description: 'Name it "Tracktio" and copy the generated URL.' },
+      { step: 4, title: 'Configure inbound webhook', description: 'Set inbound webhook URL to: https://your-domain.com/api/webhooks/teams to receive Teams messages.' },
     ],
   },
   {
@@ -148,7 +150,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'zoom', name: 'Zoom', category: 'email', color: '#2D8CFF', icon: '📹', status: 'coming_soon',
+    key: 'zoom', name: 'Zoom', category: 'email', color: '#2D8CFF', icon: '📹', status: 'active',
     description: 'Create Zoom meetings from deals. Auto-log meeting recordings and notes.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxxxx', help: 'Zoom App Marketplace > Your App' },
@@ -161,44 +163,43 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'google_meet', name: 'Google Meet', category: 'email', color: '#00897B', icon: '🎥', status: 'coming_soon',
-    description: 'Generate Google Meet links automatically when scheduling meetings.',
-    fields: [
-      { key: 'client_id', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', help: 'Same as Google Calendar' },
-      { key: 'client_secret', label: 'Client Secret', placeholder: 'GOCSPX-...', type: 'password', help: 'Same as Google Calendar' },
-    ],
+    key: 'google_meet', name: 'Google Meet', category: 'email', color: '#00897B', icon: '🎥', status: 'active',
+    description: 'Google Meet links are automatically created when you sync events from Google Calendar. No additional setup needed.',
+    fields: [],
     setupSteps: [
-      { step: 1, title: 'Use Google Calendar setup', description: 'Google Meet works through Google Calendar API. Use the same credentials.' },
+      { step: 1, title: 'Use Google Calendar', description: 'Google Meet links are automatically included when you create calendar events with Google Calendar integration. No extra configuration needed.' },
     ],
   },
 
   // === SOCIAL MEDIA ===
   {
-    key: 'instagram', name: 'Instagram DMs', category: 'social', color: '#E4405F', icon: '📸', status: 'coming_soon', popular: true,
+    key: 'instagram', name: 'Instagram DMs', category: 'social', color: '#E4405F', icon: '📸', status: 'active', popular: true,
     description: 'Receive Instagram DMs as leads. Reply to comments and messages from the CRM.',
     fields: [
       { key: 'page_id', label: 'Facebook Page ID', placeholder: '1234567890', help: 'Your Facebook Page linked to Instagram' },
       { key: 'access_token', label: 'Page Access Token', placeholder: 'EAAx...', type: 'password', help: 'Meta Business > System Users' },
+      { key: 'verify_token', label: 'Webhook Verify Token', placeholder: 'my-verify-token', help: 'Choose any string — use the same in Meta webhook config (set as INSTAGRAM_WEBHOOK_VERIFY_TOKEN env var)' },
     ],
     setupSteps: [
       { step: 1, title: 'Connect Instagram to Facebook', description: 'Your Instagram must be a Business account linked to a Facebook Page.' },
       { step: 2, title: 'Create Meta App', description: 'Go to developers.facebook.com > Create App > Business type.' },
       { step: 3, title: 'Add Instagram Messaging', description: 'Add the Instagram Graph API product and request messaging permissions.' },
       { step: 4, title: 'Generate token', description: 'Create a System User and generate a page access token.' },
+      { step: 5, title: 'Configure Webhook', description: 'Set webhook URL to: https://your-domain.com/api/webhooks/instagram — subscribe to the "messages" field.' },
     ],
   },
   {
-    key: 'facebook_messenger', name: 'Facebook Messenger', category: 'social', color: '#0084FF', icon: '💭', status: 'coming_soon',
+    key: 'facebook_messenger', name: 'Facebook Messenger', category: 'social', color: '#0084FF', icon: '💭', status: 'active',
     description: 'Receive Messenger messages as leads. Automate responses and capture contacts.',
     fields: [
       { key: 'page_id', label: 'Page ID', placeholder: '1234567890', help: 'Your Facebook Page ID' },
       { key: 'access_token', label: 'Page Access Token', placeholder: 'EAAx...', type: 'password', help: 'Meta for Developers' },
-      { key: 'verify_token', label: 'Webhook Verify Token', placeholder: 'my-verify-token' },
+      { key: 'verify_token', label: 'Webhook Verify Token', placeholder: 'my-verify-token', help: 'Choose any string — use the same in Meta webhook config (set as FACEBOOK_WEBHOOK_VERIFY_TOKEN env var)' },
     ],
     setupSteps: [
       { step: 1, title: 'Create Meta App', description: 'developers.facebook.com > Create App > Business.' },
       { step: 2, title: 'Add Messenger product', description: 'Add Messenger to your app and connect your Page.' },
-      { step: 3, title: 'Configure webhook', description: 'Set URL: https://your-domain.com/api/webhooks/messenger' },
+      { step: 3, title: 'Configure webhook', description: 'Set URL: https://your-domain.com/api/webhooks/facebook — subscribe to the "messages" field.' },
     ],
   },
   {
@@ -215,7 +216,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === AUTOMATION ===
   {
-    key: 'zapier', name: 'Zapier', category: 'automation', color: '#FF4F00', icon: '⚡', status: 'coming_soon', popular: true,
+    key: 'zapier', name: 'Zapier', category: 'automation', color: '#FF4F00', icon: '⚡', status: 'active', popular: true,
     description: 'Connect with 5,000+ apps. Automate any workflow without writing code.',
     fields: [
       { key: 'api_key', label: 'Tracktio API Key', placeholder: 'Auto-generated', help: 'Use this key in Zapier' },
@@ -223,11 +224,12 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
     setupSteps: [
       { step: 1, title: 'Create Zapier account', description: 'Sign up at zapier.com (free plan available).' },
-      { step: 2, title: 'Create a Zap', description: 'Use Webhooks trigger and paste your Tracktio API endpoint.' },
+      { step: 2, title: 'Get your webhook URL', description: 'Your Tracktio webhook URL is: https://your-domain.com/api/v1/webhooks — use this as the trigger URL in Zapier.' },
+      { step: 3, title: 'Create a Zap', description: 'Use Webhooks trigger and paste your Tracktio API endpoint. See /api-docs for available endpoints.' },
     ],
   },
   {
-    key: 'make', name: 'Make (Integromat)', category: 'automation', color: '#6D00CC', icon: '🔄', status: 'coming_soon',
+    key: 'make', name: 'Make (Integromat)', category: 'automation', color: '#6D00CC', icon: '🔄', status: 'active',
     description: 'Visual automation builder. Create complex workflows with branching logic.',
     fields: [
       { key: 'api_key', label: 'Tracktio API Key', placeholder: 'Auto-generated', help: 'Use this key in Make' },
@@ -235,11 +237,12 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
     setupSteps: [
       { step: 1, title: 'Create Make account', description: 'Sign up at make.com (free plan available).' },
-      { step: 2, title: 'Create scenario', description: 'Add a Webhook module and paste the Tracktio endpoint.' },
+      { step: 2, title: 'Get your webhook URL', description: 'Your Tracktio webhook URL is: https://your-domain.com/api/v1/webhooks — use this in Make HTTP modules.' },
+      { step: 3, title: 'Create scenario', description: 'Add a Webhook module and paste the Tracktio endpoint. See /api-docs for available endpoints.' },
     ],
   },
   {
-    key: 'n8n', name: 'n8n', category: 'automation', color: '#EA4B71', icon: '🔧', status: 'coming_soon',
+    key: 'n8n', name: 'n8n', category: 'automation', color: '#EA4B71', icon: '🔧', status: 'active',
     description: 'Self-hosted automation. Full control over your data and workflows.',
     fields: [
       { key: 'webhook_url', label: 'n8n Webhook URL', placeholder: 'https://your-n8n.com/webhook/...', help: 'From your n8n workflow' },
@@ -247,7 +250,8 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
     setupSteps: [
       { step: 1, title: 'Install n8n', description: 'Self-host n8n or use n8n.cloud.' },
-      { step: 2, title: 'Create workflow', description: 'Add Webhook trigger node and configure HTTP Request nodes.' },
+      { step: 2, title: 'Get your webhook URL', description: 'Your Tracktio webhook URL is: https://your-domain.com/api/v1/webhooks — use this in n8n HTTP Request nodes.' },
+      { step: 3, title: 'Create workflow', description: 'Add Webhook trigger node and configure HTTP Request nodes. See /api-docs for available endpoints.' },
     ],
   },
 
@@ -267,7 +271,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'mercadopago', name: 'MercadoPago', category: 'payments', color: '#009EE3', icon: '🏦', status: 'coming_soon',
+    key: 'mercadopago', name: 'MercadoPago', category: 'payments', color: '#009EE3', icon: '🏦', status: 'active',
     description: 'Process payments in Latin America. Generate payment links from quotes.',
     fields: [
       { key: 'access_token', label: 'Access Token', placeholder: 'APP_USR-...', type: 'password', help: 'MercadoPago Developers > Your apps' },
@@ -279,7 +283,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'paypal', name: 'PayPal', category: 'payments', color: '#003087', icon: '💰', status: 'coming_soon',
+    key: 'paypal', name: 'PayPal', category: 'payments', color: '#003087', icon: '💰', status: 'active',
     description: 'Accept PayPal payments. Generate invoices and payment links.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxxxx', help: 'PayPal Developer Dashboard' },
@@ -293,7 +297,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === PRODUCTIVITY ===
   {
-    key: 'google_sheets', name: 'Google Sheets', category: 'productivity', color: '#0F9D58', icon: '📊', status: 'coming_soon', popular: true,
+    key: 'google_sheets', name: 'Google Sheets', category: 'productivity', color: '#0F9D58', icon: '📊', status: 'active', popular: true,
     description: 'Import/export contacts, deals, and reports. Keep spreadsheets in sync.',
     fields: [
       { key: 'client_id', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', help: 'Google Cloud Console' },
@@ -306,7 +310,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'notion', name: 'Notion', category: 'productivity', color: '#000000', icon: '📝', status: 'coming_soon',
+    key: 'notion', name: 'Notion', category: 'productivity', color: '#000000', icon: '📝', status: 'active',
     description: 'Sync deal notes and meeting summaries to Notion databases.',
     fields: [
       { key: 'api_key', label: 'Integration Token', placeholder: 'secret_...', type: 'password', help: 'notion.so/my-integrations' },
@@ -318,7 +322,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'trello', name: 'Trello', category: 'productivity', color: '#0052CC', icon: '📋', status: 'coming_soon',
+    key: 'trello', name: 'Trello', category: 'productivity', color: '#0052CC', icon: '📋', status: 'active',
     description: 'Sync deals as Trello cards. Move cards when deal stages change.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'xxxxxxxx', help: 'trello.com/app-key' },
@@ -333,33 +337,31 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === ANALYTICS ===
   {
-    key: 'google_analytics', name: 'Google Analytics', category: 'analytics', color: '#E37400', icon: '📈', status: 'coming_soon',
-    description: 'Track lead sources and conversion paths from your website to CRM.',
+    key: 'google_analytics', name: 'Google Analytics', category: 'analytics', color: '#E37400', icon: '📈', status: 'active',
+    description: 'Track page views and user behavior with Google Analytics 4. Client-side tracking pixel — just add your Measurement ID.',
     fields: [
-      { key: 'measurement_id', label: 'Measurement ID', placeholder: 'G-XXXXXXXXXX', help: 'GA4 > Admin > Data Streams' },
-      { key: 'api_secret', label: 'API Secret', placeholder: 'xxxxxxxx', type: 'password', help: 'GA4 > Admin > Data Streams > Measurement Protocol' },
+      { key: 'measurement_id', label: 'Measurement ID', placeholder: 'G-XXXXXXXXXX', help: 'GA4 > Admin > Data Streams > Measurement ID (starts with G-)' },
     ],
     setupSteps: [
-      { step: 1, title: 'Get Measurement ID', description: 'Google Analytics > Admin > Data Streams > Select stream.' },
-      { step: 2, title: 'Create API Secret', description: 'In the stream details, create a Measurement Protocol API secret.' },
+      { step: 1, title: 'Get Measurement ID', description: 'Google Analytics > Admin > Data Streams > Select stream > Copy the Measurement ID (G-XXXXXXX).' },
+      { step: 2, title: 'Paste ID below', description: 'Enter your Measurement ID and enable the integration. The tracking script loads automatically.' },
     ],
   },
   {
-    key: 'facebook_pixel', name: 'Facebook Pixel', category: 'analytics', color: '#1877F2', icon: '📊', status: 'coming_soon',
-    description: 'Track conversions from Facebook/Instagram ads to closed deals.',
+    key: 'facebook_pixel', name: 'Facebook Pixel', category: 'analytics', color: '#1877F2', icon: '📊', status: 'active',
+    description: 'Track page views and conversions from Facebook/Instagram ads. Client-side pixel — just add your Pixel ID.',
     fields: [
-      { key: 'pixel_id', label: 'Pixel ID', placeholder: '1234567890', help: 'Meta Events Manager' },
-      { key: 'access_token', label: 'Conversions API Token', placeholder: 'EAAx...', type: 'password', help: 'Meta Events Manager > Settings' },
+      { key: 'pixel_id', label: 'Pixel ID', placeholder: '1234567890', help: 'Meta Events Manager > Data Sources > Your Pixel ID' },
     ],
     setupSteps: [
-      { step: 1, title: 'Get Pixel ID', description: 'Meta Events Manager > Data Sources > Select your Pixel.' },
-      { step: 2, title: 'Generate token', description: 'Settings > Conversions API > Generate access token.' },
+      { step: 1, title: 'Get Pixel ID', description: 'Meta Events Manager > Data Sources > Select your Pixel > Copy the Pixel ID.' },
+      { step: 2, title: 'Paste ID below', description: 'Enter your Pixel ID and enable the integration. The tracking pixel loads automatically.' },
     ],
   },
 
   // === E-COMMERCE ===
   {
-    key: 'shopify', name: 'Shopify', category: 'ecommerce', color: '#96BF48', icon: '🛍️', status: 'coming_soon',
+    key: 'shopify', name: 'Shopify', category: 'ecommerce', color: '#96BF48', icon: '🛍️', status: 'active',
     description: 'Import Shopify customers as contacts. Track orders as deals.',
     fields: [
       { key: 'shop_url', label: 'Shop URL', placeholder: 'your-store.myshopify.com', help: 'Your Shopify store URL' },
@@ -372,7 +374,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'woocommerce', name: 'WooCommerce', category: 'ecommerce', color: '#96588A', icon: '🛒', status: 'coming_soon',
+    key: 'woocommerce', name: 'WooCommerce', category: 'ecommerce', color: '#96588A', icon: '🛒', status: 'active',
     description: 'Sync WooCommerce customers and orders with your CRM.',
     fields: [
       { key: 'store_url', label: 'Store URL', placeholder: 'https://your-store.com', help: 'Your WordPress site URL' },
@@ -387,7 +389,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === DOCUMENTS ===
   {
-    key: 'docusign', name: 'DocuSign', category: 'documents', color: '#FFCD00', icon: '✍️', status: 'coming_soon',
+    key: 'docusign', name: 'DocuSign', category: 'documents', color: '#FFCD00', icon: '✍️', status: 'active',
     description: 'Send contracts for e-signature. Track document status from deals.',
     fields: [
       { key: 'integration_key', label: 'Integration Key', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', help: 'DocuSign Admin > Integrations' },
@@ -401,7 +403,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'pandadoc', name: 'PandaDoc', category: 'documents', color: '#38B249', icon: '📄', status: 'coming_soon',
+    key: 'pandadoc', name: 'PandaDoc', category: 'documents', color: '#38B249', icon: '📄', status: 'active',
     description: 'Create proposals and contracts from deal data. Track document analytics.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'xxxxxxxx', type: 'password', help: 'PandaDoc > Settings > Integrations > API' },
@@ -413,7 +415,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === EMAIL MARKETING ===
   {
-    key: 'mailchimp', name: 'Mailchimp', category: 'email', color: '#FFE01B', icon: '🐵', status: 'coming_soon',
+    key: 'mailchimp', name: 'Mailchimp', category: 'email', color: '#FFE01B', icon: '🐵', status: 'active',
     description: 'Sync contacts to Mailchimp audiences. Trigger email campaigns from deal stages.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'xxxxxxxx-us1', type: 'password', help: 'Mailchimp > Account > Extras > API keys' },
@@ -427,7 +429,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
 
   // === DEVELOPER ===
   {
-    key: 'webhooks', name: 'Custom Webhooks', category: 'developer', color: '#333333', icon: '🔗', status: 'coming_soon', popular: true,
+    key: 'webhooks', name: 'Custom Webhooks', category: 'developer', color: '#333333', icon: '🔗', status: 'active', popular: true,
     description: 'Send real-time events to any URL. Build custom integrations with any system.',
     fields: [
       { key: 'url', label: 'Webhook URL', placeholder: 'https://your-app.com/webhooks/tracktio', help: 'URL that receives POST requests' },
@@ -437,18 +439,19 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     setupSteps: [
       { step: 1, title: 'Set your URL', description: 'Enter the URL where you want to receive event notifications.' },
       { step: 2, title: 'Choose events', description: 'Select which events trigger webhooks (deals, contacts, quotes, etc.).' },
-      { step: 3, title: 'Verify signature', description: 'Use the signing secret to verify webhook payloads in your app.' },
+      { step: 3, title: 'Manage webhooks', description: 'Manage your webhook subscriptions at /api/v1/webhooks.' },
+      { step: 4, title: 'Verify signature', description: 'Use the signing secret to verify webhook payloads in your app.' },
     ],
   },
   {
-    key: 'rest_api', name: 'REST API', category: 'developer', color: '#10B981', icon: '🛠️', status: 'coming_soon',
+    key: 'rest_api', name: 'REST API', category: 'developer', color: '#10B981', icon: '🛠️', status: 'active',
     description: 'Full API access to your CRM data. Build custom apps and dashboards.',
     fields: [
       { key: 'api_key', label: 'API Key', placeholder: 'Auto-generated', help: 'Use this key in your API requests' },
     ],
     setupSteps: [
       { step: 1, title: 'Generate API key', description: 'Your API key will be generated automatically. Use it in the Authorization header.' },
-      { step: 2, title: 'Read the docs', description: 'API documentation: https://your-domain.com/api/docs' },
+      { step: 2, title: 'Read the docs', description: 'Full API documentation available at /api-docs. All endpoints under /api/v1/* are available.' },
     ],
   },
 ]
