@@ -69,6 +69,11 @@ export interface Contact {
   notes?: string
   custom_fields?: Json
   owner_id?: string
+  engagement_score?: number
+  score_label?: string
+  last_interaction_at?: string
+  interaction_count?: number
+  social_profiles?: { instagram?: string; linkedin?: string; facebook?: string; tiktok?: string }
   created_at: string
   updated_at: string
 }

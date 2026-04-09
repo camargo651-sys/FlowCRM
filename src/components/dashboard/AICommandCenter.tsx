@@ -66,24 +66,27 @@ export default function AICommandCenter() {
 
   const fetchInsights = async () => {
     try {
-      const res = await fetch('/api/ai/insights', { method: 'POST' })
-      if (!res.ok) {
-        // AI not available — try local insights
-        const localRes = await fetch('/api/ai/local-insights', { method: 'POST' })
-        if (localRes.ok) {
-          const localData = await localRes.json()
-          setData(localData)
-          setError('')
-        } else {
-          setError('Unable to load insights')
-        }
+      // Use local rule-based insights by default (0 AI tokens)
+      // Falls back to AI only if local fails
+      const localRes = await fetch('/api/ai/local-insights', { method: 'POST' })
+      if (localRes.ok) {
+        const localData = await localRes.json()
+        setData(localData)
+        setError('')
         setLoading(false)
         setRefreshing(false)
         return
       }
-      const insights = await res.json()
-      setData(insights)
-      setError('')
+
+      // Fallback to AI insights if local fails
+      const res = await fetch('/api/ai/insights', { method: 'POST' })
+      if (res.ok) {
+        const insights = await res.json()
+        setData(insights)
+        setError('')
+      } else {
+        setError('Unable to load insights')
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     }

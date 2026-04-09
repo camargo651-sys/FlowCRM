@@ -1756,4 +1756,7 @@ CREATE POLICY "user push subs" ON push_subscriptions USING (user_id = auth.uid()
 -- MIGRATION: Add notes field to deals
 ALTER TABLE deals ADD COLUMN IF NOT EXISTS notes text;
 
+-- MIGRATION: Add social_profiles to contacts
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS social_profiles jsonb DEFAULT '{}';
+
 -- Done! Your Tracktio database is ready.

@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download, GitMerge } from 'lucide-react'
+import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download, GitMerge, MapPin, ChevronDown, Tag, Flame, Thermometer, Snowflake } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
 import BulkActions from '@/components/shared/BulkActions'
 import ViewToggle from '@/components/shared/ViewToggle'
@@ -29,20 +29,26 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
   const [company, setCompany] = useState('')
   const [jobTitle, setJobTitle] = useState('')
   const [website, setWebsite] = useState('')
+  const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
   const [customValues, setCustomValues] = useState<DbRow>({})
+  const [socialOpen, setSocialOpen] = useState(false)
+  const [socialProfiles, setSocialProfiles] = useState<{ instagram: string; linkedin: string; facebook: string; tiktok: string }>({ instagram: '', linkedin: '', facebook: '', tiktok: '' })
 
   const contactFields = customFields.filter(f => f.entity === 'contact')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const sp = Object.fromEntries(Object.entries(socialProfiles).filter(([, v]) => v))
     onSave({
       type, name, email: email || undefined, phone: phone || undefined,
       company_name: company || undefined, job_title: jobTitle || undefined,
-      website: website || undefined, notes: notes || undefined,
+      website: website || undefined, address: address || undefined,
+      notes: notes || undefined,
       workspace_id: workspaceId,
       custom_fields: Object.keys(customValues).length > 0 ? customValues : undefined,
-    })
+      social_profiles: Object.keys(sp).length > 0 ? sp : undefined,
+    } as Partial<Contact>)
     onClose()
   }
 
@@ -107,6 +113,34 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
             <div className="relative"><Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" />
               <input className="input pl-8" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://acme.com" />
             </div>
+          </div>
+
+          <div>
+            <label className="label">Address</label>
+            <div className="relative"><MapPin className="absolute left-3 top-3 w-3.5 h-3.5 text-surface-400" />
+              <textarea className="input pl-8 resize-none" rows={2} value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St, City, Country" />
+            </div>
+          </div>
+
+          {/* Social Profiles */}
+          <div className="border border-surface-100 rounded-xl overflow-hidden">
+            <button type="button" onClick={() => setSocialOpen(!socialOpen)}
+              className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50 transition-colors">
+              Social Profiles
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', socialOpen && 'rotate-180')} />
+            </button>
+            {socialOpen && (
+              <div className="px-3 pb-3 space-y-2">
+                {(['instagram', 'linkedin', 'facebook', 'tiktok'] as const).map(platform => (
+                  <div key={platform}>
+                    <label className="label capitalize">{platform}</label>
+                    <input className="input" value={socialProfiles[platform]}
+                      onChange={e => setSocialProfiles(p => ({ ...p, [platform]: e.target.value }))}
+                      placeholder={`${platform} URL or username`} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Industry-specific custom fields */}
@@ -181,15 +215,42 @@ export default function ContactsPage() {
   const [selectedPrimary, setSelectedPrimary] = useState<Record<number, string>>({})
   const [merging, setMerging] = useState(false)
   const [findingDups, setFindingDups] = useState(false)
+  const [filterTags, setFilterTags] = useState<string[]>([])
+  const [filterScore, setFilterScore] = useState('all')
+  const [filterOwner, setFilterOwner] = useState('all')
+  const [userId, setUserId] = useState('')
+  const [lastInteractions, setLastInteractions] = useState<Record<string, string>>({})
+  const [showTagFilter, setShowTagFilter] = useState(false)
 
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    setUserId(user.id)
     const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     const { data } = await supabase.from('contacts').select('*').eq('workspace_id', ws.id).order('name')
     setContacts(data || [])
+
+    // Load last interaction per contact
+    if (data && data.length > 0) {
+      const contactIds = data.map(c => c.id)
+      const { data: activities } = await supabase
+        .from('activities')
+        .select('contact_id, created_at')
+        .in('contact_id', contactIds)
+        .order('created_at', { ascending: false })
+      if (activities) {
+        const map: Record<string, string> = {}
+        for (const a of activities) {
+          if (a.contact_id && !map[a.contact_id]) {
+            map[a.contact_id] = a.created_at
+          }
+        }
+        setLastInteractions(map)
+      }
+    }
+
     setLoading(false)
   }, [])
 
@@ -267,10 +328,30 @@ export default function ContactsPage() {
     if (data) { setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name))); toast.success(`${data.name} created`) }
   }
 
+  // Collect unique tags for filter dropdown
+  const allTags = Array.from(new Set(contacts.flatMap(c => c.tags || [])))
+
+  // Helper to format relative time
+  const timeAgo = (dateStr: string): string => {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const seconds = Math.floor(diff / 1000)
+    if (seconds < 60) return 'just now'
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    if (days < 30) return `${days}d ago`
+    return `${Math.floor(days / 30)}mo ago`
+  }
+
   const filtered = contacts.filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase()) || c.company_name?.toLowerCase().includes(search.toLowerCase())
     const matchFilter = filter === 'all' || c.type === filter
-    return matchSearch && matchFilter
+    const matchTags = filterTags.length === 0 || filterTags.some(t => (c.tags || []).includes(t))
+    const matchScore = filterScore === 'all' || (c.score_label || 'cold') === filterScore
+    const matchOwner = filterOwner === 'all' || c.owner_id === userId
+    return matchSearch && matchFilter && matchTags && matchScore && matchOwner
   })
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>

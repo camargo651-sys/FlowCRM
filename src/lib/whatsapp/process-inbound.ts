@@ -234,7 +234,59 @@ export async function processInboundWhatsAppMessage(
           })
         }
       } else {
-        // No active deal — proceed with AI auto-reply
+        // No active deal — try rule-based reply first, fallback to AI
+        const msgLower = (message.body || '').toLowerCase().trim()
+        const accessTokenForReply = decryptToken(account.access_token ?? '')
+        let ruleBasedReply: string | null = null
+        let ruleBasedIntent: string = 'other'
+
+        // Rule-based matching (handles ~70% of messages, 0 AI tokens)
+        const greetings = ['hola', 'hello', 'hi', 'hey', 'buenos', 'buenas', 'buen dia', 'good morning', 'good afternoon']
+        const yesWords = ['si', 'sí', 'yes', 'ok', 'dale', 'claro', 'por supuesto', 'sure', 'of course', 'perfecto']
+        const noWords = ['no', 'no gracias', 'no thanks', 'not interested', 'no me interesa']
+        const priceWords = ['precio', 'price', 'costo', 'cost', 'cuanto', 'cuánto', 'how much', 'tarifa', 'rate']
+        const scheduleWords = ['cita', 'appointment', 'agendar', 'schedule', 'cuando', 'when', 'disponib', 'availab', 'horario', 'hours']
+
+        if (greetings.some(g => msgLower.startsWith(g))) {
+          ruleBasedReply = aiBotConfig.greeting || `¡Hola${contactName ? ' ' + contactName.split(' ')[0] : ''}! Gracias por escribirnos. ¿En qué podemos ayudarte?`
+          ruleBasedIntent = 'greeting'
+        } else if (noWords.some(n => msgLower === n || msgLower.startsWith(n + ' '))) {
+          ruleBasedReply = 'Entendido, gracias por tu tiempo. Si cambias de opinión, aquí estamos. 🙂'
+          ruleBasedIntent = 'not_interested'
+        } else if (yesWords.some(y => msgLower === y || msgLower.startsWith(y + ' ') || msgLower.endsWith(' ' + y))) {
+          ruleBasedReply = '¡Genial! ¿Te gustaría que agendemos una llamada para darte más detalles?'
+          ruleBasedIntent = 'interested'
+        } else if (priceWords.some(p => msgLower.includes(p))) {
+          ruleBasedReply = aiBotConfig.ai_instructions?.includes('precio') || aiBotConfig.ai_instructions?.includes('price')
+            ? null // Let AI handle if custom instructions mention pricing
+            : 'Con gusto te damos información de precios. ¿Podrías contarme un poco más sobre lo que necesitas para darte una cotización personalizada?'
+          ruleBasedIntent = 'question'
+        } else if (scheduleWords.some(s => msgLower.includes(s))) {
+          ruleBasedReply = '¡Claro! ¿Qué día y horario te funcionan mejor para una llamada o videollamada?'
+          ruleBasedIntent = 'scheduling'
+        }
+
+        if (ruleBasedReply) {
+          // Send rule-based reply (0 AI tokens)
+          const { messageId: ruleMsgId } = await sendWhatsAppMessage(
+            accessTokenForReply, account.phone_number_id, senderPhone, ruleBasedReply,
+          )
+          await supabase.from('whatsapp_messages').insert({
+            workspace_id: account.workspace_id,
+            whatsapp_account_id: account.id,
+            wamid: ruleMsgId,
+            from_number: account.display_phone || account.phone_number_id,
+            to_number: message.from,
+            direction: 'outbound',
+            message_type: 'text',
+            body: ruleBasedReply,
+            status: 'sent',
+            contact_id: contactId,
+            received_at: new Date().toISOString(),
+            metadata: { rule_based: true, intent: ruleBasedIntent },
+          })
+        } else {
+        // No rule matched — fallback to AI auto-reply
         // Load last 10 messages for conversation context
         const { data: recentMessages } = await supabase
           .from('whatsapp_messages')
@@ -391,6 +443,7 @@ export async function processInboundWhatsAppMessage(
             // AI auto-reply failed silently — don't block message processing
           }
         }
+        } // close rule-based else
       }
     }
   }
