@@ -5,7 +5,7 @@ import {
   Zap, LayoutDashboard, Users, Kanban, CheckSquare, BarChart2, Settings, LogOut,
   ChevronDown, ChevronRight, Plug, FileText, Package, UserPlus, Receipt, Truck,
   BookOpen, Briefcase, PieChart, ShoppingCart, Shield, Code, CreditCard, Factory,
-  Ticket, FileSignature, CalendarDays, Sparkles, Search, Lock,
+  Ticket, FileSignature, CalendarDays, Sparkles, Search, Lock, Mail,
   ShoppingBag
 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
@@ -114,6 +114,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/pos', icon: ShoppingCart, label: t('nav.pos') },
       { href: '/store-orders', icon: ShoppingBag, label: t('nav.ecommerce') },
       { href: '/leads', icon: Users, label: t('nav.leads') },
+      { href: '/campaigns', icon: Mail, label: 'Campaigns' },
       { href: '/contracts', icon: FileSignature, label: t('nav.contracts') },
       { href: '/tickets', icon: Ticket, label: t('nav.tickets') },
     ]},
