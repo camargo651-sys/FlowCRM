@@ -89,6 +89,7 @@ export interface Deal {
   expected_close_date?: string
   status: 'open' | 'won' | 'lost'
   lost_reason?: string
+  notes?: string
   tags?: string[]
   custom_fields?: Json
   order_index: number

@@ -1,21 +1,30 @@
 'use client'
 import { toast } from 'sonner'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
-import type { Deal, PipelineStage, Contact, DbRow } from '@/types'
+import type { Deal, PipelineStage, Contact, DbRow, Profile } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
+  owner?: { full_name: string } | null
+  next_task?: { title: string; due_date: string } | null
 }
 
 interface Column extends PipelineStage {
   deals: DealWithContact[]
+}
+
+interface FilterState {
+  minValue: string
+  maxValue: string
+  assignedTo: string
+  age: 'all' | 'fresh' | 'aging' | 'stale'
 }
 
 // --- NEW DEAL MODAL ---
@@ -160,9 +169,37 @@ function DealAgeBadge({ days }: { days: number }) {
   return <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', color)}>{days}d</span>
 }
 
+// --- RELATIVE TIME HELPER ---
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// --- ACTIVITY ICON HELPER ---
+function ActivityIcon({ type }: { type: string }) {
+  const cls = 'w-3.5 h-3.5'
+  switch (type) {
+    case 'call': return <Phone className={cn(cls, 'text-blue-500')} />
+    case 'email': return <Mail className={cn(cls, 'text-orange-500')} />
+    case 'meeting': return <Calendar className={cn(cls, 'text-violet-500')} />
+    case 'task': return <CheckSquare className={cn(cls, 'text-emerald-500')} />
+    case 'note': return <FileText className={cn(cls, 'text-surface-500')} />
+    case 'whatsapp': return <MessageCircle className={cn(cls, 'text-green-500')} />
+    default: return <FileText className={cn(cls, 'text-surface-400')} />
+  }
+}
+
 // --- DEAL CARD ---
-function DealCard({ deal, onClick }: { deal: DealWithContact; onClick: () => void }) {
+function DealCard({ deal, teamMembers, onClick }: { deal: DealWithContact; teamMembers: Pick<Profile, 'id' | 'full_name'>[]; onClick: () => void }) {
   const ageDays = getDealAgeDays(deal)
+  const assignee = deal.owner_id ? teamMembers.find(m => m.id === deal.owner_id) : null
 
   return (
     <div onClick={onClick} className="deal-card">
@@ -175,14 +212,21 @@ function DealCard({ deal, onClick }: { deal: DealWithContact; onClick: () => voi
           <DealAgeBadge days={ageDays} />
         </div>
       </div>
-      {deal.contacts?.name && (
-        <p className="text-xs text-surface-400 mb-2.5 flex items-center gap-1">
-          <span className="w-4 h-4 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0">
-            {getInitials(deal.contacts.name)}
+      <div className="flex items-center gap-1.5 mb-2.5">
+        {deal.contacts?.name && (
+          <p className="text-xs text-surface-400 flex items-center gap-1">
+            <span className="w-4 h-4 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+              {getInitials(deal.contacts.name)}
+            </span>
+            {deal.contacts.name}
+          </p>
+        )}
+        {assignee && (
+          <span className="w-4 h-4 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0" title={assignee.full_name}>
+            {getInitials(assignee.full_name)}
           </span>
-          {deal.contacts.name}
-        </p>
-      )}
+        )}
+      </div>
       {/* Show some custom fields on card */}
       {deal.custom_fields && typeof deal.custom_fields === 'object' && Object.keys(deal.custom_fields as object).length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
@@ -192,16 +236,26 @@ function DealCard({ deal, onClick }: { deal: DealWithContact; onClick: () => voi
         </div>
       )}
       <div className="flex items-center justify-between mt-2">
-        {deal.value ? (
-          <span className="text-sm font-bold text-surface-900">{formatCurrency(deal.value)}</span>
-        ) : (
-          <span className="text-xs text-surface-300">No value set</span>
-        )}
-        {deal.expected_close_date && (
-          <span className="text-[10px] text-surface-400 font-medium">
-            {new Date(deal.expected_close_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {deal.value ? (
+            <span className="text-sm font-bold text-surface-900">{formatCurrency(deal.value)}</span>
+          ) : (
+            <span className="text-xs text-surface-300">No value set</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {deal.next_task && (
+            <span className="text-[9px] text-amber-600 flex items-center gap-0.5" title={deal.next_task.title}>
+              <Clock className="w-3 h-3" />
+              {new Date(deal.next_task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+          )}
+          {deal.expected_close_date && (
+            <span className="text-[10px] text-surface-400 font-medium">
+              {new Date(deal.expected_close_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -215,14 +269,52 @@ interface WaMessage {
   received_at: string
 }
 
-function DealWhatsApp({ deal, onClose }: { deal: DealWithContact; onClose: () => void }) {
+interface ActivityItem {
+  id: string
+  type: string
+  title: string
+  created_at: string
+  done: boolean
+  due_date?: string
+}
+
+function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId }: {
+  deal: DealWithContact; onClose: () => void;
+  onUpdateDeal: (dealId: string, updates: Partial<Deal>) => void;
+  teamMembers: Pick<Profile, 'id' | 'full_name'>[];
+  workspaceId: string;
+}) {
   const supabase = createClient()
   const [messages, setMessages] = useState<WaMessage[]>([])
   const [newMsg, setNewMsg] = useState('')
   const [sending, setSending] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(true)
-  const [activeTab, setActiveTab] = useState<'details' | 'whatsapp'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'whatsapp'>('details')
   const [portalCopied, setPortalCopied] = useState(false)
+
+  // Notes state
+  const [notes, setNotes] = useState(deal.notes || '')
+  const [savingNotes, setSavingNotes] = useState(false)
+
+  // Inline edit states
+  const [editingValue, setEditingValue] = useState(false)
+  const [editValue, setEditValue] = useState(String(deal.value || ''))
+  const [editingCloseDate, setEditingCloseDate] = useState(false)
+  const [editCloseDate, setEditCloseDate] = useState(deal.expected_close_date || '')
+  const [editingProbability, setEditingProbability] = useState(false)
+  const [editProbability, setEditProbability] = useState(String(deal.probability ?? ''))
+
+  // Assignment state
+  const [assignedTo, setAssignedTo] = useState(deal.owner_id || '')
+
+  // Activity feed state
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [loadingActivities, setLoadingActivities] = useState(false)
+
+  // Next action state
+  const [nextActionText, setNextActionText] = useState('')
+  const [nextActionDate, setNextActionDate] = useState('')
+  const [creatingAction, setCreatingAction] = useState(false)
 
   useEffect(() => {
     if (!deal.contact_id) { setLoadingMsgs(false); return }
@@ -237,6 +329,82 @@ function DealWhatsApp({ deal, onClose }: { deal: DealWithContact; onClose: () =>
         setLoadingMsgs(false)
       })
   }, [deal.contact_id])
+
+  // Load activities
+  useEffect(() => {
+    setLoadingActivities(true)
+    const q = supabase
+      .from('activities')
+      .select('id, type, title, created_at, done, due_date')
+      .order('created_at', { ascending: false })
+      .limit(15)
+
+    if (deal.contact_id) {
+      q.or(`contact_id.eq.${deal.contact_id},deal_id.eq.${deal.id}`)
+    } else {
+      q.eq('deal_id', deal.id)
+    }
+
+    q.then(({ data }) => {
+      setActivities((data || []) as ActivityItem[])
+      setLoadingActivities(false)
+    })
+  }, [deal.id, deal.contact_id])
+
+  const saveField = async (field: string, value: unknown) => {
+    await supabase.from('deals').update({ [field]: value }).eq('id', deal.id)
+    onUpdateDeal(deal.id, { [field]: value })
+  }
+
+  const handleSaveNotes = async () => {
+    setSavingNotes(true)
+    await saveField('notes', notes)
+    setSavingNotes(false)
+  }
+
+  const handleSaveValue = async () => {
+    setEditingValue(false)
+    const num = editValue ? parseFloat(editValue) : null
+    await saveField('value', num)
+  }
+
+  const handleSaveCloseDate = async (val: string) => {
+    setEditCloseDate(val)
+    setEditingCloseDate(false)
+    await saveField('expected_close_date', val || null)
+  }
+
+  const handleSaveProbability = async () => {
+    setEditingProbability(false)
+    const num = editProbability ? parseInt(editProbability) : null
+    await saveField('probability', num)
+  }
+
+  const handleAssign = async (userId: string) => {
+    setAssignedTo(userId)
+    await saveField('owner_id', userId || null)
+  }
+
+  const handleCreateNextAction = async () => {
+    if (!nextActionText.trim()) return
+    setCreatingAction(true)
+    const { data } = await supabase.from('activities').insert({
+      type: 'task',
+      title: nextActionText.trim(),
+      due_date: nextActionDate || null,
+      contact_id: deal.contact_id || null,
+      deal_id: deal.id,
+      done: false,
+      workspace_id: workspaceId,
+    }).select('id, type, title, created_at, done, due_date').single()
+    if (data) {
+      setActivities(prev => [data as ActivityItem, ...prev])
+      toast.success('Follow-up created')
+    }
+    setNextActionText('')
+    setNextActionDate('')
+    setCreatingAction(false)
+  }
 
   const sendMessage = async () => {
     if (!newMsg.trim() || !deal.contact_id) return
@@ -324,6 +492,12 @@ function DealWhatsApp({ deal, onClose }: { deal: DealWithContact; onClose: () =>
               activeTab === 'details' ? 'border-brand-600 text-brand-600' : 'border-transparent text-surface-400 hover:text-surface-600')}>
             Details
           </button>
+          <button onClick={() => setActiveTab('activity')}
+            className={cn('px-4 py-2 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1',
+              activeTab === 'activity' ? 'border-violet-600 text-violet-600' : 'border-transparent text-surface-400 hover:text-surface-600')}>
+            <CheckSquare className="w-3 h-3" /> Activity
+            {activities.length > 0 && <span className="text-[9px] bg-violet-100 text-violet-700 px-1 rounded-full">{activities.length}</span>}
+          </button>
           {deal.contact_id && (
             <button onClick={() => setActiveTab('whatsapp')}
               className={cn('px-4 py-2 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1',
@@ -336,19 +510,134 @@ function DealWhatsApp({ deal, onClose }: { deal: DealWithContact; onClose: () =>
 
         <div className="modal-body">
           {activeTab === 'details' && (
-            <div className="space-y-3 py-2">
+            <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+              {/* Editable fields grid */}
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Value</p><p className="text-sm font-bold">{deal.value ? formatCurrency(deal.value) : '—'}</p></div>
-                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Status</p><p className="text-sm font-semibold capitalize">{deal.status}</p></div>
-                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Close Date</p><p className="text-sm">{deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : '—'}</p></div>
-                <div><p className="text-[10px] text-surface-400 font-semibold uppercase">Contact</p><p className="text-sm">{deal.contacts?.name || '—'}</p></div>
+                {/* Value - inline edit */}
+                <div>
+                  <p className="text-[10px] text-surface-400 font-semibold uppercase flex items-center gap-1">Value <Pencil className="w-2.5 h-2.5 opacity-50" /></p>
+                  {editingValue ? (
+                    <input type="number" className="input text-sm py-1 mt-0.5" autoFocus value={editValue}
+                      onChange={e => setEditValue(e.target.value)} onBlur={handleSaveValue}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveValue()} />
+                  ) : (
+                    <p className="text-sm font-bold cursor-pointer hover:text-brand-600 transition-colors" onClick={() => setEditingValue(true)}>
+                      {editValue ? formatCurrency(parseFloat(editValue)) : '—'}
+                    </p>
+                  )}
+                </div>
+                {/* Status - read only */}
+                <div>
+                  <p className="text-[10px] text-surface-400 font-semibold uppercase">Status</p>
+                  <p className="text-sm font-semibold capitalize">{deal.status}</p>
+                </div>
+                {/* Close Date - inline edit */}
+                <div>
+                  <p className="text-[10px] text-surface-400 font-semibold uppercase flex items-center gap-1">Close Date <Pencil className="w-2.5 h-2.5 opacity-50" /></p>
+                  {editingCloseDate ? (
+                    <input type="date" className="input text-sm py-1 mt-0.5" autoFocus value={editCloseDate}
+                      onChange={e => handleSaveCloseDate(e.target.value)} onBlur={() => setEditingCloseDate(false)} />
+                  ) : (
+                    <p className="text-sm cursor-pointer hover:text-brand-600 transition-colors" onClick={() => setEditingCloseDate(true)}>
+                      {editCloseDate ? new Date(editCloseDate).toLocaleDateString() : '—'}
+                    </p>
+                  )}
+                </div>
+                {/* Contact - read only */}
+                <div>
+                  <p className="text-[10px] text-surface-400 font-semibold uppercase">Contact</p>
+                  <p className="text-sm">{deal.contacts?.name || '—'}</p>
+                </div>
+                {/* Probability - inline edit */}
+                <div>
+                  <p className="text-[10px] text-surface-400 font-semibold uppercase flex items-center gap-1">Probability <Pencil className="w-2.5 h-2.5 opacity-50" /></p>
+                  {editingProbability ? (
+                    <input type="number" min="0" max="100" className="input text-sm py-1 mt-0.5" autoFocus value={editProbability}
+                      onChange={e => setEditProbability(e.target.value)} onBlur={handleSaveProbability}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveProbability()} />
+                  ) : (
+                    <p className="text-sm cursor-pointer hover:text-brand-600 transition-colors" onClick={() => setEditingProbability(true)}>
+                      {editProbability ? `${editProbability}%` : '—'}
+                    </p>
+                  )}
+                </div>
+                {/* Assigned To */}
+                <div>
+                  <p className="text-[10px] text-surface-400 font-semibold uppercase">Assigned To</p>
+                  <select className="input text-sm py-1 mt-0.5" value={assignedTo} onChange={e => handleAssign(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+                  </select>
+                </div>
               </div>
+
+              {/* Notes */}
+              <div>
+                <p className="text-[10px] text-surface-400 font-semibold uppercase mb-1">Notes</p>
+                <textarea
+                  className="input text-sm min-h-[60px]"
+                  placeholder="Add notes about this deal..."
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  onBlur={handleSaveNotes}
+                />
+                {savingNotes && <p className="text-[9px] text-surface-400 mt-0.5">Saving...</p>}
+              </div>
+
+              {/* Next Action / Follow-up */}
+              <div className="border-t border-surface-100 pt-3">
+                <p className="text-[10px] text-surface-400 font-semibold uppercase mb-2">Next Action</p>
+                <div className="flex gap-2">
+                  <input type="text" className="input text-xs flex-1" placeholder="Follow-up description..."
+                    value={nextActionText} onChange={e => setNextActionText(e.target.value)} />
+                  <input type="date" className="input text-xs w-32" value={nextActionDate}
+                    onChange={e => setNextActionDate(e.target.value)} />
+                  <button onClick={handleCreateNextAction} disabled={creatingAction || !nextActionText.trim()}
+                    className="btn-primary btn-sm disabled:opacity-50">
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
               {deal.contact_id && (
                 <button onClick={shareViaPortal}
                   className="btn-secondary btn-sm w-full flex items-center justify-center gap-1.5 mt-3">
                   <Share2 className="w-3.5 h-3.5" />
                   {portalCopied ? 'URL Copied!' : 'Share via Portal'}
                 </button>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'activity' && (
+            <div className="py-2 max-h-[60vh] overflow-y-auto">
+              {loadingActivities ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="w-6 h-6 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-center">
+                  <CheckSquare className="w-8 h-8 text-surface-300 mb-2" />
+                  <p className="text-xs text-surface-400">No activities yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {activities.map(act => (
+                    <div key={act.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
+                      <div className="mt-0.5"><ActivityIcon type={act.type} /></div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn('text-xs font-medium', act.done && 'line-through text-surface-400')}>{act.title}</p>
+                        <p className="text-[10px] text-surface-400">{relativeTime(act.created_at)}</p>
+                      </div>
+                      {act.due_date && !act.done && (
+                        <span className="text-[9px] text-amber-600 flex items-center gap-0.5 flex-shrink-0">
+                          <Clock className="w-3 h-3" />
+                          {new Date(act.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -440,6 +729,104 @@ function LossReasonModal({ dealTitle, onConfirm, onCancel }: {
   )
 }
 
+// --- CELEBRATION OVERLAY ---
+function CelebrationOverlay({ title, value, onDone }: { title: string; value: number; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2500)
+    return () => clearTimeout(t)
+  }, [onDone])
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 animate-fade-in">
+      <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-8 text-center text-white shadow-2xl max-w-sm mx-4 animate-scale-in">
+        <p className="text-5xl mb-3">&#127881;</p>
+        <p className="text-2xl font-extrabold mb-1">Deal Won!</p>
+        <p className="text-lg font-semibold opacity-90 mb-2">{title}</p>
+        {value > 0 && <p className="text-3xl font-black">{formatCurrency(value)}</p>}
+        <p className="text-sm opacity-75 mt-3">Congratulations!</p>
+      </div>
+    </div>
+  )
+}
+
+// --- TABLE VIEW ---
+function DealsTable({ deals, columns, teamMembers, onSelectDeal }: {
+  deals: DealWithContact[]; columns: Column[]; teamMembers: Pick<Profile, 'id' | 'full_name'>[];
+  onSelectDeal: (d: DealWithContact) => void;
+}) {
+  const [sortField, setSortField] = useState<string>('title')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('asc') }
+  }
+
+  const stageMap = Object.fromEntries(columns.map(c => [c.id, c.name]))
+  const memberMap = Object.fromEntries(teamMembers.map(m => [m.id, m.full_name]))
+
+  const sorted = [...deals].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortField) {
+      case 'title': return dir * a.title.localeCompare(b.title)
+      case 'contact': return dir * ((a.contacts?.name || '').localeCompare(b.contacts?.name || ''))
+      case 'stage': return dir * ((stageMap[a.stage_id] || '').localeCompare(stageMap[b.stage_id] || ''))
+      case 'value': return dir * ((a.value || 0) - (b.value || 0))
+      case 'probability': return dir * ((a.probability ?? 0) - (b.probability ?? 0))
+      case 'age': return dir * (getDealAgeDays(a) - getDealAgeDays(b))
+      case 'close_date': return dir * ((a.expected_close_date || '').localeCompare(b.expected_close_date || ''))
+      case 'assigned': return dir * ((memberMap[a.owner_id || ''] || '').localeCompare(memberMap[b.owner_id || ''] || ''))
+      default: return 0
+    }
+  })
+
+  const SortHeader = ({ field, label }: { field: string; label: string }) => (
+    <th className="text-left text-[10px] font-semibold text-surface-400 uppercase px-3 py-2 cursor-pointer hover:text-surface-600 select-none"
+      onClick={() => toggleSort(field)}>
+      <span className="flex items-center gap-1">{label}
+        {sortField === field && <ArrowUpDown className="w-3 h-3" />}
+      </span>
+    </th>
+  )
+
+  return (
+    <div className="card overflow-hidden flex-1 overflow-y-auto">
+      <table className="w-full">
+        <thead className="border-b border-surface-100 bg-surface-50/50 dark:bg-surface-800/50 sticky top-0">
+          <tr>
+            <SortHeader field="title" label="Title" />
+            <SortHeader field="contact" label="Contact" />
+            <SortHeader field="stage" label="Stage" />
+            <SortHeader field="value" label="Value" />
+            <SortHeader field="probability" label="Prob." />
+            <SortHeader field="age" label="Age" />
+            <SortHeader field="close_date" label="Close Date" />
+            <SortHeader field="assigned" label="Assigned To" />
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(deal => (
+            <tr key={deal.id} onClick={() => onSelectDeal(deal)}
+              className="border-b border-surface-100 hover:bg-surface-50 dark:hover:bg-surface-800 cursor-pointer transition-colors">
+              <td className="px-3 py-2 text-xs font-semibold text-surface-800">{deal.title}</td>
+              <td className="px-3 py-2 text-xs text-surface-500">{deal.contacts?.name || '—'}</td>
+              <td className="px-3 py-2 text-xs text-surface-500">{stageMap[deal.stage_id] || '—'}</td>
+              <td className="px-3 py-2 text-xs font-bold text-surface-800">{deal.value ? formatCurrency(deal.value) : '—'}</td>
+              <td className="px-3 py-2 text-xs text-surface-500">{deal.probability != null ? `${deal.probability}%` : '—'}</td>
+              <td className="px-3 py-2"><DealAgeBadge days={getDealAgeDays(deal)} /></td>
+              <td className="px-3 py-2 text-xs text-surface-500">{deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
+              <td className="px-3 py-2 text-xs text-surface-500">{memberMap[deal.owner_id || ''] || '—'}</td>
+            </tr>
+          ))}
+          {sorted.length === 0 && (
+            <tr><td colSpan={8} className="px-3 py-8 text-center text-xs text-surface-400">No deals match your filters</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // --- MAIN PAGE ---
 interface PipelineInfo {
   id: string
@@ -457,6 +844,7 @@ export default function PipelinePage() {
   const [activePipelineId, setActivePipelineId] = useState<string>('')
   const [columns, setColumns] = useState<Column[]>([])
   const [contacts, setContacts] = useState<Pick<Contact, 'id' | 'name' | 'email'>[]>([])
+  const [teamMembers, setTeamMembers] = useState<Pick<Profile, 'id' | 'full_name'>[]>([])
   const [workspaceId, setWorkspaceId] = useState<string>('')
   const [showNewDeal, setShowNewDeal] = useState(false)
   const [selectedDeal, setSelectedDeal] = useState<DealWithContact | null>(null)
@@ -465,6 +853,16 @@ export default function PipelinePage() {
   const [lossReasonPrompt, setLossReasonPrompt] = useState<{ dealId: string; dealTitle: string; stageId: string } | null>(null)
   const [wonThisMonthValue, setWonThisMonthValue] = useState(0)
   const [mobileStage, setMobileStage] = useState<string | null>(null)
+
+  // New states for features 6, 7, 8
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<FilterState>({ minValue: '', maxValue: '', assignedTo: '', age: 'all' })
+  const [celebration, setCelebration] = useState<{ title: string; value: number } | null>(null)
+
+  const activeFilterCount = [
+    filters.minValue, filters.maxValue, filters.assignedTo, filters.age !== 'all' ? 'yes' : '',
+  ].filter(Boolean).length
 
   const loadData = useCallback(async (pipelineId?: string) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -487,22 +885,48 @@ export default function PipelinePage() {
 
     const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
-    const [stagesRes, dealsRes, contactsRes, wonThisMonthRes] = await Promise.all([
+    const [stagesRes, dealsRes, contactsRes, wonThisMonthRes, profilesRes] = await Promise.all([
       supabase.from('pipeline_stages').select('*').eq('pipeline_id', activeId).order('order_index'),
       supabase.from('deals').select('*, contacts(name, email)').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'open').order('order_index'),
       supabase.from('contacts').select('id, name, email').eq('workspace_id', ws.id).order('name'),
       supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'won').gte('updated_at', firstOfMonth),
+      supabase.from('profiles').select('id, full_name').eq('workspace_id', ws.id),
     ])
 
     const stages: PipelineStage[] = stagesRes.data || []
     const deals: DealWithContact[] = dealsRes.data || []
     setContacts(contactsRes.data || [])
+    setTeamMembers((profilesRes.data || []) as Pick<Profile, 'id' | 'full_name'>[])
     const wonDeals: { id: string; value: number }[] = wonThisMonthRes.data || []
     setWonThisMonthValue(wonDeals.reduce((s, d) => s + (d.value || 0), 0))
 
+    // Load next tasks for deals
+    const dealIds = deals.map(d => d.id)
+    let nextTaskMap: Record<string, { title: string; due_date: string }> = {}
+    if (dealIds.length > 0) {
+      const { data: tasks } = await supabase
+        .from('activities')
+        .select('deal_id, title, due_date')
+        .in('deal_id', dealIds)
+        .eq('done', false)
+        .not('due_date', 'is', null)
+        .order('due_date', { ascending: true })
+
+      if (tasks) {
+        for (const task of tasks) {
+          if (task.deal_id && !nextTaskMap[task.deal_id]) {
+            nextTaskMap[task.deal_id] = { title: task.title, due_date: task.due_date! }
+          }
+        }
+      }
+    }
+
     setColumns(stages.map(stage => ({
       ...stage,
-      deals: deals.filter(d => d.stage_id === stage.id),
+      deals: deals.filter(d => d.stage_id === stage.id).map(d => ({
+        ...d,
+        next_task: nextTaskMap[d.id] || null,
+      })),
     })))
     setLoading(false)
   }, [])
@@ -522,6 +946,15 @@ export default function PipelinePage() {
         col.id === dealData.stage_id ? { ...col, deals: [...col.deals, data] } : col
       ))
     }
+  }
+
+  const handleUpdateDeal = (dealId: string, updates: Partial<Deal>) => {
+    setColumns(prev => prev.map(col => ({
+      ...col,
+      deals: col.deals.map(d => d.id === dealId ? { ...d, ...updates } : d),
+    })))
+    // Also update selectedDeal if it matches
+    setSelectedDeal(prev => prev && prev.id === dealId ? { ...prev, ...updates } : prev)
   }
 
   const handleMoveDeal = async (dealId: string, newStageId: string) => {
@@ -563,7 +996,10 @@ export default function PipelinePage() {
       }))
     })
 
-    if (targetStage.is_won) toast.success(`Deal won! 🎉`)
+    if (targetStage.is_won) {
+      setCelebration({ title: deal.title, value: deal.value || 0 })
+      toast.success(`Deal won!`)
+    }
   }
 
   const handleLossConfirm = async (reason: string) => {
@@ -591,10 +1027,25 @@ export default function PipelinePage() {
 
   const filteredColumns = columns.map(col => ({
     ...col,
-    deals: col.deals.filter(d =>
-      !search || d.title.toLowerCase().includes(search.toLowerCase()) ||
-      d.contacts?.name?.toLowerCase().includes(search.toLowerCase())
-    ),
+    deals: col.deals.filter(d => {
+      // Text search
+      if (search && !d.title.toLowerCase().includes(search.toLowerCase()) &&
+        !d.contacts?.name?.toLowerCase().includes(search.toLowerCase())) return false
+      // Min value
+      if (filters.minValue && (d.value || 0) < parseFloat(filters.minValue)) return false
+      // Max value
+      if (filters.maxValue && (d.value || 0) > parseFloat(filters.maxValue)) return false
+      // Assigned to
+      if (filters.assignedTo && d.owner_id !== filters.assignedTo) return false
+      // Age filter
+      if (filters.age !== 'all') {
+        const days = getDealAgeDays(d)
+        if (filters.age === 'fresh' && days >= 7) return false
+        if (filters.age === 'aging' && (days < 7 || days > 14)) return false
+        if (filters.age === 'stale' && days <= 14) return false
+      }
+      return true
+    }),
   }))
 
   const allOpenDeals = columns.flatMap(c => c.deals)
@@ -620,11 +1071,70 @@ export default function PipelinePage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* View toggle */}
+          <div className="flex items-center bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">
+            <button onClick={() => setViewMode('kanban')}
+              className={cn('px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1',
+                viewMode === 'kanban' ? 'bg-white dark:bg-surface-700 text-surface-900 shadow-sm' : 'text-surface-400 hover:text-surface-600')}>
+              <LayoutGrid className="w-3.5 h-3.5" /> Kanban
+            </button>
+            <button onClick={() => setViewMode('table')}
+              className={cn('px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1',
+                viewMode === 'table' ? 'bg-white dark:bg-surface-700 text-surface-900 shadow-sm' : 'text-surface-400 hover:text-surface-600')}>
+              <Table2 className="w-3.5 h-3.5" /> Table
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input className="input pl-9 w-full sm:w-56 text-xs"
               placeholder={`Search ${template.dealLabel.plural.toLowerCase()}...`}
               value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          {/* Filters button */}
+          <div className="relative">
+            <button onClick={() => setShowFilters(!showFilters)}
+              className={cn('btn-secondary btn-sm flex items-center gap-1', showFilters && 'ring-2 ring-brand-300')}>
+              <Filter className="w-3.5 h-3.5" /> Filters
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-brand-600 text-white text-[9px] flex items-center justify-center font-bold">{activeFilterCount}</span>
+              )}
+            </button>
+            {showFilters && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-xl shadow-xl p-3 w-64 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-surface-400 font-semibold uppercase">Min Value</label>
+                    <input type="number" className="input text-xs" placeholder="0" value={filters.minValue}
+                      onChange={e => setFilters(f => ({ ...f, minValue: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-surface-400 font-semibold uppercase">Max Value</label>
+                    <input type="number" className="input text-xs" placeholder="Any" value={filters.maxValue}
+                      onChange={e => setFilters(f => ({ ...f, maxValue: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-surface-400 font-semibold uppercase">Assigned To</label>
+                  <select className="input text-xs" value={filters.assignedTo}
+                    onChange={e => setFilters(f => ({ ...f, assignedTo: e.target.value }))}>
+                    <option value="">All</option>
+                    {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-surface-400 font-semibold uppercase">Age</label>
+                  <select className="input text-xs" value={filters.age}
+                    onChange={e => setFilters(f => ({ ...f, age: e.target.value as FilterState['age'] }))}>
+                    <option value="all">All</option>
+                    <option value="fresh">Fresh (&lt;7d)</option>
+                    <option value="aging">Aging (7-14d)</option>
+                    <option value="stale">Stale (&gt;14d)</option>
+                  </select>
+                </div>
+                <button onClick={() => { setFilters({ minValue: '', maxValue: '', assignedTo: '', age: 'all' }); setShowFilters(false) }}
+                  className="btn-secondary btn-sm w-full text-xs">Clear Filters</button>
+              </div>
+            )}
           </div>
           <button onClick={() => setShowNewDeal(true)} className="btn-primary btn-sm">
             <Plus className="w-3.5 h-3.5" /> New {template.dealLabel.singular}
@@ -696,8 +1206,18 @@ export default function PipelinePage() {
         </div>
       )}
 
+      {/* TABLE VIEW */}
+      {columns.length > 0 && viewMode === 'table' && (
+        <DealsTable
+          deals={filteredColumns.flatMap(c => c.deals)}
+          columns={filteredColumns}
+          teamMembers={teamMembers}
+          onSelectDeal={setSelectedDeal}
+        />
+      )}
+
       {/* Mobile Accordion View */}
-      {columns.length > 0 && (
+      {columns.length > 0 && viewMode === 'kanban' && (
         <div className="md:hidden space-y-2 pb-4 flex-1 overflow-y-auto">
           {filteredColumns.map(col => {
             const colValue = col.deals.reduce((s, d) => s + (d.value || 0), 0)
@@ -726,7 +1246,7 @@ export default function PipelinePage() {
                       </div>
                     ) : (
                       col.deals.map(deal => (
-                        <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} />
+                        <DealCard key={deal.id} deal={deal} teamMembers={teamMembers} onClick={() => setSelectedDeal(deal)} />
                       ))
                     )}
                     <button onClick={() => setShowNewDeal(true)}
@@ -742,7 +1262,7 @@ export default function PipelinePage() {
       )}
 
       {/* Desktop Kanban with drag-drop */}
-      {columns.length > 0 && (
+      {columns.length > 0 && viewMode === 'kanban' && (
         <DragDropContext onDragEnd={(result: DropResult) => {
           if (!result.destination) return
           const dealId = result.draggableId
@@ -775,7 +1295,7 @@ export default function PipelinePage() {
                             {(provided, snapshot) => (
                               <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
                                 className={cn(snapshot.isDragging && 'opacity-80 rotate-1 scale-105')}>
-                                <DealCard deal={deal} onClick={() => setSelectedDeal(deal)} />
+                                <DealCard deal={deal} teamMembers={teamMembers} onClick={() => setSelectedDeal(deal)} />
                               </div>
                             )}
                           </Draggable>
@@ -814,7 +1334,13 @@ export default function PipelinePage() {
       )}
 
       {selectedDeal && (
-        <DealWhatsApp deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
+        <DealWhatsApp
+          deal={selectedDeal}
+          onClose={() => setSelectedDeal(null)}
+          onUpdateDeal={handleUpdateDeal}
+          teamMembers={teamMembers}
+          workspaceId={workspaceId}
+        />
       )}
 
       {lossReasonPrompt && (
@@ -822,6 +1348,14 @@ export default function PipelinePage() {
           dealTitle={lossReasonPrompt.dealTitle}
           onConfirm={handleLossConfirm}
           onCancel={() => setLossReasonPrompt(null)}
+        />
+      )}
+
+      {celebration && (
+        <CelebrationOverlay
+          title={celebration.title}
+          value={celebration.value}
+          onDone={() => setCelebration(null)}
         />
       )}
     </div>

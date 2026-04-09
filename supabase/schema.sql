@@ -1753,4 +1753,7 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "user push subs" ON push_subscriptions USING (user_id = auth.uid());
 
+-- MIGRATION: Add notes field to deals
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS notes text;
+
 -- Done! Your Tracktio database is ready.
