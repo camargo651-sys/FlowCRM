@@ -7,7 +7,9 @@ import { useI18n } from '@/lib/i18n/context'
 import { cn } from '@/lib/utils'
 import {
   MessageCircle, Send, Search, Phone, User, Check, CheckCircle2,
-  Zap, ArrowLeft, UserCircle, ChevronDown,
+  Zap, ArrowLeft, UserCircle, ChevronDown, Star, Image, Mic, FileText,
+  MapPin, X, DollarSign, Edit3, Mail, Building, Tag, ExternalLink,
+  ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
@@ -48,6 +50,24 @@ interface TeamMember {
 interface QuickReply {
   label: string
   text: string
+}
+
+interface ContactInfo {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  company_name?: string
+  score_label?: string
+  tags?: string[]
+}
+
+interface DealInfo {
+  id: string
+  title: string
+  value?: number
+  currency: string
+  status: string
 }
 
 const DEFAULT_QUICK_REPLIES: QuickReply[] = [
@@ -94,6 +114,101 @@ function InitialsAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs
   )
 }
 
+// #3 Media message card component
+function MediaMessageCard({ msg }: { msg: Message }) {
+  const type = msg.message_type
+  const caption = msg.body
+
+  if (type === 'image') {
+    return (
+      <div className="rounded-lg bg-surface-100 border border-surface-200 p-3 min-w-[180px]">
+        <div className="flex items-center justify-center h-28 bg-surface-200 rounded-md mb-1">
+          <Image className="w-8 h-8 text-surface-400" />
+        </div>
+        {caption && <p className="text-xs mt-1 whitespace-pre-wrap break-words">{caption}</p>}
+      </div>
+    )
+  }
+
+  if (type === 'audio' || type === 'voice') {
+    return (
+      <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center gap-3 min-w-[200px]">
+        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+          <Mic className="w-5 h-5 text-green-600" />
+        </div>
+        <div className="flex-1">
+          <div className="h-2 bg-green-200 rounded-full w-full" />
+          <p className="text-[10px] text-green-600 mt-1">Audio message</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'document') {
+    return (
+      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 flex items-center gap-3 min-w-[180px]">
+        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <FileText className="w-5 h-5 text-blue-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-blue-800 truncate">{caption || 'Document'}</p>
+          <p className="text-[10px] text-blue-500 mt-0.5">Document attached</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'location') {
+    return (
+      <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 flex items-center gap-2 min-w-[160px]">
+        <MapPin className="w-5 h-5 text-orange-500 flex-shrink-0" />
+        <div>
+          <p className="text-xs font-medium text-orange-800">Location shared</p>
+          {caption && <p className="text-[10px] text-orange-600 mt-0.5">{caption}</p>}
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'video') {
+    return (
+      <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 min-w-[180px]">
+        <div className="flex items-center justify-center h-28 bg-purple-100 rounded-md mb-1">
+          <span className="text-2xl">&#9654;</span>
+        </div>
+        {caption && <p className="text-xs mt-1 whitespace-pre-wrap break-words">{caption}</p>}
+      </div>
+    )
+  }
+
+  if (type === 'sticker') {
+    return (
+      <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 flex items-center gap-2 min-w-[120px]">
+        <Image className="w-5 h-5 text-yellow-600" />
+        <p className="text-xs text-yellow-700">Sticker</p>
+      </div>
+    )
+  }
+
+  // Default: text or unknown types — return null to fall through to normal rendering
+  return null
+}
+
+// Starred messages localStorage key
+const STARRED_STORAGE_KEY = 'wa_starred_messages'
+
+function loadStarredMessages(): Set<string> {
+  try {
+    const stored = localStorage.getItem(STARRED_STORAGE_KEY)
+    if (stored) return new Set(JSON.parse(stored))
+  } catch { /* ignore */ }
+  return new Set()
+}
+
+function saveStarredMessages(set: Set<string>) {
+  localStorage.setItem(STARRED_STORAGE_KEY, JSON.stringify(Array.from(set)))
+}
+
 export default function WhatsAppInboxPage() {
   const supabase = createClient()
   const { t } = useI18n()
@@ -118,14 +233,53 @@ export default function WhatsAppInboxPage() {
   const [showAssignDropdown, setShowAssignDropdown] = useState(false)
   const [mobileShowChat, setMobileShowChat] = useState(false)
 
+  // #1 Contact info panel
+  const [showContactInfo, setShowContactInfo] = useState(false)
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null)
+
+  // #2 Search within conversation
+  const [chatSearch, setChatSearch] = useState('')
+  const [showChatSearch, setShowChatSearch] = useState(false)
+
+  // #4 Starred messages
+  const [starredMessages, setStarredMessages] = useState<Set<string>>(new Set())
+  const [showStarredOnly, setShowStarredOnly] = useState(false)
+
+  // #5 Deal link
+  const [contactDeals, setContactDeals] = useState<DealInfo[]>([])
+
+  // #6 Bulk resolve
+  const [editMode, setEditMode] = useState(false)
+  const [selectedConvos, setSelectedConvos] = useState<Set<string>>(new Set())
+
+  // #8 Quick actions modals
+  const [showDealModal, setShowDealModal] = useState(false)
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [dealForm, setDealForm] = useState({ title: '', value: '' })
+  const [noteForm, setNoteForm] = useState({ title: '', notes: '' })
+  const [savingAction, setSavingAction] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const quickRepliesRef = useRef<HTMLDivElement>(null)
   const assignDropdownRef = useRef<HTMLDivElement>(null)
+  const contactInfoRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
+
+  // Load starred messages from localStorage
+  useEffect(() => {
+    setStarredMessages(loadStarredMessages())
+  }, [])
+
+  // #7 Unread count badge — update document title
+  const totalUnread = conversations.reduce((sum, c) => sum + c.unread_count, 0)
+  useEffect(() => {
+    document.title = totalUnread > 0 ? `(${totalUnread}) WA Inbox — Tracktio` : 'WA Inbox — Tracktio'
+    return () => { document.title = 'Tracktio' }
+  }, [totalUnread])
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -135,6 +289,9 @@ export default function WhatsAppInboxPage() {
       }
       if (assignDropdownRef.current && !assignDropdownRef.current.contains(e.target as Node)) {
         setShowAssignDropdown(false)
+      }
+      if (contactInfoRef.current && !contactInfoRef.current.contains(e.target as Node)) {
+        setShowContactInfo(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -276,6 +433,34 @@ export default function WhatsAppInboxPage() {
       setLoadingMessages(false)
     }
     loadMessages()
+  }, [selectedContactId, workspaceId])
+
+  // #1 Load contact info when selecting a conversation
+  useEffect(() => {
+    if (!selectedContactId || !workspaceId) {
+      setContactInfo(null)
+      setContactDeals([])
+      return
+    }
+    const loadContactInfo = async () => {
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, name, email, phone, company_name, score_label, tags')
+        .eq('id', selectedContactId)
+        .single()
+      if (data) setContactInfo(data as ContactInfo)
+    }
+    // #5 Load deals for contact
+    const loadDeals = async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('id, title, value, currency, status')
+        .eq('contact_id', selectedContactId)
+        .eq('status', 'open')
+      if (data) setContactDeals(data as DealInfo[])
+    }
+    loadContactInfo()
+    loadDeals()
   }, [selectedContactId, workspaceId])
 
   // Scroll to bottom when messages change
@@ -437,6 +622,115 @@ export default function WhatsAppInboxPage() {
     }
   }
 
+  // #4 Toggle star on a message
+  const toggleStar = (msgId: string) => {
+    setStarredMessages(prev => {
+      const next = new Set(prev)
+      if (next.has(msgId)) next.delete(msgId)
+      else next.add(msgId)
+      saveStarredMessages(next)
+      return next
+    })
+  }
+
+  // #6 Bulk resolve
+  const handleBulkResolve = async () => {
+    if (selectedConvos.size === 0) return
+    const toResolve = conversations.filter(c => selectedConvos.has(c.contact_id) && !c.resolved)
+    // Optimistic
+    setConversations(prev =>
+      prev.map(c => selectedConvos.has(c.contact_id) ? { ...c, resolved: true } : c)
+    )
+    for (const convo of toResolve) {
+      if (convo.wa_contact_id) {
+        await supabase.from('whatsapp_contacts').update({ status: 'resolved' }).eq('id', convo.wa_contact_id)
+      } else {
+        await supabase.from('whatsapp_contacts').update({ status: 'resolved' }).eq('workspace_id', workspaceId!).eq('contact_id', convo.contact_id)
+      }
+    }
+    toast.success(`Resolved ${toResolve.length} conversation(s)`)
+    setSelectedConvos(new Set())
+    setEditMode(false)
+  }
+
+  // #8 Create deal quick action
+  const handleCreateDeal = async () => {
+    if (!selectedContactId || !workspaceId || !dealForm.title.trim()) return
+    setSavingAction(true)
+    try {
+      // Get first pipeline
+      const { data: pipeline } = await supabase.from('pipelines').select('id').eq('workspace_id', workspaceId).limit(1).single()
+      if (!pipeline) { toast.error('No pipeline found'); return }
+      // Get first stage
+      const { data: stage } = await supabase.from('pipeline_stages').select('id').eq('pipeline_id', pipeline.id).order('order_index').limit(1).single()
+      if (!stage) { toast.error('No pipeline stage found'); return }
+
+      await supabase.from('deals').insert({
+        workspace_id: workspaceId,
+        pipeline_id: pipeline.id,
+        stage_id: stage.id,
+        title: dealForm.title.trim(),
+        value: dealForm.value ? parseFloat(dealForm.value) : null,
+        contact_id: selectedContactId,
+        owner_id: currentUserId,
+        status: 'open',
+        currency: 'USD',
+      })
+      toast.success('Deal created')
+      setShowDealModal(false)
+      setDealForm({ title: '', value: '' })
+      // Refresh deals
+      const { data: deals } = await supabase.from('deals').select('id, title, value, currency, status').eq('contact_id', selectedContactId).eq('status', 'open')
+      if (deals) setContactDeals(deals as DealInfo[])
+    } catch {
+      toast.error('Failed to create deal')
+    } finally {
+      setSavingAction(false)
+    }
+  }
+
+  // #8 Add note quick action
+  const handleAddNote = async () => {
+    if (!selectedContactId || !workspaceId || !noteForm.title.trim()) return
+    setSavingAction(true)
+    try {
+      await supabase.from('activities').insert({
+        workspace_id: workspaceId,
+        type: 'note',
+        title: noteForm.title.trim(),
+        notes: noteForm.notes.trim() || null,
+        contact_id: selectedContactId,
+        owner_id: currentUserId,
+        done: true,
+      })
+      toast.success('Note added')
+      setShowNoteModal(false)
+      setNoteForm({ title: '', notes: '' })
+    } catch {
+      toast.error('Failed to add note')
+    } finally {
+      setSavingAction(false)
+    }
+  }
+
+  // #8 Log call quick action
+  const handleLogCall = async () => {
+    if (!selectedContactId || !workspaceId) return
+    try {
+      await supabase.from('activities').insert({
+        workspace_id: workspaceId,
+        type: 'call',
+        title: `Call with ${selectedConvo?.contact_name || 'contact'}`,
+        contact_id: selectedContactId,
+        owner_id: currentUserId,
+        done: true,
+      })
+      toast.success('Call logged')
+    } catch {
+      toast.error('Failed to log call')
+    }
+  }
+
   // Filter conversations
   const filteredConversations = conversations.filter(c => {
     // Search filter
@@ -451,6 +745,18 @@ export default function WhatsAppInboxPage() {
     if (assignFilter === 'unassigned' && c.assigned_to !== null) return false
     return true
   })
+
+  // #2 Chat search — filter messages
+  const chatSearchLower = chatSearch.toLowerCase()
+  const chatSearchMatches = chatSearch
+    ? messages.filter(m => m.body?.toLowerCase().includes(chatSearchLower))
+    : []
+  const chatSearchMatchIds = new Set(chatSearchMatches.map(m => m.id))
+
+  // #4 Filter for starred only
+  const displayMessages = showStarredOnly
+    ? messages.filter(m => starredMessages.has(m.id))
+    : messages
 
   const selectedConvo = conversations.find(c => c.contact_id === selectedContactId)
   const assignedMember = selectedConvo?.assigned_to ? teamMembers.find(m => m.id === selectedConvo.assigned_to) : null
@@ -477,10 +783,29 @@ export default function WhatsAppInboxPage() {
       )}>
         {/* Header */}
         <div className="px-4 py-3 border-b border-surface-100">
-          <h1 className="text-lg font-bold text-surface-900 flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-green-600" />
-            {t('nav.wa_inbox')}
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-bold text-surface-900 flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-green-600" />
+              {t('nav.wa_inbox')}
+              {/* #7 Unread count badge */}
+              {totalUnread > 0 && (
+                <span className="bg-red-500 text-white text-[11px] font-bold rounded-full px-2 py-0.5 ml-1">
+                  {totalUnread > 99 ? '99+' : totalUnread} unread
+                </span>
+              )}
+            </h1>
+            {/* #6 Edit mode toggle */}
+            <button
+              onClick={() => { setEditMode(!editMode); setSelectedConvos(new Set()) }}
+              className={cn(
+                'text-xs px-2 py-1 rounded-lg border transition-colors',
+                editMode ? 'bg-brand-600 text-white border-brand-600' : 'border-surface-200 text-surface-500 hover:bg-surface-50'
+              )}
+            >
+              <Edit3 className="w-3.5 h-3.5 inline mr-1" />
+              {editMode ? 'Done' : 'Edit'}
+            </button>
+          </div>
           <div className="mt-2 relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
             <input
@@ -537,6 +862,15 @@ export default function WhatsAppInboxPage() {
                 <button
                   key={convo.contact_id}
                   onClick={() => {
+                    if (editMode) {
+                      setSelectedConvos(prev => {
+                        const next = new Set(prev)
+                        if (next.has(convo.contact_id)) next.delete(convo.contact_id)
+                        else next.add(convo.contact_id)
+                        return next
+                      })
+                      return
+                    }
                     setSelectedContactId(convo.contact_id)
                     setMobileShowChat(true)
                     // Clear unread
@@ -546,9 +880,23 @@ export default function WhatsAppInboxPage() {
                   }}
                   className={cn(
                     'w-full text-left px-4 py-3 border-b border-surface-50 hover:bg-surface-50 transition-colors flex gap-3 group',
-                    selectedContactId === convo.contact_id && 'bg-brand-50 hover:bg-brand-50'
+                    selectedContactId === convo.contact_id && !editMode && 'bg-brand-50 hover:bg-brand-50',
+                    editMode && selectedConvos.has(convo.contact_id) && 'bg-brand-50'
                   )}
                 >
+                  {/* #6 Checkbox in edit mode */}
+                  {editMode && (
+                    <div className="flex items-center">
+                      <div className={cn(
+                        'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+                        selectedConvos.has(convo.contact_id)
+                          ? 'bg-brand-600 border-brand-600 text-white'
+                          : 'border-surface-300 bg-white'
+                      )}>
+                        {selectedConvos.has(convo.contact_id) && <Check className="w-3 h-3" />}
+                      </div>
+                    </div>
+                  )}
                   {/* Avatar */}
                   <div className="relative w-10 h-10 rounded-full bg-surface-100 flex items-center justify-center flex-shrink-0">
                     <User className="w-5 h-5 text-surface-400" />
@@ -568,18 +916,20 @@ export default function WhatsAppInboxPage() {
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className="text-[11px] text-surface-400">{relativeTime(convo.last_message_at)}</span>
                         {/* Resolve button */}
-                        <button
-                          onClick={(e) => handleToggleResolve(convo, e)}
-                          title={convo.resolved ? 'Reopen conversation' : 'Mark as resolved'}
-                          className={cn(
-                            'p-0.5 rounded transition-colors',
-                            convo.resolved
-                              ? 'text-green-500 hover:text-green-700'
-                              : 'text-surface-300 opacity-0 group-hover:opacity-100 hover:text-green-500'
-                          )}
-                        >
-                          {convo.resolved ? <CheckCircle2 className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-                        </button>
+                        {!editMode && (
+                          <button
+                            onClick={(e) => handleToggleResolve(convo, e)}
+                            title={convo.resolved ? 'Reopen conversation' : 'Mark as resolved'}
+                            className={cn(
+                              'p-0.5 rounded transition-colors',
+                              convo.resolved
+                                ? 'text-green-500 hover:text-green-700'
+                                : 'text-surface-300 opacity-0 group-hover:opacity-100 hover:text-green-500'
+                            )}
+                          >
+                            {convo.resolved ? <CheckCircle2 className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-0.5">
@@ -599,6 +949,19 @@ export default function WhatsAppInboxPage() {
             })
           )}
         </div>
+
+        {/* #6 Bulk resolve footer */}
+        {editMode && selectedConvos.size > 0 && (
+          <div className="px-4 py-3 border-t border-surface-200 bg-surface-50">
+            <button
+              onClick={handleBulkResolve}
+              className="btn-primary w-full text-sm py-2 flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Resolve Selected ({selectedConvos.size})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* RIGHT PANEL — Chat Thread */}
@@ -615,91 +978,256 @@ export default function WhatsAppInboxPage() {
         ) : (
           <>
             {/* Chat header */}
-            <div className="px-4 md:px-5 py-3 border-b border-surface-100 flex items-center gap-3 flex-shrink-0">
-              {/* Mobile back button */}
-              <button
-                onClick={() => {
-                  setMobileShowChat(false)
-                  setSelectedContactId(null)
-                }}
-                className="md:hidden p-1 -ml-1 text-surface-500 hover:text-surface-700"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-
-              <div className="w-9 h-9 rounded-full bg-surface-100 flex items-center justify-center">
-                <User className="w-4.5 h-4.5 text-surface-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-surface-900 truncate">{selectedConvo?.contact_name}</p>
-                {selectedConvo?.contact_phone && (
-                  <p className="text-xs text-surface-400 flex items-center gap-1">
-                    <Phone className="w-3 h-3" /> {selectedConvo.contact_phone}
-                  </p>
-                )}
-              </div>
-
-              {/* Resolve button in header */}
-              {selectedConvo && (
+            <div className="px-4 md:px-5 py-3 border-b border-surface-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                {/* Mobile back button */}
                 <button
-                  onClick={(e) => handleToggleResolve(selectedConvo, e)}
-                  className={cn(
-                    'text-xs px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5',
-                    selectedConvo.resolved
-                      ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-                      : 'border-surface-200 text-surface-500 hover:bg-surface-50 hover:text-green-600'
-                  )}
+                  onClick={() => {
+                    setMobileShowChat(false)
+                    setSelectedContactId(null)
+                  }}
+                  className="md:hidden p-1 -ml-1 text-surface-500 hover:text-surface-700"
                 >
-                  {selectedConvo.resolved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                  {selectedConvo.resolved ? 'Resolved' : 'Resolve'}
+                  <ArrowLeft className="w-5 h-5" />
                 </button>
-              )}
 
-              {/* Assignment dropdown */}
-              <div className="relative" ref={assignDropdownRef}>
-                <button
-                  onClick={() => setShowAssignDropdown(!showAssignDropdown)}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-50 transition-colors flex items-center gap-1.5"
-                >
-                  {assignedMember ? (
-                    <>
-                      <InitialsAvatar name={assignedMember.full_name} size="xs" />
-                      <span className="hidden sm:inline max-w-[80px] truncate">{assignedMember.full_name}</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserCircle className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Assign</span>
-                    </>
+                <div className="w-9 h-9 rounded-full bg-surface-100 flex items-center justify-center">
+                  <User className="w-4.5 h-4.5 text-surface-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-surface-900 truncate">{selectedConvo?.contact_name}</p>
+                  {selectedConvo?.contact_phone && (
+                    <p className="text-xs text-surface-400 flex items-center gap-1">
+                      <Phone className="w-3 h-3" /> {selectedConvo.contact_phone}
+                    </p>
                   )}
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                {showAssignDropdown && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-surface-200 z-50 py-1 max-h-64 overflow-y-auto">
-                    <button
-                      onClick={() => handleAssign(null)}
-                      className="w-full text-left px-3 py-2 text-sm text-surface-500 hover:bg-surface-50 flex items-center gap-2"
-                    >
-                      <UserCircle className="w-4 h-4 text-surface-300" />
-                      Unassigned
-                    </button>
-                    {teamMembers.map(m => (
-                      <button
-                        key={m.id}
-                        onClick={() => handleAssign(m.id)}
-                        className={cn(
-                          'w-full text-left px-3 py-2 text-sm hover:bg-surface-50 flex items-center gap-2',
-                          selectedConvo?.assigned_to === m.id && 'bg-brand-50 text-brand-700'
-                        )}
+                </div>
+
+                {/* #5 Deal link badges */}
+                {contactDeals.length > 0 && (
+                  <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+                    {contactDeals.slice(0, 2).map(deal => (
+                      <Link
+                        key={deal.id}
+                        href="/pipeline"
+                        className="text-[11px] px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors truncate max-w-[160px] flex items-center gap-1"
                       >
-                        <InitialsAvatar name={m.full_name} size="xs" />
-                        <span className="truncate">{m.full_name}</span>
-                        {m.id === currentUserId && <span className="text-[10px] text-surface-400 ml-auto">(you)</span>}
-                      </button>
+                        <span>&#128256;</span> {deal.title}{deal.value ? ` ($${deal.value.toLocaleString()})` : ''}
+                      </Link>
                     ))}
                   </div>
                 )}
+
+                {/* #8 Quick action buttons */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => { setShowDealModal(true); setDealForm({ title: '', value: '' }) }}
+                    title="Create Deal"
+                    className="p-1.5 rounded-lg text-surface-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                  >
+                    <DollarSign className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => { setShowNoteModal(true); setNoteForm({ title: '', notes: '' }) }}
+                    title="Add Note"
+                    className="p-1.5 rounded-lg text-surface-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleLogCall}
+                    title="Log Call"
+                    className="p-1.5 rounded-lg text-surface-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* #2 Chat search toggle */}
+                <button
+                  onClick={() => { setShowChatSearch(!showChatSearch); setChatSearch('') }}
+                  title="Search in chat"
+                  className={cn(
+                    'p-1.5 rounded-lg transition-colors',
+                    showChatSearch ? 'bg-brand-50 text-brand-600' : 'text-surface-400 hover:text-surface-600 hover:bg-surface-50'
+                  )}
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+
+                {/* #1 Contact info toggle */}
+                <div className="relative" ref={contactInfoRef}>
+                  <button
+                    onClick={() => setShowContactInfo(!showContactInfo)}
+                    title="Contact info"
+                    className={cn(
+                      'p-1.5 rounded-lg transition-colors',
+                      showContactInfo ? 'bg-brand-50 text-brand-600' : 'text-surface-400 hover:text-surface-600 hover:bg-surface-50'
+                    )}
+                  >
+                    <UserCircle className="w-4 h-4" />
+                  </button>
+
+                  {/* #1 Contact info panel dropdown */}
+                  {showContactInfo && contactInfo && (
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-lg border border-surface-200 z-50 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-surface-900">Contact Info</h3>
+                        <button onClick={() => setShowContactInfo(false)} className="text-surface-400 hover:text-surface-600">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="space-y-2.5">
+                        <p className="text-sm font-medium text-surface-800">{contactInfo.name}</p>
+                        {contactInfo.email && (
+                          <div className="flex items-center gap-2 text-xs text-surface-600">
+                            <Mail className="w-3.5 h-3.5 text-surface-400" />
+                            <a href={`mailto:${contactInfo.email}`} className="hover:text-brand-600">{contactInfo.email}</a>
+                          </div>
+                        )}
+                        {contactInfo.phone && (
+                          <div className="flex items-center gap-2 text-xs text-surface-600">
+                            <Phone className="w-3.5 h-3.5 text-surface-400" />
+                            <a href={`tel:${contactInfo.phone}`} className="hover:text-brand-600">{contactInfo.phone}</a>
+                          </div>
+                        )}
+                        {contactInfo.company_name && (
+                          <div className="flex items-center gap-2 text-xs text-surface-600">
+                            <Building className="w-3.5 h-3.5 text-surface-400" />
+                            <span>{contactInfo.company_name}</span>
+                          </div>
+                        )}
+                        {contactInfo.score_label && (
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase',
+                              contactInfo.score_label === 'hot' && 'bg-red-100 text-red-700',
+                              contactInfo.score_label === 'warm' && 'bg-orange-100 text-orange-700',
+                              contactInfo.score_label === 'cold' && 'bg-blue-100 text-blue-700',
+                              !['hot', 'warm', 'cold'].includes(contactInfo.score_label) && 'bg-surface-100 text-surface-600',
+                            )}>
+                              {contactInfo.score_label}
+                            </span>
+                          </div>
+                        )}
+                        {contactInfo.tags && contactInfo.tags.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Tag className="w-3.5 h-3.5 text-surface-400" />
+                            {contactInfo.tags.map(tag => (
+                              <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-surface-100 text-surface-600">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="pt-2 border-t border-surface-100">
+                          <Link
+                            href={`/contacts/${contactInfo.id}`}
+                            className="text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1"
+                          >
+                            View full profile <ChevronRight className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* #4 Starred filter toggle */}
+                <button
+                  onClick={() => setShowStarredOnly(!showStarredOnly)}
+                  title={showStarredOnly ? 'Show all messages' : 'Show starred only'}
+                  className={cn(
+                    'p-1.5 rounded-lg transition-colors',
+                    showStarredOnly ? 'bg-yellow-50 text-yellow-600' : 'text-surface-400 hover:text-yellow-500 hover:bg-surface-50'
+                  )}
+                >
+                  <Star className="w-4 h-4" fill={showStarredOnly ? 'currentColor' : 'none'} />
+                </button>
+
+                {/* Resolve button in header */}
+                {selectedConvo && (
+                  <button
+                    onClick={(e) => handleToggleResolve(selectedConvo, e)}
+                    className={cn(
+                      'text-xs px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5',
+                      selectedConvo.resolved
+                        ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                        : 'border-surface-200 text-surface-500 hover:bg-surface-50 hover:text-green-600'
+                    )}
+                  >
+                    {selectedConvo.resolved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                    {selectedConvo.resolved ? 'Resolved' : 'Resolve'}
+                  </button>
+                )}
+
+                {/* Assignment dropdown */}
+                <div className="relative" ref={assignDropdownRef}>
+                  <button
+                    onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-50 transition-colors flex items-center gap-1.5"
+                  >
+                    {assignedMember ? (
+                      <>
+                        <InitialsAvatar name={assignedMember.full_name} size="xs" />
+                        <span className="hidden sm:inline max-w-[80px] truncate">{assignedMember.full_name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCircle className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Assign</span>
+                      </>
+                    )}
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {showAssignDropdown && (
+                    <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-surface-200 z-50 py-1 max-h-64 overflow-y-auto">
+                      <button
+                        onClick={() => handleAssign(null)}
+                        className="w-full text-left px-3 py-2 text-sm text-surface-500 hover:bg-surface-50 flex items-center gap-2"
+                      >
+                        <UserCircle className="w-4 h-4 text-surface-300" />
+                        Unassigned
+                      </button>
+                      {teamMembers.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => handleAssign(m.id)}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-sm hover:bg-surface-50 flex items-center gap-2',
+                            selectedConvo?.assigned_to === m.id && 'bg-brand-50 text-brand-700'
+                          )}
+                        >
+                          <InitialsAvatar name={m.full_name} size="xs" />
+                          <span className="truncate">{m.full_name}</span>
+                          {m.id === currentUserId && <span className="text-[10px] text-surface-400 ml-auto">(you)</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* #2 Chat search bar */}
+              {showChatSearch && (
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-400" />
+                    <input
+                      type="text"
+                      placeholder="Search in conversation..."
+                      value={chatSearch}
+                      onChange={e => setChatSearch(e.target.value)}
+                      className="input pl-8 w-full text-xs py-1.5"
+                      autoFocus
+                    />
+                  </div>
+                  {chatSearch && (
+                    <span className="text-[11px] text-surface-500 whitespace-nowrap">{chatSearchMatches.length} match{chatSearchMatches.length !== 1 ? 'es' : ''}</span>
+                  )}
+                  <button onClick={() => { setShowChatSearch(false); setChatSearch('') }} className="text-surface-400 hover:text-surface-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Messages area */}
@@ -708,35 +1236,66 @@ export default function WhatsAppInboxPage() {
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-600" />
                 </div>
-              ) : messages.length === 0 ? (
+              ) : displayMessages.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-surface-400 text-sm">
-                  No messages yet
+                  {showStarredOnly ? 'No starred messages' : 'No messages yet'}
                 </div>
               ) : (
-                messages.map(msg => (
-                  <div
-                    key={msg.id}
-                    className={cn('flex', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}
-                  >
+                displayMessages.map(msg => {
+                  const isMediaMessage = msg.message_type && msg.message_type !== 'text'
+                  const mediaCard = isMediaMessage ? <MediaMessageCard msg={msg} /> : null
+                  const isSearchMatch = chatSearch && chatSearchMatchIds.has(msg.id)
+                  const isStarred = starredMessages.has(msg.id)
+
+                  return (
                     <div
-                      className={cn(
-                        'max-w-[70%] rounded-2xl px-4 py-2 text-sm shadow-sm',
-                        msg.direction === 'outbound'
-                          ? 'bg-brand-600 text-white rounded-br-md'
-                          : 'bg-white text-surface-800 border border-surface-100 rounded-bl-md'
-                      )}
+                      key={msg.id}
+                      className={cn('flex group', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}
                     >
-                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                      <div className={cn(
-                        'flex items-center justify-end gap-1 mt-1',
-                        msg.direction === 'outbound' ? 'text-white/60' : 'text-surface-300'
-                      )}>
-                        <span className="text-[10px]">{relativeTime(msg.received_at)}</span>
-                        {msg.direction === 'outbound' && <StatusCheck status={msg.status} />}
+                      <div className="relative">
+                        {/* #4 Star button — appears on hover */}
+                        <button
+                          onClick={() => toggleStar(msg.id)}
+                          className={cn(
+                            'absolute -left-6 top-1 p-0.5 rounded transition-all',
+                            isStarred
+                              ? 'text-yellow-500 opacity-100'
+                              : 'text-surface-300 opacity-0 group-hover:opacity-100 hover:text-yellow-500'
+                          )}
+                          title={isStarred ? 'Unstar' : 'Star'}
+                        >
+                          <Star className="w-3.5 h-3.5" fill={isStarred ? 'currentColor' : 'none'} />
+                        </button>
+
+                        <div
+                          className={cn(
+                            'max-w-[70%] rounded-2xl px-4 py-2 text-sm shadow-sm',
+                            msg.direction === 'outbound'
+                              ? 'bg-brand-600 text-white rounded-br-md'
+                              : 'bg-white text-surface-800 border border-surface-100 rounded-bl-md',
+                            // #2 Highlight search matches
+                            isSearchMatch && 'ring-2 ring-yellow-400 bg-yellow-50',
+                            // #4 Starred indicator
+                            isStarred && !isSearchMatch && (msg.direction === 'outbound' ? 'ring-1 ring-yellow-400' : 'ring-1 ring-yellow-300')
+                          )}
+                        >
+                          {/* #3 Media message rendering */}
+                          {mediaCard || (
+                            <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                          )}
+                          <div className={cn(
+                            'flex items-center justify-end gap-1 mt-1',
+                            msg.direction === 'outbound' ? 'text-white/60' : 'text-surface-300'
+                          )}>
+                            {isStarred && <Star className="w-2.5 h-2.5 text-yellow-400" fill="currentColor" />}
+                            <span className="text-[10px]">{relativeTime(msg.received_at)}</span>
+                            {msg.direction === 'outbound' && <StatusCheck status={msg.status} />}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -807,6 +1366,95 @@ export default function WhatsAppInboxPage() {
           </>
         )}
       </div>
+
+      {/* #8 Create Deal Modal */}
+      {showDealModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-surface-900 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-green-600" /> Create Deal
+              </h3>
+              <button onClick={() => setShowDealModal(false)} className="text-surface-400 hover:text-surface-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Deal title *"
+                value={dealForm.title}
+                onChange={e => setDealForm(f => ({ ...f, title: e.target.value }))}
+                className="input w-full text-sm"
+                autoFocus
+              />
+              <input
+                type="number"
+                placeholder="Value (optional)"
+                value={dealForm.value}
+                onChange={e => setDealForm(f => ({ ...f, value: e.target.value }))}
+                className="input w-full text-sm"
+              />
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setShowDealModal(false)} className="text-xs px-3 py-1.5 rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateDeal}
+                  disabled={!dealForm.title.trim() || savingAction}
+                  className={cn('btn-primary text-xs px-3 py-1.5 rounded-lg', (!dealForm.title.trim() || savingAction) && 'opacity-50 cursor-not-allowed')}
+                >
+                  {savingAction ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* #8 Add Note Modal */}
+      {showNoteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-surface-900 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" /> Add Note
+              </h3>
+              <button onClick={() => setShowNoteModal(false)} className="text-surface-400 hover:text-surface-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Note title *"
+                value={noteForm.title}
+                onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))}
+                className="input w-full text-sm"
+                autoFocus
+              />
+              <textarea
+                placeholder="Notes (optional)"
+                value={noteForm.notes}
+                onChange={e => setNoteForm(f => ({ ...f, notes: e.target.value }))}
+                className="input w-full text-sm min-h-[80px] resize-y"
+              />
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setShowNoteModal(false)} className="text-xs px-3 py-1.5 rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddNote}
+                  disabled={!noteForm.title.trim() || savingAction}
+                  className={cn('btn-primary text-xs px-3 py-1.5 rounded-lg', (!noteForm.title.trim() || savingAction) && 'opacity-50 cursor-not-allowed')}
+                >
+                  {savingAction ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

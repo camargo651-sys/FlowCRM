@@ -114,6 +114,9 @@ export interface Activity {
   owner_id?: string
   due_date?: string
   done: boolean
+  metadata?: Record<string, any>
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  assigned_to?: string
   created_at: string
   updated_at: string
 }

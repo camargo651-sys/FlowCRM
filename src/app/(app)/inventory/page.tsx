@@ -18,7 +18,7 @@ interface Product {
   unit_price: number; cost_price: number; stock_quantity: number;
   min_stock: number; status: string; category_id: string | null;
   sizes: string[]; colors: string[]; brand: string; model: string;
-  specs: DbRow; tags: string[]; image_url: string | null;
+  specs: DbRow; tags: string[]; image_url: string | null; barcode: string | null;
   created_at: string; product_categories?: { name: string; type: string } | null;
 }
 
@@ -206,6 +206,25 @@ export default function InventoryPage() {
           </button>
         </div>
       </div>
+
+      {/* Low Stock Banner */}
+      {lowStockProducts.length > 0 && (
+        <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-700">{lowStockProducts.length} product{lowStockProducts.length !== 1 ? 's' : ''} below minimum stock</p>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {lowStockProducts.slice(0, 8).map(p => (
+                <button key={p.id} onClick={() => { setTab('products'); setSearch(p.name) }}
+                  className="text-[11px] bg-white border border-red-200 text-red-700 px-2 py-0.5 rounded-full hover:bg-red-100 transition-colors">
+                  {p.name} ({p.stock_quantity}/{p.min_stock})
+                </button>
+              ))}
+              {lowStockProducts.length > 8 && <span className="text-[11px] text-red-500 px-2 py-0.5">+{lowStockProducts.length - 8} more</span>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
@@ -425,19 +444,23 @@ export default function InventoryPage() {
               <tr className="border-b border-surface-100">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Product</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">SKU</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden xl:table-cell">Barcode</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden lg:table-cell">Category</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Price</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Stock</th>
-                <th className="px-4 py-3 w-24"></th>
+                <th className="px-4 py-3 w-40"></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(product => (
+              {filtered.map(product => {
+                const isLow = product.stock_quantity <= product.min_stock && product.status === 'active'
+                return (
                 <tr key={product.id} className="border-b border-surface-50 last:border-0 hover:bg-surface-50 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-surface-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <div className="relative w-10 h-10 bg-surface-100 rounded-xl flex items-center justify-center flex-shrink-0">
                         {product.image_url ? <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-xl object-cover" /> : <Package className="w-5 h-5 text-surface-400" />}
+                        {isLow && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full" />}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-surface-800">{product.name}</p>
@@ -448,6 +471,9 @@ export default function InventoryPage() {
                   <td className="px-4 py-3 hidden md:table-cell">
                     <span className="text-xs text-surface-500 font-mono">{product.sku || '—'}</span>
                   </td>
+                  <td className="px-4 py-3 hidden xl:table-cell">
+                    <span className="text-xs text-surface-400 font-mono">{product.barcode || '—'}</span>
+                  </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="text-xs text-surface-600">{(product as { product_categories?: { name: string } }).product_categories?.name || '—'}</span>
                   </td>
@@ -455,21 +481,38 @@ export default function InventoryPage() {
                     <span className="text-sm font-semibold text-surface-800">{formatCurrency(product.unit_price)}</span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <span className={cn('text-sm font-bold', product.stock_quantity <= product.min_stock ? 'text-red-600' : 'text-surface-800')}>
+                    <span className={cn('text-sm font-bold', isLow ? 'text-red-600' : 'text-surface-800')}>
                       {product.stock_quantity}
                     </span>
-                    {product.stock_quantity <= product.min_stock && (
+                    {isLow && (
                       <AlertTriangle className="w-3 h-3 text-red-500 inline ml-1" />
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => { setShowMovement(product.id); setMovType('purchase'); setMovQty(''); setMovNotes('') }}
-                      className="btn-secondary btn-sm text-[10px]">
-                      <ArrowUpDown className="w-3 h-3" /> Move
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={async () => {
+                        const prev = product.stock_quantity
+                        const next = Math.max(0, prev - 1)
+                        await supabase.from('stock_movements').insert({ workspace_id: workspaceId, product_id: product.id, type: 'adjustment', quantity: 1, previous_stock: prev, new_stock: next, notes: 'Quick adjust -1' })
+                        await supabase.from('products').update({ stock_quantity: next }).eq('id', product.id)
+                        load()
+                      }} className="w-7 h-7 flex items-center justify-center rounded-lg border border-surface-200 hover:bg-red-50 hover:border-red-200 text-surface-500 hover:text-red-600 transition-colors text-sm font-bold">-</button>
+                      <button onClick={async () => {
+                        const prev = product.stock_quantity
+                        const next = prev + 1
+                        await supabase.from('stock_movements').insert({ workspace_id: workspaceId, product_id: product.id, type: 'adjustment', quantity: 1, previous_stock: prev, new_stock: next, notes: 'Quick adjust +1' })
+                        await supabase.from('products').update({ stock_quantity: next }).eq('id', product.id)
+                        load()
+                      }} className="w-7 h-7 flex items-center justify-center rounded-lg border border-surface-200 hover:bg-emerald-50 hover:border-emerald-200 text-surface-500 hover:text-emerald-600 transition-colors text-sm font-bold">+</button>
+                      <button onClick={() => { setShowMovement(product.id); setMovType('purchase'); setMovQty(''); setMovNotes('') }}
+                        className="btn-secondary btn-sm text-[10px] ml-1">
+                        <ArrowUpDown className="w-3 h-3" /> Move
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

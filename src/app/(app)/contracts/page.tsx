@@ -2,9 +2,9 @@
 import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, FileSignature, X, Clock, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react'
+import { Plus, Search, FileSignature, X, AlertTriangle, CheckCircle2, Upload, Paperclip } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
@@ -12,18 +12,29 @@ const STATUS_STYLES: Record<string, string> = {
   draft: 'badge-gray', active: 'badge-green', expired: 'badge-red', cancelled: 'badge-gray', renewed: 'badge-blue',
 }
 
-interface ContractForm { title: string; contact_id: string; type: string; start_date: string; end_date: string; value: string; renewal_type: string; notes: string }
+interface ContractForm {
+  id?: string
+  title: string; contact_id: string; deal_id: string; type: string; start_date: string; end_date: string
+  value: string; renewal_type: string; notes: string; document_url: string
+}
+
+const emptyForm: ContractForm = { title: '', contact_id: '', deal_id: '', type: '', start_date: '', end_date: '', value: '', renewal_type: 'manual', notes: '', document_url: '' }
 
 export default function ContractsPage() {
   const supabase = createClient()
   const { t } = useI18n()
   const [contracts, setContracts] = useState<DbRow[]>([])
   const [contacts, setContacts] = useState<DbRow[]>([])
+  const [deals, setDeals] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [showNew, setShowNew] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
-  const [form, setForm] = useState<ContractForm>({ title: '', contact_id: '', type: '', start_date: '', end_date: '', value: '', renewal_type: 'manual', notes: '' })
+  const [form, setForm] = useState<ContractForm>({ ...emptyForm })
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -31,34 +42,152 @@ export default function ContractsPage() {
     const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
-    const [contractsRes, contactsRes] = await Promise.all([
+    const [contractsRes, contactsRes, dealsRes] = await Promise.all([
       supabase.from('contracts').select('*, contacts(name)').eq('workspace_id', ws.id).order('created_at', { ascending: false }),
       supabase.from('contacts').select('id, name').eq('workspace_id', ws.id).order('name'),
+      supabase.from('deals').select('id, title').eq('workspace_id', ws.id).order('title'),
     ])
-    setContracts(contractsRes.data || [])
+    const allContracts: DbRow[] = contractsRes.data || []
     setContacts(contactsRes.data || [])
+    setDeals(dealsRes.data || [])
+
+    // Auto-expire active contracts past end_date
+    const today = new Date().toISOString().split('T')[0]
+    const toExpire = allContracts.filter(c => c.status === 'active' && c.end_date && c.end_date < today)
+    if (toExpire.length > 0) {
+      await Promise.all(toExpire.map(c =>
+        supabase.from('contracts').update({ status: 'expired' }).eq('id', c.id)
+      ))
+      toExpire.forEach(c => { c.status = 'expired' })
+    }
+
+    // Expiry notifications: contracts expiring within 7 days
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+    const nowMs = Date.now()
+    const expiringSoon = allContracts.filter(c => {
+      if (c.status !== 'active' || !c.end_date) return false
+      const daysLeft = new Date(c.end_date).getTime() - nowMs
+      return daysLeft > 0 && daysLeft <= sevenDaysMs
+    })
+    if (expiringSoon.length > 0 && user) {
+      for (const c of expiringSoon) {
+        const { data: existing } = await supabase.from('notifications')
+          .select('id')
+          .eq('workspace_id', ws.id)
+          .eq('type', 'system')
+          .like('title', `%${c.contract_number}%expiring%`)
+          .limit(1)
+        if (!existing || existing.length === 0) {
+          const daysLeft = Math.ceil((new Date(c.end_date).getTime() - nowMs) / (1000 * 60 * 60 * 24))
+          await supabase.from('notifications').insert({
+            workspace_id: ws.id,
+            user_id: user.id,
+            type: 'system',
+            title: `Contract ${c.contract_number} expiring in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+            body: `"${c.title}" expires on ${c.end_date}.`,
+            priority: daysLeft <= 3 ? 'high' : 'medium',
+            action_url: '/contracts',
+          })
+        }
+      }
+    }
+
+    setContracts(allContracts)
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  const createContract = async () => {
+  const openEditModal = (c: DbRow) => {
+    if (c.status !== 'draft' && c.status !== 'active') {
+      toast.error('Only draft or active contracts can be edited')
+      return
+    }
+    setForm({
+      id: c.id,
+      title: c.title || '',
+      contact_id: c.contact_id || '',
+      deal_id: c.deal_id || '',
+      type: c.type || '',
+      start_date: c.start_date || '',
+      end_date: c.end_date || '',
+      value: c.value?.toString() || '',
+      renewal_type: c.renewal_type || 'manual',
+      notes: c.notes || '',
+      document_url: c.document_url || '',
+    })
+    setShowModal(true)
+  }
+
+  const openNewModal = () => {
+    setForm({ ...emptyForm })
+    setShowModal(true)
+  }
+
+  const saveContract = async () => {
     if (!form.title) return
     setSaving(true)
-    const num = contracts.length + 1
-    await supabase.from('contracts').insert({
-      workspace_id: workspaceId, contract_number: `CTR-${String(num).padStart(4, '0')}`,
-      title: form.title, contact_id: form.contact_id || null,
-      type: form.type || null, start_date: form.start_date || null,
-      end_date: form.end_date || null, value: parseFloat(form.value) || 0,
-      renewal_type: form.renewal_type, notes: form.notes || null,
-      status: 'draft',
-    })
-    setForm({ title: '', contact_id: '', type: '', start_date: '', end_date: '', value: '', renewal_type: 'manual', notes: '' })
-    setShowNew(false); setSaving(false)
-    toast.success('Contract created')
+    if (form.id) {
+      // Update existing
+      await supabase.from('contracts').update({
+        title: form.title, contact_id: form.contact_id || null,
+        deal_id: form.deal_id || null,
+        type: form.type || null, start_date: form.start_date || null,
+        end_date: form.end_date || null, value: parseFloat(form.value) || 0,
+        renewal_type: form.renewal_type, notes: form.notes || null,
+        document_url: form.document_url || null,
+      }).eq('id', form.id)
+      toast.success('Contract updated')
+    } else {
+      // Create new
+      const num = contracts.length + 1
+      await supabase.from('contracts').insert({
+        workspace_id: workspaceId, contract_number: `CTR-${String(num).padStart(4, '0')}`,
+        title: form.title, contact_id: form.contact_id || null,
+        deal_id: form.deal_id || null,
+        type: form.type || null, start_date: form.start_date || null,
+        end_date: form.end_date || null, value: parseFloat(form.value) || 0,
+        renewal_type: form.renewal_type, notes: form.notes || null,
+        document_url: form.document_url || null,
+        status: 'draft',
+      })
+      toast.success('Contract created')
+    }
+    setForm({ ...emptyForm })
+    setShowModal(false); setSaving(false)
     load()
   }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `contracts/${workspaceId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('attachments').upload(path, file)
+    if (error) {
+      toast.error('Upload failed: ' + error.message)
+      setUploading(false)
+      return
+    }
+    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
+    setForm(f => ({ ...f, document_url: urlData.publicUrl }))
+    toast.success('File uploaded')
+    setUploading(false)
+  }
+
+  // Filtering
+  const filtered = contracts.filter(c => {
+    if (filterStatus !== 'all' && c.status !== filterStatus) return false
+    if (search) {
+      const q = search.toLowerCase()
+      const matchTitle = c.title?.toLowerCase().includes(q)
+      const matchNumber = c.contract_number?.toLowerCase().includes(q)
+      const matchClient = c.contacts?.name?.toLowerCase().includes(q)
+      if (!matchTitle && !matchNumber && !matchClient) return false
+    }
+    return true
+  })
 
   const now = new Date()
   const expiringCount = contracts.filter(c => {
@@ -74,7 +203,7 @@ export default function ContractsPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('contracts.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{contracts.length} contracts</p></div>
-        <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Contract</button>
+        <button onClick={openNewModal} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Contract</button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
@@ -83,8 +212,16 @@ export default function ContractsPage() {
         {expiringCount > 0 && <div className="card p-4 flex items-center gap-3 border-amber-200"><div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center"><AlertTriangle className="w-4 h-4 text-amber-600" /></div><div><p className="text-lg font-bold text-amber-600">{expiringCount}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Expiring Soon</p></div></div>}
       </div>
 
-      {contracts.length === 0 ? (
-        <div className="card text-center py-16"><FileSignature className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No contracts yet</p></div>
+      {/* Search + Filter */}
+      <div className="flex gap-3 mb-6">
+        <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" /><input className="input pl-9 text-xs" placeholder="Search by title, number, or client..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+        <select className="input w-auto text-xs" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <option value="all">All Statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="expired">Expired</option><option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="card text-center py-16"><FileSignature className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No contracts found</p></div>
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full">
@@ -96,11 +233,18 @@ export default function ContractsPage() {
               <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Status</th>
             </tr></thead>
             <tbody>
-              {contracts.map(c => {
+              {filtered.map(c => {
                 const daysLeft = c.end_date ? Math.floor((new Date(c.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
+                const canEdit = c.status === 'draft' || c.status === 'active'
                 return (
-                  <tr key={c.id} className="border-b border-surface-50 hover:bg-surface-50">
-                    <td className="px-4 py-3"><p className="text-sm font-semibold text-surface-800">{c.title}</p><p className="text-[10px] text-surface-400 font-mono">{c.contract_number}{c.type ? ` · ${c.type}` : ''}</p></td>
+                  <tr key={c.id} onClick={() => canEdit && openEditModal(c)} className={cn('border-b border-surface-50 hover:bg-surface-50', canEdit && 'cursor-pointer')}>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-semibold text-surface-800">{c.title}</p>
+                      <p className="text-[10px] text-surface-400 font-mono">
+                        {c.contract_number}{c.type ? ` · ${c.type}` : ''}
+                        {c.document_url && <Paperclip className="w-3 h-3 inline ml-1 text-surface-400" />}
+                      </p>
+                    </td>
                     <td className="px-4 py-3 text-sm text-surface-600 hidden md:table-cell">{c.contacts?.name || '—'}</td>
                     <td className="px-4 py-3 text-xs text-surface-500 hidden lg:table-cell">
                       {c.start_date || '—'} → {c.end_date || '—'}
@@ -117,19 +261,20 @@ export default function ContractsPage() {
         </div>
       )}
 
-      {showNew && (
+      {showModal && (
         <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
-              <h2 className="font-semibold text-surface-900">New Contract</h2>
-              <button onClick={() => setShowNew(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
+              <h2 className="font-semibold text-surface-900">{form.id ? 'Edit Contract' : 'New Contract'}</h2>
+              <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div><label className="label">Title *</label><input className="input" value={form.title} onChange={e => setForm((f: ContractForm) => ({ ...f, title: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="label">Client</label><select className="input" value={form.contact_id} onChange={e => setForm((f: ContractForm) => ({ ...f, contact_id: e.target.value }))}><option value="">Select</option>{contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
                 <div><label className="label">Type</label><input className="input" value={form.type} onChange={e => setForm((f: ContractForm) => ({ ...f, type: e.target.value }))} placeholder="e.g. SaaS, Service" /></div>
               </div>
+              <div><label className="label">Link to Deal</label><select className="input" value={form.deal_id} onChange={e => setForm((f: ContractForm) => ({ ...f, deal_id: e.target.value }))}><option value="">No deal linked</option>{deals.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="label">Start Date</label><input type="date" className="input" value={form.start_date} onChange={e => setForm((f: ContractForm) => ({ ...f, start_date: e.target.value }))} /></div>
                 <div><label className="label">End Date</label><input type="date" className="input" value={form.end_date} onChange={e => setForm((f: ContractForm) => ({ ...f, end_date: e.target.value }))} /></div>
@@ -139,9 +284,27 @@ export default function ContractsPage() {
                 <div><label className="label">Renewal</label><select className="input" value={form.renewal_type} onChange={e => setForm((f: ContractForm) => ({ ...f, renewal_type: e.target.value }))}><option value="manual">Manual</option><option value="auto">Auto-renew</option><option value="notify">Notify before expiry</option></select></div>
               </div>
               <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={e => setForm((f: ContractForm) => ({ ...f, notes: e.target.value }))} /></div>
+              {/* File upload */}
+              <div>
+                <label className="label">Contract PDF</label>
+                {form.document_url ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Paperclip className="w-4 h-4 text-surface-400" />
+                    <a href={form.document_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline truncate flex-1">View attached file</a>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, document_url: '' }))} className="text-xs text-red-500 hover:underline">Remove</button>
+                  </div>
+                ) : (
+                  <div>
+                    <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="btn-secondary btn-sm text-xs">
+                      <Upload className="w-3.5 h-3.5" /> {uploading ? 'Uploading...' : 'Upload Contract PDF'}
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2">
-                <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={createContract} disabled={!form.title || saving} className="btn-primary flex-1">Create</button>
+                <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={saveContract} disabled={!form.title || saving} className="btn-primary flex-1">{form.id ? 'Save Changes' : 'Create'}</button>
               </div>
             </div>
           </div>

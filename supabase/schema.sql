@@ -1714,6 +1714,8 @@ CREATE TABLE IF NOT EXISTS sequences (
   -- steps format: [{ order: 0, channel: 'whatsapp'|'sms'|'email', message: '...', delay_hours: 24, condition?: 'no_reply' }]
   enrolled_count int DEFAULT 0,
   completed_count int DEFAULT 0,
+  send_window_start int DEFAULT 9,
+  send_window_end int DEFAULT 18,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -1758,5 +1760,13 @@ ALTER TABLE deals ADD COLUMN IF NOT EXISTS notes text;
 
 -- MIGRATION: Add social_profiles to contacts
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS social_profiles jsonb DEFAULT '{}';
+
+-- MIGRATION: Add internal_notes to tickets
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS internal_notes text;
+
+-- MIGRATION: Add metadata, priority, assigned_to to activities
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS priority text DEFAULT 'medium' CHECK (priority IN ('low','medium','high','urgent'));
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES auth.users(id);
 
 -- Done! Your Tracktio database is ready.

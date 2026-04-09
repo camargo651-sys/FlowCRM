@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   Zap, Plus, Trash2, ChevronDown, ChevronRight, MessageCircle, Mail, Phone,
-  Play, Pause, Users, Search, X, GripVertical, ArrowDown,
+  Play, Pause, Users, Search, X, GripVertical, ArrowDown, Copy, Clock,
+  UserMinus, BarChart3, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
@@ -29,6 +30,8 @@ interface Sequence {
   enrolled_count: number
   completed_count: number
   created_at: string
+  send_window_start?: number
+  send_window_end?: number
 }
 
 interface Contact {
@@ -36,6 +39,27 @@ interface Contact {
   name: string
   phone: string | null
   email: string | null
+}
+
+interface Enrollment {
+  id: string
+  sequence_id: string
+  contact_id: string
+  current_step: number
+  status: string
+  next_run_at: string | null
+  started_at: string
+  completed_at: string | null
+  log: Array<{ step: number; channel: string; sent_at: string; status?: string }>
+  contacts: { name: string } | null
+}
+
+interface StepAnalytics {
+  step: number
+  sent: number
+  replied: number
+  waiting: number
+  total: number
 }
 
 const CHANNEL_ICONS: Record<Channel, typeof MessageCircle> = {
@@ -54,6 +78,42 @@ function emptyStep(order: number): SequenceStep {
   return { order, channel: 'whatsapp', message: '', delay_hours: 24, condition: null }
 }
 
+// ── Sequence Templates ──
+const SEQUENCE_TEMPLATES = [
+  {
+    label: 'Lead Follow-up',
+    description: '3 WhatsApp steps over 3 days',
+    name: 'Lead Follow-up',
+    templateDesc: 'Automated follow-up for new leads via WhatsApp',
+    steps: [
+      { order: 0, channel: 'whatsapp' as Channel, message: 'Hi {{name}}, thanks for your interest! How can we help you today?', delay_hours: 0, condition: null },
+      { order: 1, channel: 'whatsapp' as Channel, message: 'Hi {{first_name}}, just checking in — did you have any questions about our services?', delay_hours: 24, condition: 'no_reply' as const },
+      { order: 2, channel: 'whatsapp' as Channel, message: 'Hey {{first_name}}, last follow-up! Let us know if you\'d like to chat — we\'re happy to help.', delay_hours: 72, condition: 'no_reply' as const },
+    ],
+  },
+  {
+    label: 'Onboarding Welcome',
+    description: '3 email steps over 1 week',
+    name: 'Onboarding Welcome',
+    templateDesc: 'Welcome sequence for new customers via email',
+    steps: [
+      { order: 0, channel: 'email' as Channel, message: 'Welcome {{name}}! We\'re excited to have you on board. Here\'s how to get started...', delay_hours: 0, condition: null },
+      { order: 1, channel: 'email' as Channel, message: 'Hi {{first_name}}, here are some tips to get the most out of our platform.', delay_hours: 24, condition: null },
+      { order: 2, channel: 'email' as Channel, message: 'Hi {{first_name}}, how\'s everything going? Reply if you need any help!', delay_hours: 168, condition: null },
+    ],
+  },
+  {
+    label: 'Re-engagement',
+    description: '2 WhatsApp steps over 2 days',
+    name: 'Re-engagement',
+    templateDesc: 'Re-engage inactive contacts via WhatsApp',
+    steps: [
+      { order: 0, channel: 'whatsapp' as Channel, message: 'Hi {{name}}, it\'s been a while! We have some exciting updates to share with you.', delay_hours: 0, condition: null },
+      { order: 1, channel: 'whatsapp' as Channel, message: 'Hey {{first_name}}, we miss you! Check out what\'s new — reply YES to learn more.', delay_hours: 48, condition: 'no_reply' as const },
+    ],
+  },
+]
+
 export default function SequencesPage() {
   const supabase = createClient()
   const { t } = useI18n()
@@ -68,6 +128,8 @@ export default function SequencesPage() {
   const [description, setDescription] = useState('')
   const [steps, setSteps] = useState<SequenceStep[]>([emptyStep(0)])
   const [saving, setSaving] = useState(false)
+  const [sendWindowStart, setSendWindowStart] = useState(9)
+  const [sendWindowEnd, setSendWindowEnd] = useState(18)
 
   // Enroll modal
   const [showEnroll, setShowEnroll] = useState(false)
@@ -79,6 +141,16 @@ export default function SequencesPage() {
 
   // Expanded sequence (preview)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedTab, setExpandedTab] = useState<'steps' | 'enrollments' | 'analytics'>('steps')
+
+  // Enrollments view
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false)
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null)
+
+  // Step analytics
+  const [stepAnalytics, setStepAnalytics] = useState<StepAnalytics[]>([])
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   const loadSequences = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -99,11 +171,69 @@ export default function SequencesPage() {
 
   useEffect(() => { loadSequences() }, [loadSequences])
 
+  // ── Load enrollments for a sequence ──
+  const loadEnrollments = useCallback(async (sequenceId: string) => {
+    setEnrollmentsLoading(true)
+    const { data } = await supabase
+      .from('sequence_enrollments')
+      .select('*, contacts(name)')
+      .eq('sequence_id', sequenceId)
+      .order('started_at', { ascending: false })
+
+    setEnrollments((data || []) as Enrollment[])
+    setEnrollmentsLoading(false)
+  }, [])
+
+  // ── Load step analytics for a sequence ──
+  const loadStepAnalytics = useCallback(async (sequenceId: string) => {
+    setAnalyticsLoading(true)
+    const { data } = await supabase
+      .from('sequence_enrollments')
+      .select('current_step, status')
+      .eq('sequence_id', sequenceId)
+
+    if (data) {
+      const seq = sequences.find(s => s.id === sequenceId)
+      const totalSteps = seq?.steps.length || 1
+      const analytics: StepAnalytics[] = []
+
+      for (let step = 0; step < totalSteps; step++) {
+        const atOrPast = data.filter(d => d.current_step >= step)
+        const sent = atOrPast.length
+        const replied = data.filter(d => d.current_step === step && d.status === 'replied').length
+        const waiting = data.filter(d => d.current_step === step && d.status === 'active').length
+        analytics.push({ step, sent, replied, waiting, total: data.length })
+      }
+      setStepAnalytics(analytics)
+    }
+    setAnalyticsLoading(false)
+  }, [sequences])
+
+  // ── Handle expand with tab loading ──
+  const handleExpand = (seqId: string) => {
+    if (expandedId === seqId) {
+      setExpandedId(null)
+      return
+    }
+    setExpandedId(seqId)
+    setExpandedTab('steps')
+    setEnrollments([])
+    setStepAnalytics([])
+  }
+
+  const switchTab = (tab: 'steps' | 'enrollments' | 'analytics', seqId: string) => {
+    setExpandedTab(tab)
+    if (tab === 'enrollments') loadEnrollments(seqId)
+    if (tab === 'analytics') loadStepAnalytics(seqId)
+  }
+
   const openCreate = () => {
     setEditingId(null)
     setName('')
     setDescription('')
     setSteps([emptyStep(0)])
+    setSendWindowStart(9)
+    setSendWindowEnd(18)
     setShowEditor(true)
   }
 
@@ -112,7 +242,15 @@ export default function SequencesPage() {
     setName(seq.name)
     setDescription(seq.description || '')
     setSteps(seq.steps.length > 0 ? seq.steps : [emptyStep(0)])
+    setSendWindowStart(seq.send_window_start ?? 9)
+    setSendWindowEnd(seq.send_window_end ?? 18)
     setShowEditor(true)
+  }
+
+  const applyTemplate = (tpl: typeof SEQUENCE_TEMPLATES[number]) => {
+    setName(tpl.name)
+    setDescription(tpl.templateDesc)
+    setSteps(tpl.steps.map(s => ({ ...s })))
   }
 
   const saveSequence = async () => {
@@ -127,6 +265,8 @@ export default function SequencesPage() {
         name: name.trim(),
         description: description.trim() || null,
         steps: steps.map((s, i) => ({ ...s, order: i })),
+        send_window_start: sendWindowStart,
+        send_window_end: sendWindowEnd,
       }
 
       if (editingId) {
@@ -156,6 +296,58 @@ export default function SequencesPage() {
     await supabase.from('sequences').delete().eq('id', id)
     setSequences(prev => prev.filter(s => s.id !== id))
     toast.success('Sequence deleted')
+  }
+
+  // ── Duplicate Sequence ──
+  const duplicateSequence = async (seq: Sequence) => {
+    if (!workspaceId) return
+    const payload = {
+      workspace_id: workspaceId,
+      name: seq.name + ' (copy)',
+      description: seq.description,
+      steps: seq.steps,
+      enrolled_count: 0,
+      completed_count: 0,
+      send_window_start: seq.send_window_start ?? 9,
+      send_window_end: seq.send_window_end ?? 18,
+    }
+    await supabase.from('sequences').insert(payload)
+    toast.success('Sequence duplicated')
+    loadSequences()
+  }
+
+  // ── Pause/Resume enrollment ──
+  const pauseEnrollment = async (enrollmentId: string, seqId: string) => {
+    await supabase.from('sequence_enrollments').update({ status: 'paused' }).eq('id', enrollmentId)
+    toast.success('Enrollment paused')
+    loadEnrollments(seqId)
+  }
+
+  const resumeEnrollment = async (enrollment: Enrollment, seqId: string) => {
+    const seq = sequences.find(s => s.id === seqId)
+    if (!seq) return
+    const currentStep = seq.steps[enrollment.current_step]
+    const delayHours = currentStep?.delay_hours ?? 1
+    const nextRun = new Date(Date.now() + delayHours * 3600 * 1000).toISOString()
+    await supabase.from('sequence_enrollments')
+      .update({ status: 'active', next_run_at: nextRun })
+      .eq('id', enrollment.id)
+    toast.success('Enrollment resumed')
+    loadEnrollments(seqId)
+  }
+
+  // ── Remove from sequence (unenroll) ──
+  const removeEnrollment = async (enrollmentId: string, seqId: string) => {
+    await supabase.from('sequence_enrollments').delete().eq('id', enrollmentId)
+    // Decrement enrolled_count
+    const seq = sequences.find(s => s.id === seqId)
+    if (seq) {
+      const newCount = Math.max(0, seq.enrolled_count - 1)
+      await supabase.from('sequences').update({ enrolled_count: newCount }).eq('id', seqId)
+      setSequences(prev => prev.map(s => s.id === seqId ? { ...s, enrolled_count: newCount } : s))
+    }
+    toast.success('Contact removed from sequence')
+    loadEnrollments(seqId)
   }
 
   // Steps editor helpers
@@ -228,6 +420,10 @@ export default function SequencesPage() {
     c.phone?.includes(contactSearch) || c.email?.toLowerCase().includes(contactSearch.toLowerCase()),
   )
 
+  // ── Message preview helper ──
+  const previewMessage = (msg: string) =>
+    msg.replace(/\{\{name\}\}/g, 'Maria Garcia').replace(/\{\{first_name\}\}/g, 'Maria')
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -270,7 +466,7 @@ export default function SequencesPage() {
               <div key={seq.id} className="bg-white rounded-2xl border border-surface-100 overflow-hidden">
                 <div className="p-4 flex items-center gap-4">
                   {/* Expand toggle */}
-                  <button onClick={() => setExpandedId(isExpanded ? null : seq.id)}
+                  <button onClick={() => handleExpand(seq.id)}
                     className="text-surface-400 hover:text-surface-600">
                     {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
@@ -310,6 +506,11 @@ export default function SequencesPage() {
                       className="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5" /> Enroll
                     </button>
+                    <button onClick={() => duplicateSequence(seq)}
+                      className="p-2 rounded-lg hover:bg-surface-50 text-surface-400 hover:text-surface-600"
+                      title="Duplicate">
+                      <Copy className="w-4 h-4" />
+                    </button>
                     <button onClick={() => toggleEnabled(seq)}
                       className="p-2 rounded-lg hover:bg-surface-50 text-surface-400 hover:text-surface-600"
                       title={seq.enabled ? 'Pause' : 'Activate'}>
@@ -326,38 +527,199 @@ export default function SequencesPage() {
                   </div>
                 </div>
 
-                {/* Expanded: step preview */}
+                {/* Expanded section with tabs */}
                 {isExpanded && (
-                  <div className="border-t border-surface-100 px-6 py-4 bg-surface-50/50">
-                    <div className="space-y-3">
-                      {(seq.steps || []).map((step, i) => {
-                        const Icon = CHANNEL_ICONS[step.channel]
-                        return (
-                          <div key={i} className="flex items-start gap-3">
-                            <div className="flex flex-col items-center">
-                              <div className={cn('w-8 h-8 rounded-lg border flex items-center justify-center', CHANNEL_COLORS[step.channel])}>
-                                <Icon className="w-4 h-4" />
-                              </div>
-                              {i < seq.steps.length - 1 && (
-                                <div className="w-px h-6 bg-surface-200 mt-1" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 text-xs text-surface-500">
-                                <span className="font-medium capitalize">{step.channel}</span>
-                                <span>after {step.delay_hours}h</span>
-                                {step.condition === 'no_reply' && (
-                                  <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">
-                                    Only if no reply
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-surface-700 mt-0.5 line-clamp-2">{step.message}</p>
-                            </div>
-                          </div>
-                        )
-                      })}
+                  <div className="border-t border-surface-100">
+                    {/* Tab bar */}
+                    <div className="flex gap-0 px-6 bg-surface-50/50 border-b border-surface-100">
+                      {(['steps', 'analytics', 'enrollments'] as const).map(tab => (
+                        <button key={tab}
+                          onClick={() => switchTab(tab, seq.id)}
+                          className={cn(
+                            'px-4 py-2.5 text-xs font-medium border-b-2 transition-colors capitalize',
+                            expandedTab === tab
+                              ? 'border-brand-600 text-brand-700'
+                              : 'border-transparent text-surface-400 hover:text-surface-600',
+                          )}>
+                          {tab === 'analytics' && <BarChart3 className="w-3 h-3 inline mr-1.5" />}
+                          {tab === 'enrollments' && <Users className="w-3 h-3 inline mr-1.5" />}
+                          {tab}
+                        </button>
+                      ))}
                     </div>
+
+                    {/* ── Tab: Steps ── */}
+                    {expandedTab === 'steps' && (
+                      <div className="px-6 py-4 bg-surface-50/50">
+                        <div className="space-y-3">
+                          {(seq.steps || []).map((step, i) => {
+                            const Icon = CHANNEL_ICONS[step.channel]
+                            return (
+                              <div key={i} className="flex items-start gap-3">
+                                <div className="flex flex-col items-center">
+                                  <div className={cn('w-8 h-8 rounded-lg border flex items-center justify-center', CHANNEL_COLORS[step.channel])}>
+                                    <Icon className="w-4 h-4" />
+                                  </div>
+                                  {i < seq.steps.length - 1 && (
+                                    <div className="w-px h-6 bg-surface-200 mt-1" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 text-xs text-surface-500">
+                                    <span className="font-medium capitalize">{step.channel}</span>
+                                    <span>after {step.delay_hours}h</span>
+                                    {step.condition === 'no_reply' && (
+                                      <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">
+                                        Only if no reply
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-surface-700 mt-0.5 line-clamp-2">{step.message}</p>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Tab: Analytics ── */}
+                    {expandedTab === 'analytics' && (
+                      <div className="px-6 py-4 bg-surface-50/50">
+                        {analyticsLoading ? (
+                          <div className="flex items-center justify-center py-6">
+                            <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+                          </div>
+                        ) : stepAnalytics.length === 0 ? (
+                          <p className="text-sm text-surface-400 text-center py-6">No enrollment data yet</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {stepAnalytics.map((sa, i) => {
+                              const maxVal = sa.total || 1
+                              const sentPct = Math.round((sa.sent / maxVal) * 100)
+                              const repliedPct = Math.round((sa.replied / maxVal) * 100)
+                              const dropOff = i > 0 && stepAnalytics[i - 1].sent > 0
+                                ? Math.round(((stepAnalytics[i - 1].sent - sa.sent) / stepAnalytics[i - 1].sent) * 100)
+                                : 0
+                              return (
+                                <div key={i} className="space-y-1.5">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-medium text-surface-700">
+                                      Step {i + 1}: {sa.sent} sent, {sa.replied} replied, {sa.waiting} waiting
+                                    </span>
+                                    {dropOff > 0 && (
+                                      <span className="text-red-500 text-[10px] font-medium">
+                                        -{dropOff}% drop-off
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="h-2 bg-surface-100 rounded-full overflow-hidden flex">
+                                    <div className="bg-brand-500 h-full transition-all" style={{ width: `${sentPct}%` }} />
+                                    <div className="bg-green-500 h-full transition-all" style={{ width: `${repliedPct}%` }} />
+                                  </div>
+                                  <div className="flex gap-4 text-[10px] text-surface-400">
+                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-500 inline-block" /> Sent</span>
+                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Replied</span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Tab: Enrollments ── */}
+                    {expandedTab === 'enrollments' && (
+                      <div className="px-6 py-4 bg-surface-50/50">
+                        {enrollmentsLoading ? (
+                          <div className="flex items-center justify-center py-6">
+                            <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+                          </div>
+                        ) : enrollments.length === 0 ? (
+                          <p className="text-sm text-surface-400 text-center py-6">No enrollments yet</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {/* Table header */}
+                            <div className="grid grid-cols-[1fr_80px_80px_120px_100px] gap-2 px-3 py-1.5 text-[10px] font-semibold text-surface-400 uppercase tracking-wider">
+                              <span>Contact</span>
+                              <span>Step</span>
+                              <span>Status</span>
+                              <span>Started</span>
+                              <span className="text-right">Actions</span>
+                            </div>
+                            {enrollments.map(enr => {
+                              const isLogOpen = expandedLogId === enr.id
+                              const statusColors: Record<string, string> = {
+                                active: 'bg-green-50 text-green-700',
+                                completed: 'bg-blue-50 text-blue-700',
+                                replied: 'bg-purple-50 text-purple-700',
+                                paused: 'bg-amber-50 text-amber-700',
+                                unsubscribed: 'bg-red-50 text-red-700',
+                              }
+                              return (
+                                <div key={enr.id}>
+                                  <div className="grid grid-cols-[1fr_80px_80px_120px_100px] gap-2 px-3 py-2 text-xs text-surface-700 items-center rounded-lg hover:bg-white/60">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <button onClick={() => setExpandedLogId(isLogOpen ? null : enr.id)}
+                                        className="text-surface-300 hover:text-surface-500 shrink-0">
+                                        {isLogOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                      </button>
+                                      <span className="truncate font-medium">{enr.contacts?.name || 'Unknown'}</span>
+                                    </div>
+                                    <span>{enr.current_step + 1}/{seq.steps.length}</span>
+                                    <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium text-center', statusColors[enr.status] || 'bg-surface-100 text-surface-500')}>
+                                      {enr.status}
+                                    </span>
+                                    <span className="text-surface-400">{new Date(enr.started_at).toLocaleDateString()}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                      {enr.status === 'active' && (
+                                        <button onClick={() => pauseEnrollment(enr.id, seq.id)}
+                                          className="p-1 rounded hover:bg-amber-50 text-surface-400 hover:text-amber-600"
+                                          title="Pause">
+                                          <Pause className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                      {enr.status === 'paused' && (
+                                        <button onClick={() => resumeEnrollment(enr, seq.id)}
+                                          className="p-1 rounded hover:bg-green-50 text-surface-400 hover:text-green-600"
+                                          title="Resume">
+                                          <Play className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                      <button onClick={() => removeEnrollment(enr.id, seq.id)}
+                                        className="p-1 rounded hover:bg-red-50 text-surface-400 hover:text-red-500"
+                                        title="Remove from sequence">
+                                        <UserMinus className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  {/* Enrollment log */}
+                                  {isLogOpen && (
+                                    <div className="ml-8 mb-2 px-3 py-2 bg-white rounded-lg border border-surface-100 text-[11px]">
+                                      {Array.isArray(enr.log) && enr.log.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {enr.log.map((entry, li) => (
+                                            <div key={li} className="flex items-center gap-2 text-surface-500">
+                                              <span className="font-mono text-surface-400">{new Date(entry.sent_at).toLocaleString()}</span>
+                                              <span className="capitalize font-medium">{entry.channel}</span>
+                                              <span>Step {entry.step + 1}</span>
+                                              {entry.status && <span className="text-surface-400">({entry.status})</span>}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-surface-400">No log entries yet</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -383,6 +745,23 @@ export default function SequencesPage() {
             </div>
 
             <div className="p-6 space-y-5">
+              {/* ── Sequence Templates (only when creating) ── */}
+              {!editingId && (
+                <div>
+                  <label className="text-sm font-medium text-surface-700 block mb-2">Start from a template</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {SEQUENCE_TEMPLATES.map(tpl => (
+                      <button key={tpl.label}
+                        onClick={() => applyTemplate(tpl)}
+                        className="border border-surface-200 rounded-xl p-3 text-left hover:border-brand-300 hover:bg-brand-50/30 transition-colors group">
+                        <p className="text-sm font-semibold text-surface-800 group-hover:text-brand-700">{tpl.label}</p>
+                        <p className="text-[11px] text-surface-400 mt-0.5">{tpl.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Name & Description */}
               <div className="grid grid-cols-1 gap-4">
                 <div>
@@ -396,6 +775,27 @@ export default function SequencesPage() {
                   <input type="text" value={description} onChange={e => setDescription(e.target.value)}
                     placeholder="Optional description"
                     className="input w-full" />
+                </div>
+              </div>
+
+              {/* ── Time-of-Day Restriction ── */}
+              <div className="border border-surface-200 rounded-xl p-4 bg-surface-50/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="w-4 h-4 text-surface-500" />
+                  <label className="text-sm font-medium text-surface-700">Send window</label>
+                  <span className="text-[10px] text-surface-400">(messages only sent during this window)</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-surface-500">From</label>
+                  <input type="number" min={0} max={23} value={sendWindowStart}
+                    onChange={e => setSendWindowStart(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="input w-16 text-xs text-center" />
+                  <span className="text-xs text-surface-400">:00</span>
+                  <label className="text-xs text-surface-500 ml-2">To</label>
+                  <input type="number" min={0} max={23} value={sendWindowEnd}
+                    onChange={e => setSendWindowEnd(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="input w-16 text-xs text-center" />
+                  <span className="text-xs text-surface-400">:00</span>
                 </div>
               </div>
 
@@ -459,6 +859,18 @@ export default function SequencesPage() {
                             rows={3}
                             className="input w-full text-sm resize-none mb-3"
                           />
+
+                          {/* ── Message Preview (WA-style bubble) ── */}
+                          {step.message.trim() && (
+                            <div className="mb-3 rounded-lg p-3" style={{ backgroundColor: '#e5ddd5' }}>
+                              <div className="max-w-[80%] ml-auto">
+                                <div className="rounded-lg px-3 py-2 text-sm shadow-sm" style={{ backgroundColor: '#dcf8c6' }}>
+                                  <p className="text-surface-800 whitespace-pre-wrap text-[13px]">{previewMessage(step.message)}</p>
+                                  <p className="text-[10px] text-surface-400 text-right mt-1">12:00</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Delay & Condition */}
                           <div className="flex items-center gap-4">

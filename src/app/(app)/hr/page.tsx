@@ -4,7 +4,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Users, Building2, Calendar, DollarSign, X, Search, Clock, CheckCircle2 } from 'lucide-react'
+import { Plus, Users, Building2, Calendar, DollarSign, X, Search, Clock, CheckCircle2, Download, LayoutGrid, List, Gift, UserCheck, UserX, Palmtree } from 'lucide-react'
 import { formatCurrency, cn, getInitials } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
@@ -20,6 +20,10 @@ export default function HRPage() {
   const [showNewEmployee, setShowNewEmployee] = useState(false)
   const [showNewDept, setShowNewDept] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
+
+  // Employee view mode and filters
+  const [viewMode, setViewMode] = useState<'table'|'grid'>('table')
+  const [deptFilter, setDeptFilter] = useState<string>('all')
 
   const [empForm, setEmpForm] = useState<EmpForm>({ first_name: '', last_name: '', email: '', phone: '', department_id: '', position: '', employment_type: 'full_time', start_date: '', salary: 0, salary_period: 'monthly' })
   const [deptForm, setDeptForm] = useState({ name: '' })
@@ -70,6 +74,35 @@ export default function HRPage() {
     load()
   }
 
+  // Export payroll as CSV
+  const exportPayrollCSV = () => {
+    const rows = [['Employee Number', 'First Name', 'Last Name', 'Department', 'Position', 'Employment Type', 'Salary', 'Period', 'Monthly Equivalent']]
+    for (const emp of activeEmployees) {
+      let monthly = emp.salary || 0
+      if (emp.salary_period === 'annual') monthly /= 12
+      if (emp.salary_period === 'weekly') monthly *= 4.33
+      if (emp.salary_period === 'hourly') monthly *= 173.33
+      rows.push([
+        emp.employee_number || '',
+        emp.first_name || '',
+        emp.last_name || '',
+        emp.departments?.name || '',
+        emp.position || '',
+        emp.employment_type || '',
+        String(emp.salary || 0),
+        emp.salary_period || '',
+        monthly.toFixed(2),
+      ])
+    }
+    const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `payroll_${new Date().toISOString().split('T')[0]}.csv`
+    a.click(); URL.revokeObjectURL(url)
+    toast.success('Payroll exported')
+  }
+
   const activeEmployees = employees.filter(e => e.status === 'active')
   const totalPayroll = activeEmployees.reduce((s, e) => {
     let monthly = e.salary || 0
@@ -77,6 +110,35 @@ export default function HRPage() {
     if (e.salary_period === 'weekly') monthly *= 4.33
     return s + monthly
   }, 0)
+
+  // Filter employees by department
+  const filteredEmployees = deptFilter === 'all' ? employees : employees.filter(e => e.department_id === deptFilter)
+
+  // Birthday alerts - employees with birthdays this month
+  const currentMonth = new Date().getMonth() + 1
+  const birthdayEmployees = activeEmployees.filter(e => {
+    if (!e.date_of_birth) return false
+    const birthMonth = new Date(e.date_of_birth).getMonth() + 1
+    return birthMonth === currentMonth
+  })
+
+  // Attendance / leave summary for today
+  const today = new Date().toISOString().split('T')[0]
+  const onLeaveToday = leaveRequests.filter(lr => {
+    if (lr.status !== 'approved') return false
+    return lr.start_date <= today && lr.end_date >= today
+  })
+  const presentCount = activeEmployees.length - onLeaveToday.length
+  const onLeaveCount = onLeaveToday.length
+
+  // Leave balance: 20 days default minus used approved leave days per employee
+  const getLeaveBalance = (empId: string) => {
+    const DEFAULT_LEAVE_DAYS = 20
+    const usedDays = leaveRequests
+      .filter(lr => lr.employee_id === empId && lr.status === 'approved')
+      .reduce((s, lr) => s + (lr.days || 0), 0)
+    return DEFAULT_LEAVE_DAYS - usedDays
+  }
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 
@@ -90,54 +152,116 @@ export default function HRPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {/* Stat cards with attendance summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-brand-50 rounded-xl flex items-center justify-center"><Users className="w-4 h-4 text-brand-600" /></div><div><p className="text-lg font-bold">{activeEmployees.length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Active</p></div></div>
         <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-violet-50 rounded-xl flex items-center justify-center"><Building2 className="w-4 h-4 text-violet-600" /></div><div><p className="text-lg font-bold">{departments.length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Departments</p></div></div>
         <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center"><DollarSign className="w-4 h-4 text-emerald-600" /></div><div><p className="text-lg font-bold">{formatCurrency(totalPayroll)}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Monthly Payroll</p></div></div>
+        <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center"><UserCheck className="w-4 h-4 text-emerald-600" /></div><div><p className="text-lg font-bold">{presentCount}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Present Today</p></div></div>
+        <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center"><Palmtree className="w-4 h-4 text-amber-600" /></div><div><p className="text-lg font-bold">{onLeaveCount}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">On Leave</p></div></div>
         <div className="card p-4 flex items-center gap-3"><div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center"><Calendar className="w-4 h-4 text-amber-600" /></div><div><p className="text-lg font-bold">{leaveRequests.filter(l => l.status === 'pending').length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Pending Leave</p></div></div>
       </div>
 
+      {/* Birthday alerts */}
+      {birthdayEmployees.length > 0 && (
+        <div className="card p-4 mb-6 border-amber-200 bg-amber-50/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Gift className="w-4 h-4 text-amber-600" />
+            <h3 className="text-sm font-semibold text-amber-800">Birthdays This Month</h3>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {birthdayEmployees.map(emp => (
+              <div key={emp.id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 shadow-sm">
+                <div className="avatar-xs bg-amber-500 text-[10px]">{getInitials(`${emp.first_name} ${emp.last_name}`)}</div>
+                <span className="text-sm text-surface-700">{emp.first_name} {emp.last_name}</span>
+                <span className="text-[10px] text-surface-400">{new Date(emp.date_of_birth).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="segmented-control mb-8">
-        {[{ id: 'employees', label: 'Employees' }, { id: 'departments', label: 'Departments' }, { id: 'leave', label: 'Leave Requests' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as 'employees'|'departments'|'leave'|'payroll')}
+        {[{ id: 'employees', label: 'Employees' }, { id: 'departments', label: 'Departments' }, { id: 'leave', label: 'Leave Requests' }, { id: 'payroll', label: 'Payroll' }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>{t.label}</button>
         ))}
       </div>
 
       {tab === 'employees' && (
-        <div className="card overflow-hidden">
-          {employees.length === 0 ? (
-            <div className="text-center py-16"><Users className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No employees yet</p></div>
+        <>
+          {/* Filters and view toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <select className="input w-48 text-sm" value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
+                <option value="all">All Departments</option>
+                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1 bg-surface-100 rounded-lg p-0.5">
+              <button onClick={() => setViewMode('table')} className={cn('p-1.5 rounded-md', viewMode === 'table' ? 'bg-white shadow-sm' : '')}><List className="w-4 h-4 text-surface-600" /></button>
+              <button onClick={() => setViewMode('grid')} className={cn('p-1.5 rounded-md', viewMode === 'grid' ? 'bg-white shadow-sm' : '')}><LayoutGrid className="w-4 h-4 text-surface-600" /></button>
+            </div>
+          </div>
+
+          {filteredEmployees.length === 0 ? (
+            <div className="card text-center py-16"><Users className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No employees found</p></div>
+          ) : viewMode === 'grid' ? (
+            /* Grid / Card view */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredEmployees.map(emp => (
+                <div key={emp.id} className="card p-5 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="avatar-lg bg-brand-500 mb-3 text-lg">{getInitials(`${emp.first_name} ${emp.last_name}`)}</div>
+                    <p className="font-semibold text-surface-900">{emp.first_name} {emp.last_name}</p>
+                    <p className="text-xs text-surface-500 mt-0.5">{emp.position || 'No position'}</p>
+                    <p className="text-[10px] text-surface-400 mt-0.5">{emp.departments?.name || 'No department'}</p>
+                    <div className="flex items-center gap-2 mt-3">
+                      <span className={cn('badge text-[10px]', emp.status === 'active' ? 'badge-green' : 'badge-gray')}>{emp.status}</span>
+                      <span className="badge badge-gray text-[10px] capitalize">{emp.employment_type?.replace('_', ' ')}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-surface-400">
+                      Leave balance: <span className="font-semibold text-surface-700">{getLeaveBalance(emp.id)} days</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <table className="w-full">
-              <thead><tr className="border-b border-surface-100">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Employee</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Position</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden lg:table-cell">Department</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden lg:table-cell">Type</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Salary</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Status</th>
-              </tr></thead>
-              <tbody>
-                {employees.map(emp => (
-                  <tr key={emp.id} className="border-b border-surface-50 hover:bg-surface-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="avatar-sm bg-brand-500 flex-shrink-0">{getInitials(`${emp.first_name} ${emp.last_name}`)}</div>
-                        <div><p className="text-sm font-semibold text-surface-800">{emp.first_name} {emp.last_name}</p><p className="text-[10px] text-surface-400">{emp.employee_number} · {emp.email}</p></div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-surface-600 hidden md:table-cell">{emp.position || '—'}</td>
-                    <td className="px-4 py-3 text-xs text-surface-500 hidden lg:table-cell">{emp.departments?.name || '—'}</td>
-                    <td className="px-4 py-3 hidden lg:table-cell"><span className="badge badge-gray text-[10px] capitalize">{emp.employment_type.replace('_', ' ')}</span></td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-surface-900">{formatCurrency(emp.salary)}<span className="text-[10px] text-surface-400">/{emp.salary_period}</span></td>
-                    <td className="px-4 py-3"><span className={cn('badge text-[10px]', emp.status === 'active' ? 'badge-green' : 'badge-gray')}>{emp.status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            /* Table view */
+            <div className="card overflow-hidden">
+              <table className="w-full">
+                <thead><tr className="border-b border-surface-100">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Employee</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Position</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden lg:table-cell">Department</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden lg:table-cell">Type</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Salary</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Leave Bal.</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Status</th>
+                </tr></thead>
+                <tbody>
+                  {filteredEmployees.map(emp => (
+                    <tr key={emp.id} className="border-b border-surface-50 hover:bg-surface-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="avatar-sm bg-brand-500 flex-shrink-0">{getInitials(`${emp.first_name} ${emp.last_name}`)}</div>
+                          <div><p className="text-sm font-semibold text-surface-800">{emp.first_name} {emp.last_name}</p><p className="text-[10px] text-surface-400">{emp.employee_number} · {emp.email}</p></div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-surface-600 hidden md:table-cell">{emp.position || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-surface-500 hidden lg:table-cell">{emp.departments?.name || '—'}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell"><span className="badge badge-gray text-[10px] capitalize">{emp.employment_type?.replace('_', ' ')}</span></td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold text-surface-900">{formatCurrency(emp.salary)}<span className="text-[10px] text-surface-400">/{emp.salary_period}</span></td>
+                      <td className="px-4 py-3 text-center text-sm text-surface-600 hidden md:table-cell">{getLeaveBalance(emp.id)}d</td>
+                      <td className="px-4 py-3"><span className={cn('badge text-[10px]', emp.status === 'active' ? 'badge-green' : 'badge-gray')}>{emp.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {tab === 'departments' && (
@@ -180,6 +304,58 @@ export default function HRPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {tab === 'payroll' && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-surface-900">Payroll Summary</h3>
+            <button onClick={exportPayrollCSV} className="btn-secondary btn-sm"><Download className="w-3.5 h-3.5" /> Export CSV</button>
+          </div>
+          <div className="card overflow-hidden">
+            {activeEmployees.length === 0 ? (
+              <div className="text-center py-16"><DollarSign className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No active employees</p></div>
+            ) : (
+              <table className="w-full">
+                <thead><tr className="border-b border-surface-100">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Employee</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Department</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Type</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Salary</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Monthly Equiv.</th>
+                </tr></thead>
+                <tbody>
+                  {activeEmployees.map(emp => {
+                    let monthly = emp.salary || 0
+                    if (emp.salary_period === 'annual') monthly /= 12
+                    if (emp.salary_period === 'weekly') monthly *= 4.33
+                    if (emp.salary_period === 'hourly') monthly *= 173.33
+                    return (
+                      <tr key={emp.id} className="border-b border-surface-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="avatar-sm bg-brand-500 flex-shrink-0">{getInitials(`${emp.first_name} ${emp.last_name}`)}</div>
+                            <div><p className="text-sm font-semibold text-surface-800">{emp.first_name} {emp.last_name}</p><p className="text-[10px] text-surface-400">{emp.employee_number}</p></div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-surface-600 hidden md:table-cell">{emp.departments?.name || '—'}</td>
+                        <td className="px-4 py-3 hidden md:table-cell"><span className="badge badge-gray text-[10px] capitalize">{emp.employment_type?.replace('_', ' ')}</span></td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold">{formatCurrency(emp.salary)}<span className="text-[10px] text-surface-400">/{emp.salary_period}</span></td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-surface-900">{formatCurrency(monthly)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-surface-200 font-bold">
+                    <td colSpan={4} className="px-4 py-3 text-sm">Total Monthly Payroll</td>
+                    <td className="px-4 py-3 text-right text-sm text-brand-600">{formatCurrency(totalPayroll)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </div>
         </div>
       )}
 
