@@ -7,10 +7,11 @@ import {
   ArrowLeft, Mail, Phone, Building2, Globe, MapPin, Edit2, Save, X,
   Plus, FileText, TrendingUp, CheckSquare, Clock, MessageCircle,
   DollarSign, Calendar, User, Send, CheckCircle2, XCircle, Trash2,
-  ArrowDownLeft, ArrowUpRight
+  ArrowDownLeft, ArrowUpRight, Users, Kanban, ChevronDown, ChevronUp
 } from 'lucide-react'
 import { formatCurrency, getInitials, cn, formatDate } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
+import EmailComposer from '@/components/shared/EmailComposer'
 
 interface ContactDetail {
   id: string; workspace_id: string; type: string; name: string;
@@ -55,6 +56,39 @@ interface CallLog {
   recording_url: string | null;
 }
 
+interface SocialLead {
+  id: string; platform: string; source_type: string; author_name: string;
+  author_username: string; message: string | null; status: string;
+  captured_at: string; created_at: string;
+}
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diff = now - then
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  return `${Math.floor(months / 12)}y ago`
+}
+
+const TIMELINE_BORDER_COLORS: Record<string, string> = {
+  deal: 'border-l-brand-500',
+  quote: 'border-l-violet-500',
+  activity: 'border-l-amber-500',
+  email: 'border-l-blue-500',
+  whatsapp: 'border-l-green-500',
+  call_log: 'border-l-orange-500',
+  social_lead: 'border-l-pink-500',
+}
+
 const ACTIVITY_ICONS: Record<string, typeof Phone> = {
   call: Phone, email: Mail, meeting: Calendar, note: FileText, task: CheckSquare, whatsapp: MessageCircle,
 }
@@ -77,15 +111,18 @@ export default function ContactDetailPage() {
   const [emails, setEmails] = useState<EmailMessage[]>([])
   const [waMessages, setWaMessages] = useState<WhatsAppMessage[]>([])
   const [callLogs, setCallLogs] = useState<CallLog[]>([])
+  const [socialLeads, setSocialLeads] = useState<SocialLead[]>([])
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [waSendText, setWaSendText] = useState('')
   const [waSending, setWaSending] = useState(false)
-  const [tab, setTab] = useState<'overview' | 'deals' | 'quotes' | 'activities' | 'emails' | 'whatsapp'>('overview')
+  const [tab, setTab] = useState<'timeline' | 'overview' | 'deals' | 'quotes' | 'activities' | 'emails' | 'whatsapp'>('timeline')
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState<Partial<ContactDetail>>({})
   const [showNewActivity, setShowNewActivity] = useState(false)
   const [showNewDeal, setShowNewDeal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showEmailComposer, setShowEmailComposer] = useState(false)
 
   // New activity form
   const [actType, setActType] = useState('task')
@@ -148,6 +185,15 @@ export default function ContactDetailPage() {
       .limit(30)
     setCallLogs(callData || [])
 
+    // Load social leads converted from this contact
+    const { data: socialData } = await supabase
+      .from('social_leads')
+      .select('id, platform, source_type, author_name, author_username, message, status, captured_at, created_at')
+      .eq('contact_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setSocialLeads(socialData || [])
+
     setLoading(false)
   }, [id])
 
@@ -207,6 +253,15 @@ export default function ContactDetailPage() {
 
   const contactCustomFields = wsCustomFields.filter(f => f.entity === 'contact')
 
+  const toggleExpand = (key: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   // Build timeline from all sources
   const timeline = [
     ...deals.map(d => ({ type: 'deal' as const, date: d.created_at, data: d })),
@@ -215,6 +270,7 @@ export default function ContactDetailPage() {
     ...emails.map(e => ({ type: 'email' as const, date: e.received_at, data: e })),
     ...callLogs.map(c => ({ type: 'call_log' as const, date: c.started_at, data: c })),
     ...waMessages.map(m => ({ type: 'whatsapp' as const, date: m.received_at, data: m })),
+    ...socialLeads.map(s => ({ type: 'social_lead' as const, date: s.created_at, data: s })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   if (loading || !contact) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
@@ -257,9 +313,16 @@ export default function ContactDetailPage() {
               )}
             </div>
           </div>
-          <button onClick={() => setEditing(true)} className="btn-secondary btn-sm">
-            <Edit2 className="w-3.5 h-3.5" /> Edit
-          </button>
+          <div className="flex items-center gap-2">
+            {contact.email && (
+              <button onClick={() => setShowEmailComposer(true)} className="btn-primary btn-sm">
+                <Send className="w-3.5 h-3.5" /> Send Email
+              </button>
+            )}
+            <button onClick={() => setEditing(true)} className="btn-secondary btn-sm">
+              <Edit2 className="w-3.5 h-3.5" /> Edit
+            </button>
+          </div>
         </div>
 
         {/* Quick stats */}
@@ -294,7 +357,8 @@ export default function ContactDetailPage() {
       {/* Tabs */}
       <div className="segmented-control mb-8">
         {[
-          { id: 'overview', label: 'Timeline', count: timeline.length },
+          { id: 'timeline', label: 'Timeline', count: timeline.length },
+          { id: 'overview', label: 'Overview', count: timeline.length },
           { id: 'deals', label: template.dealLabel.plural, count: deals.length },
           { id: 'quotes', label: 'Quotes', count: quotes.length },
           { id: 'activities', label: 'Activities', count: activities.filter(a => a.type !== 'email').length },
@@ -310,7 +374,160 @@ export default function ContactDetailPage() {
         ))}
       </div>
 
-      {/* ====== TIMELINE TAB ====== */}
+      {/* ====== UNIFIED TIMELINE TAB ====== */}
+      {tab === 'timeline' && (
+        <div className="space-y-2">
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setShowNewActivity(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Activity</button>
+            <button onClick={() => setShowNewDeal(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> {template.dealLabel.singular}</button>
+            <button onClick={() => router.push(`/quotes?contact=${id}`)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Quote</button>
+          </div>
+
+          {timeline.length === 0 && (
+            <div className="text-center py-12 card p-6">
+              <Clock className="w-10 h-10 text-surface-300 mx-auto mb-3" />
+              <p className="text-surface-600 font-medium">No activity yet</p>
+              <p className="text-xs text-surface-400 mt-1">Create a {template.dealLabel.singular.toLowerCase()}, quote, or activity to start the timeline</p>
+            </div>
+          )}
+
+          {timeline.map((item) => {
+            const itemKey = `${item.type}-${item.data.id}`
+            const isExpanded = expandedItems.has(itemKey)
+
+            // Determine icon
+            let IconEl: typeof Phone = FileText
+            if (item.type === 'deal') IconEl = Kanban
+            else if (item.type === 'quote') IconEl = FileText
+            else if (item.type === 'call_log') IconEl = Phone
+            else if (item.type === 'whatsapp') IconEl = MessageCircle
+            else if (item.type === 'email') IconEl = Mail
+            else if (item.type === 'social_lead') IconEl = Users
+            else if (item.type === 'activity') IconEl = ACTIVITY_ICONS[(item.data as ActivityRow).type] || CheckSquare
+
+            // Determine title
+            let title = ''
+            if (item.type === 'deal') title = `${template.dealLabel.singular} created: ${(item.data as DealRow).title}`
+            else if (item.type === 'quote') title = `Quote: ${(item.data as QuoteRow).title}`
+            else if (item.type === 'activity') title = (item.data as ActivityRow).title
+            else if (item.type === 'email') title = (item.data as EmailMessage).subject
+            else if (item.type === 'whatsapp') title = `WhatsApp: ${((item.data as WhatsAppMessage).body || '').slice(0, 80)}`
+            else if (item.type === 'call_log') title = `Call (${Math.floor((item.data as CallLog).duration_seconds / 60)}m ${(item.data as CallLog).duration_seconds % 60}s)`
+            else if (item.type === 'social_lead') title = `Social lead: ${(item.data as SocialLead).author_name || (item.data as SocialLead).author_username} via ${(item.data as SocialLead).platform}`
+
+            // Determine expandable details
+            let details: string | null = null
+            if (item.type === 'activity') details = (item.data as ActivityRow).notes || null
+            else if (item.type === 'email') details = (item.data as EmailMessage).snippet || null
+            else if (item.type === 'call_log') details = (item.data as CallLog).summary || (item.data as CallLog).transcript || null
+            else if (item.type === 'whatsapp') details = (item.data as WhatsAppMessage).body || null
+            else if (item.type === 'social_lead') details = (item.data as SocialLead).message || null
+
+            // Determine icon bg color
+            const iconBg = item.type === 'deal' ? 'bg-brand-50 text-brand-600'
+              : item.type === 'quote' ? 'bg-violet-50 text-violet-600'
+              : item.type === 'call_log' ? 'bg-orange-50 text-orange-600'
+              : item.type === 'email' ? 'bg-blue-50 text-blue-600'
+              : item.type === 'whatsapp' ? 'bg-green-50 text-green-600'
+              : item.type === 'social_lead' ? 'bg-pink-50 text-pink-600'
+              : ACTIVITY_COLORS[(item.data as ActivityRow).type] || 'bg-surface-100 text-surface-500'
+
+            return (
+              <div key={itemKey}
+                className={cn('card p-4 border-l-4 cursor-pointer hover:shadow-card-hover transition-all', TIMELINE_BORDER_COLORS[item.type] || 'border-l-surface-300')}
+                onClick={() => details && toggleExpand(itemKey)}>
+                <div className="flex items-start gap-3">
+                  <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', iconBg)}>
+                    <IconEl className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-surface-800 line-clamp-1">{title}</p>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[10px] text-surface-400 whitespace-nowrap">{timeAgo(item.date)}</span>
+                        {details && (
+                          isExpanded
+                            ? <ChevronUp className="w-3.5 h-3.5 text-surface-400" />
+                            : <ChevronDown className="w-3.5 h-3.5 text-surface-400" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="badge badge-gray text-[9px] capitalize">{item.type.replace('_', ' ')}</span>
+                      {item.type === 'deal' && (item.data as DealRow).value && (
+                        <span className="text-xs font-semibold text-surface-700">{formatCurrency((item.data as DealRow).value!)}</span>
+                      )}
+                      {item.type === 'deal' && (
+                        <span className={cn('badge text-[9px]',
+                          (item.data as DealRow).status === 'won' ? 'badge-green' :
+                          (item.data as DealRow).status === 'lost' ? 'badge-red' : 'badge-blue')}>
+                          {(item.data as DealRow).status}
+                        </span>
+                      )}
+                      {item.type === 'quote' && (
+                        <>
+                          <span className="text-xs font-semibold text-surface-700">{formatCurrency((item.data as QuoteRow).total)}</span>
+                          <span className={cn('badge text-[9px]',
+                            (item.data as QuoteRow).status === 'accepted' ? 'badge-green' :
+                            (item.data as QuoteRow).status === 'rejected' ? 'badge-red' : 'badge-gray')}>
+                            {(item.data as QuoteRow).status}
+                          </span>
+                        </>
+                      )}
+                      {item.type === 'activity' && (
+                        <span className={cn('badge text-[9px]', (item.data as ActivityRow).done ? 'badge-green' : 'badge-gray')}>
+                          {(item.data as ActivityRow).done ? 'Done' : (item.data as ActivityRow).type}
+                        </span>
+                      )}
+                      {item.type === 'email' && (
+                        <span className={cn('badge text-[9px]',
+                          (item.data as EmailMessage).direction === 'inbound' ? 'badge-blue' : 'badge-green')}>
+                          {(item.data as EmailMessage).direction === 'inbound' ? 'Received' : 'Sent'}
+                        </span>
+                      )}
+                      {item.type === 'social_lead' && (
+                        <span className={cn('badge text-[9px]',
+                          (item.data as SocialLead).status === 'converted' ? 'badge-green' :
+                          (item.data as SocialLead).status === 'qualified' ? 'badge-blue' : 'badge-gray')}>
+                          {(item.data as SocialLead).status}
+                        </span>
+                      )}
+                      {item.type === 'call_log' && (item.data as CallLog).sentiment && (
+                        <span className={cn('badge text-[9px]',
+                          (item.data as CallLog).sentiment === 'positive' ? 'badge-green' :
+                          (item.data as CallLog).sentiment === 'negative' ? 'badge-red' : 'badge-gray')}>
+                          {(item.data as CallLog).sentiment}
+                        </span>
+                      )}
+                    </div>
+                    {isExpanded && details && (
+                      <div className="mt-3 pt-3 border-t border-surface-100">
+                        <p className="text-xs text-surface-500 whitespace-pre-wrap">{details}</p>
+                        {item.type === 'call_log' && (item.data as CallLog).next_actions?.length > 0 && (
+                          <div className="mt-2 space-y-0.5">
+                            {(item.data as CallLog).next_actions.map((a, i) => (
+                              <p key={i} className="text-[10px] text-brand-600 font-medium">→ {a}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {item.type === 'activity' && (
+                    <button onClick={(e) => { e.stopPropagation(); toggleActivity(item.data.id, (item.data as ActivityRow).done) }}
+                      className={cn('w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                        (item.data as ActivityRow).done ? 'bg-emerald-500 border-emerald-500' : 'border-surface-300 hover:border-brand-400')}>
+                      {(item.data as ActivityRow).done && <CheckCircle2 className="w-3 h-3 text-white" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ====== OVERVIEW TAB (legacy) ====== */}
       {tab === 'overview' && (
         <div className="space-y-3">
           <div className="flex gap-2 mb-4">
@@ -805,6 +1022,21 @@ export default function ContactDetailPage() {
                 Save
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Composer Modal */}
+      {showEmailComposer && contact.email && (
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-lg">
+            <EmailComposer
+              contactId={contact.id}
+              contactEmail={contact.email}
+              contactName={contact.name}
+              onSent={() => { load() }}
+              onClose={() => setShowEmailComposer(false)}
+            />
           </div>
         </div>
       )}

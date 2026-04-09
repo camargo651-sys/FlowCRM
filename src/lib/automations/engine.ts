@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { sendWhatsAppMessage, decryptToken } from '@/lib/whatsapp/client'
+import { sendSMS } from '@/lib/integrations/twilio'
 
 interface Automation {
   id: string
@@ -12,7 +13,32 @@ interface Automation {
   action_config: Record<string, string | number | boolean | string[]>
 }
 
-interface TriggerContext {
+interface AutomationStep {
+  id: string
+  automation_id: string
+  step_order: number
+  action_type: string
+  action_config: Record<string, any>
+  delay_minutes: number
+  condition_field: string | null
+  condition_operator: string | null
+  condition_value: string | null
+}
+
+interface AutomationExecution {
+  id: string
+  automation_id: string
+  workspace_id: string
+  trigger_context: TriggerContext
+  current_step: number
+  status: 'running' | 'completed' | 'failed' | 'paused'
+  next_run_at: string | null
+  started_at: string
+  completed_at: string | null
+  log: Array<{ step: number; action: string; status: string; timestamp: string; message?: string }>
+}
+
+export interface TriggerContext {
   workspaceId: string
   triggerType: string
   contactId?: string
@@ -36,12 +62,24 @@ interface TriggerContext {
 
 /**
  * Fire a trigger and execute matching automations.
+ * Backward compatible — delegates to fireMultiStepTrigger internally.
  */
 export async function fireTrigger(
   supabase: SupabaseClient,
   context: TriggerContext,
 ) {
-  // Find matching automations
+  return fireMultiStepTrigger(supabase, context)
+}
+
+/**
+ * Fire a trigger with multi-step workflow support.
+ * If automation has steps → creates execution and runs step-by-step.
+ * If no steps → executes single action (legacy behavior).
+ */
+export async function fireMultiStepTrigger(
+  supabase: SupabaseClient,
+  context: TriggerContext,
+) {
   const { data: automations } = await supabase
     .from('automations')
     .select('*')
@@ -52,20 +90,285 @@ export async function fireTrigger(
   if (!automations?.length) return
 
   for (const automation of automations) {
-    // Check trigger conditions
     if (!matchesTriggerConfig(automation, context)) continue
 
     try {
-      await executeAction(supabase, automation, context)
+      // Check if automation has multi-step workflow
+      const { data: steps } = await supabase
+        .from('automation_steps')
+        .select('*')
+        .eq('automation_id', automation.id)
+        .order('step_order', { ascending: true })
 
-      // Update trigger stats
+      if (steps && steps.length > 0) {
+        // Multi-step workflow
+        await startMultiStepExecution(supabase, automation, steps, context)
+      } else {
+        // Legacy single-action execution
+        await executeAction(supabase, automation, context)
+      }
+
       await supabase.from('automations').update({
         last_triggered: new Date().toISOString(),
         trigger_count: (automation.trigger_count || 0) + 1,
       }).eq('id', automation.id)
     } catch (err: unknown) {
+      // Silently fail for individual automations
     }
   }
+}
+
+/**
+ * Start a multi-step execution: create execution record, run first step.
+ */
+async function startMultiStepExecution(
+  supabase: SupabaseClient,
+  automation: Automation,
+  steps: AutomationStep[],
+  context: TriggerContext,
+) {
+  const { data: execution } = await supabase.from('automation_executions').insert({
+    automation_id: automation.id,
+    workspace_id: context.workspaceId,
+    trigger_context: context,
+    current_step: 0,
+    status: 'running',
+    log: [],
+  }).select().single()
+
+  if (!execution) return
+
+  await runStep(supabase, automation, steps, execution as AutomationExecution, 0)
+}
+
+/**
+ * Run a specific step in the workflow.
+ */
+async function runStep(
+  supabase: SupabaseClient,
+  automation: Automation,
+  steps: AutomationStep[],
+  execution: AutomationExecution,
+  stepIndex: number,
+) {
+  if (stepIndex >= steps.length) {
+    // All steps done
+    await supabase.from('automation_executions').update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      current_step: stepIndex,
+    }).eq('id', execution.id)
+    return
+  }
+
+  const step = steps[stepIndex]
+  const context = execution.trigger_context
+  const log = Array.isArray(execution.log) ? [...execution.log] : []
+
+  // If step has a delay, schedule it for later
+  if (step.delay_minutes > 0 && stepIndex === execution.current_step) {
+    const nextRun = new Date(Date.now() + step.delay_minutes * 60 * 1000)
+    await supabase.from('automation_executions').update({
+      current_step: stepIndex,
+      next_run_at: nextRun.toISOString(),
+    }).eq('id', execution.id)
+    return // Will be picked up by cron/processScheduledSteps
+  }
+
+  // Evaluate condition if present
+  if (step.condition_field && step.condition_operator) {
+    const conditionMet = evaluateCondition(step, context)
+    if (!conditionMet) {
+      log.push({
+        step: stepIndex,
+        action: step.action_type,
+        status: 'skipped',
+        timestamp: new Date().toISOString(),
+        message: `Condition not met: ${step.condition_field} ${step.condition_operator} ${step.condition_value || ''}`,
+      })
+      await supabase.from('automation_executions').update({
+        current_step: stepIndex + 1,
+        log,
+      }).eq('id', execution.id)
+      // Advance to next step
+      execution.log = log
+      execution.current_step = stepIndex + 1
+      await runStep(supabase, automation, steps, execution, stepIndex + 1)
+      return
+    }
+  }
+
+  // Execute the step action using a temporary automation-like object
+  try {
+    const stepAutomation: Automation = {
+      ...automation,
+      action_type: step.action_type,
+      action_config: step.action_config || {},
+    }
+    await executeAction(supabase, stepAutomation, context)
+
+    log.push({
+      step: stepIndex,
+      action: step.action_type,
+      status: 'success',
+      timestamp: new Date().toISOString(),
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    log.push({
+      step: stepIndex,
+      action: step.action_type,
+      status: 'failed',
+      timestamp: new Date().toISOString(),
+      message,
+    })
+    await supabase.from('automation_executions').update({
+      status: 'failed',
+      log,
+      current_step: stepIndex,
+    }).eq('id', execution.id)
+    return
+  }
+
+  // Advance to next step
+  const nextIndex = stepIndex + 1
+  await supabase.from('automation_executions').update({
+    current_step: nextIndex,
+    log,
+  }).eq('id', execution.id)
+
+  execution.log = log
+  execution.current_step = nextIndex
+
+  // Check if next step has a delay
+  if (nextIndex < steps.length && steps[nextIndex].delay_minutes > 0) {
+    const nextRun = new Date(Date.now() + steps[nextIndex].delay_minutes * 60 * 1000)
+    await supabase.from('automation_executions').update({
+      next_run_at: nextRun.toISOString(),
+    }).eq('id', execution.id)
+    return
+  }
+
+  // Continue immediately to next step
+  await runStep(supabase, automation, steps, execution, nextIndex)
+}
+
+/**
+ * Evaluate a step condition against the trigger context.
+ */
+export function evaluateCondition(
+  step: AutomationStep,
+  context: TriggerContext,
+): boolean {
+  if (!step.condition_field || !step.condition_operator) return true
+
+  // Resolve the field value from the context
+  const fieldMap: Record<string, unknown> = {
+    deal_value: context.dealValue,
+    deal_title: context.dealTitle,
+    deal_id: context.dealId,
+    contact_name: context.contactName,
+    contact_email: context.contactEmail,
+    contact_phone: context.contactPhone,
+    stage_name: context.stageName,
+    previous_stage_name: context.previousStageName,
+    lead_name: context.leadName,
+    lead_platform: context.leadPlatform,
+    quote_title: context.quoteTitle,
+    trigger_type: context.triggerType,
+  }
+
+  // Also check metadata keys
+  const fieldValue = fieldMap[step.condition_field] ?? context.metadata?.[step.condition_field]
+  const conditionValue = step.condition_value ?? ''
+
+  switch (step.condition_operator) {
+    case 'equals':
+      return String(fieldValue ?? '') === conditionValue
+    case 'not_equals':
+      return String(fieldValue ?? '') !== conditionValue
+    case 'contains':
+      return String(fieldValue ?? '').toLowerCase().includes(conditionValue.toLowerCase())
+    case 'greater_than':
+      return Number(fieldValue ?? 0) > Number(conditionValue)
+    case 'less_than':
+      return Number(fieldValue ?? 0) < Number(conditionValue)
+    case 'is_empty':
+      return fieldValue === null || fieldValue === undefined || fieldValue === ''
+    case 'is_not_empty':
+      return fieldValue !== null && fieldValue !== undefined && fieldValue !== ''
+    default:
+      return true
+  }
+}
+
+/**
+ * Process scheduled automation steps (called by cron).
+ * Picks up executions where next_run_at <= now and resumes them.
+ */
+export async function processScheduledSteps(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const { data: executions } = await supabase
+    .from('automation_executions')
+    .select('*')
+    .eq('status', 'running')
+    .lte('next_run_at', new Date().toISOString())
+    .not('next_run_at', 'is', null)
+
+  if (!executions?.length) return 0
+
+  let processed = 0
+
+  for (const execution of executions as AutomationExecution[]) {
+    try {
+      // Load the automation
+      const { data: automation } = await supabase
+        .from('automations')
+        .select('*')
+        .eq('id', execution.automation_id)
+        .single()
+
+      if (!automation || !automation.enabled) {
+        await supabase.from('automation_executions').update({
+          status: 'paused',
+          next_run_at: null,
+        }).eq('id', execution.id)
+        continue
+      }
+
+      // Load steps
+      const { data: steps } = await supabase
+        .from('automation_steps')
+        .select('*')
+        .eq('automation_id', execution.automation_id)
+        .order('step_order', { ascending: true })
+
+      if (!steps?.length) {
+        await supabase.from('automation_executions').update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          next_run_at: null,
+        }).eq('id', execution.id)
+        continue
+      }
+
+      // Clear next_run_at so we don't pick it up again
+      await supabase.from('automation_executions').update({
+        next_run_at: null,
+      }).eq('id', execution.id)
+
+      // Resume from current step
+      await runStep(supabase, automation as Automation, steps as AutomationStep[], execution, execution.current_step)
+      processed++
+    } catch {
+      await supabase.from('automation_executions').update({
+        status: 'failed',
+      }).eq('id', execution.id)
+    }
+  }
+
+  return processed
 }
 
 function matchesTriggerConfig(automation: Automation, context: TriggerContext): boolean {
@@ -197,6 +500,49 @@ async function executeAction(
       }
       if (Object.keys(updates).length) {
         await supabase.from('contacts').update(updates).eq('id', context.contactId)
+      }
+      break
+    }
+
+    case 'send_sms': {
+      if (!context.contactPhone) break
+      const smsMessage = interpolateTemplate(config.message || 'Hi {{contact_name}}!', context)
+
+      // Load Twilio config from integrations table
+      const { data: twilioInt } = await supabase
+        .from('integrations')
+        .select('config')
+        .eq('workspace_id', context.workspaceId)
+        .eq('key', 'twilio')
+        .eq('enabled', true)
+        .single()
+
+      if (twilioInt?.config) {
+        const smsConfig = twilioInt.config as { accountSid?: string; authToken?: string; fromNumber?: string }
+        if (smsConfig.accountSid && smsConfig.authToken && smsConfig.fromNumber) {
+          const result = await sendSMS(context.contactPhone, smsMessage, {
+            accountSid: smsConfig.accountSid,
+            authToken: smsConfig.authToken,
+            fromNumber: smsConfig.fromNumber,
+          })
+
+          // Log activity
+          await supabase.from('activities').insert({
+            workspace_id: context.workspaceId,
+            type: 'sms',
+            title: `SMS to ${context.contactName || context.contactPhone}`,
+            notes: smsMessage,
+            contact_id: context.contactId || null,
+            owner_id: context.userId || null,
+            done: true,
+            metadata: {
+              automation_id: automation.id,
+              sms_sid: result.sid || null,
+              sms_success: result.success,
+              to_number: context.contactPhone,
+            },
+          })
+        }
       }
       break
     }

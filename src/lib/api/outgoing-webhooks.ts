@@ -1,5 +1,8 @@
 import crypto from 'crypto'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { sendSlackNotification, buildSlackMessage } from '@/lib/integrations/slack'
+
+const SLACK_EVENTS = ['deal_won', 'deal_lost', 'lead_created', 'contact_created']
 
 /**
  * Fire outgoing webhooks for a given event.
@@ -52,5 +55,25 @@ export async function fireOutgoingWebhooks(
       body,
     })
   } catch (err: unknown) {
+  }
+
+  // Send Slack notification if enabled and event is supported
+  if (SLACK_EVENTS.includes(event)) {
+    try {
+      const { data: slackInt } = await supabase
+        .from('integrations')
+        .select('config')
+        .eq('workspace_id', workspaceId)
+        .eq('key', 'slack')
+        .eq('enabled', true)
+        .single()
+
+      if (slackInt?.config?.webhook_url) {
+        const slackMessage = buildSlackMessage(event, payload)
+        await sendSlackNotification(slackInt.config.webhook_url, slackMessage)
+      }
+    } catch {
+      // Slack notification is best-effort — don't block on failure
+    }
   }
 }

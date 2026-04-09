@@ -1,4 +1,6 @@
 import { Resend } from 'resend'
+import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM = process.env.RESEND_FROM_EMAIL || 'Tracktio <noreply@tracktio.app>'
@@ -7,24 +9,77 @@ interface SendEmailParams {
   to: string
   subject: string
   html: string
+  workspaceId?: string
+  contactId?: string
 }
 
-export async function sendTransactionalEmail({ to, subject, html }: SendEmailParams) {
+function getServiceSupabase() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) return null
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    key,
+  )
+}
+
+/**
+ * Inject a tracking pixel into HTML email body and record tracking entry.
+ */
+async function injectTrackingPixel(
+  html: string,
+  params: { to: string; subject: string; workspaceId?: string; contactId?: string },
+): Promise<{ html: string; trackingId: string | null }> {
+  const supabase = getServiceSupabase()
+  if (!supabase || !params.workspaceId) {
+    return { html, trackingId: null }
+  }
+
+  const trackingId = crypto.randomUUID()
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tracktio.app'
+  const pixel = `<img src="${baseUrl}/api/email/track?id=${trackingId}" width="1" height="1" style="display:none" />`
+
+  // Store tracking record
+  await supabase.from('email_tracking').insert({
+    id: trackingId,
+    workspace_id: params.workspaceId,
+    contact_id: params.contactId || null,
+    email_to: params.to,
+    subject: params.subject,
+    metadata: {},
+  })
+
+  // Inject pixel before closing </body> tag, or append at end
+  const injectedHtml = html.includes('</body>')
+    ? html.replace('</body>', `${pixel}</body>`)
+    : html + pixel
+
+  return { html: injectedHtml, trackingId }
+}
+
+export async function sendTransactionalEmail({ to, subject, html, workspaceId, contactId }: SendEmailParams) {
   if (!resend) {
     return { success: false, reason: 'not_configured' }
   }
+
+  // Inject tracking pixel
+  const { html: trackedHtml, trackingId } = await injectTrackingPixel(html, {
+    to,
+    subject,
+    workspaceId,
+    contactId,
+  })
 
   try {
     const { data, error } = await resend.emails.send({
       from: FROM,
       to,
       subject,
-      html,
+      html: trackedHtml,
     })
     if (error) {
       return { success: false, reason: error.message }
     }
-    return { success: true, id: data?.id }
+    return { success: true, id: data?.id, trackingId }
   } catch {
     return { success: false, reason: 'unknown_error' }
   }

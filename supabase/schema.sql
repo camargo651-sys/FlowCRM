@@ -1636,4 +1636,62 @@ alter table automations add constraint automations_trigger_type_check check (tri
   'lead_created','lead_qualified','lead_converted','form_submitted'
 ));
 
+-- ============================================================
+-- MIGRATION: WhatsApp conversation resolve/archive + assignment
+-- ============================================================
+ALTER TABLE whatsapp_contacts ADD COLUMN IF NOT EXISTS status text default 'open';
+ALTER TABLE whatsapp_contacts ADD COLUMN IF NOT EXISTS assigned_to uuid references auth.users(id);
+
+-- ============================================================
+-- MULTI-STEP AUTOMATION SUPPORT
+-- ============================================================
+CREATE TABLE IF NOT EXISTS automation_steps (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  automation_id uuid NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
+  step_order int NOT NULL DEFAULT 0,
+  action_type text NOT NULL,
+  action_config jsonb DEFAULT '{}',
+  delay_minutes int DEFAULT 0,
+  condition_field text,
+  condition_operator text CHECK (condition_operator IN ('equals','not_equals','contains','greater_than','less_than','is_empty','is_not_empty')),
+  condition_value text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE automation_steps ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ws owner automation_steps" ON automation_steps
+  USING (automation_id IN (SELECT id FROM automations WHERE workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())));
+
+CREATE TABLE IF NOT EXISTS automation_executions (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  automation_id uuid NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  trigger_context jsonb NOT NULL DEFAULT '{}',
+  current_step int DEFAULT 0,
+  status text DEFAULT 'running' CHECK (status IN ('running','completed','failed','paused')),
+  next_run_at timestamptz,
+  started_at timestamptz DEFAULT now(),
+  completed_at timestamptz,
+  log jsonb DEFAULT '[]'
+);
+ALTER TABLE automation_executions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ws owner automation_executions" ON automation_executions
+  USING (workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid()));
+CREATE INDEX IF NOT EXISTS idx_automation_executions_next ON automation_executions(next_run_at) WHERE status = 'running';
+
+-- Email open tracking
+CREATE TABLE IF NOT EXISTS email_tracking (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES contacts(id) ON DELETE SET NULL,
+  email_to text NOT NULL,
+  subject text,
+  sent_at timestamptz DEFAULT now(),
+  opened_at timestamptz,
+  opened_count int DEFAULT 0,
+  metadata jsonb DEFAULT '{}'
+);
+ALTER TABLE email_tracking ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ws owner email_tracking" ON email_tracking
+  USING (workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid()));
+
 -- Done! Your Tracktio database is ready.

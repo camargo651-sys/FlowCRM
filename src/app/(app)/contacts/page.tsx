@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download } from 'lucide-react'
+import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download, GitMerge } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
 import BulkActions from '@/components/shared/BulkActions'
 import ViewToggle from '@/components/shared/ViewToggle'
@@ -175,6 +175,11 @@ export default function ContactsPage() {
   const [importResult, setImportResult] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [view, setView] = useState<'table' | 'grid' | 'kanban'>('table')
+  const [showDuplicates, setShowDuplicates] = useState(false)
+  const [duplicateGroups, setDuplicateGroups] = useState<Contact[][]>([])
+  const [selectedPrimary, setSelectedPrimary] = useState<Record<number, string>>({})
+  const [merging, setMerging] = useState(false)
+  const [findingDups, setFindingDups] = useState(false)
 
   const loadContacts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -188,6 +193,66 @@ export default function ContactsPage() {
   }, [])
 
   useEffect(() => { loadContacts() }, [loadContacts])
+
+  const findDuplicates = useCallback(async () => {
+    setFindingDups(true)
+    const groups: Contact[][] = []
+    const visited = new Set<string>()
+
+    for (const c of contacts) {
+      if (visited.has(c.id)) continue
+      const dups = contacts.filter(o => {
+        if (o.id === c.id || visited.has(o.id)) return false
+        // Same email
+        if (c.email && o.email && c.email.toLowerCase() === o.email.toLowerCase()) return true
+        // Same phone
+        if (c.phone && o.phone && c.phone.replace(/\D/g, '') === o.phone.replace(/\D/g, '')) return true
+        // Similar name (first 3+ chars match)
+        if (c.name && o.name && c.name.length >= 3 && o.name.length >= 3 &&
+          c.name.substring(0, 3).toLowerCase() === o.name.substring(0, 3).toLowerCase() &&
+          c.name.toLowerCase() !== o.name.toLowerCase().replace(/\s/g, '') // avoid overly broad matches
+        ) return true
+        return false
+      })
+      if (dups.length > 0) {
+        const group = [c, ...dups]
+        group.forEach(g => visited.add(g.id))
+        groups.push(group)
+      }
+    }
+    setDuplicateGroups(groups)
+    const primaries: Record<number, string> = {}
+    groups.forEach((g, i) => { primaries[i] = g[0].id })
+    setSelectedPrimary(primaries)
+    setShowDuplicates(true)
+    setFindingDups(false)
+  }, [contacts])
+
+  const mergeGroup = async (groupIndex: number) => {
+    const group = duplicateGroups[groupIndex]
+    const primaryId = selectedPrimary[groupIndex]
+    if (!primaryId || !group) return
+    const duplicateIds = group.filter(c => c.id !== primaryId).map(c => c.id)
+    if (duplicateIds.length === 0) return
+
+    setMerging(true)
+    try {
+      const res = await fetch('/api/contacts/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primaryId, duplicateIds }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        toast.error(err?.error?.message || 'Merge failed')
+      } else {
+        toast.success(`Merged ${duplicateIds.length + 1} contacts`)
+        setDuplicateGroups(prev => prev.filter((_, i) => i !== groupIndex))
+        loadContacts()
+      }
+    } catch { toast.error('Merge request failed') }
+    setMerging(false)
+  }
 
   const updateField = async (id: string, field: string, value: string) => {
     await supabase.from('contacts').update({ [field]: value || null }).eq('id', id)
@@ -221,6 +286,9 @@ export default function ContactsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input className="input pl-9 w-56 text-xs" placeholder={`Search ${template.contactLabel.plural.toLowerCase()}...`} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          <button onClick={findDuplicates} disabled={findingDups} className="btn-secondary btn-sm">
+            <GitMerge className="w-3.5 h-3.5" /> {findingDups ? 'Searching...' : 'Find Duplicates'}
+          </button>
           <a href="/api/export?type=contacts" className="btn-ghost btn-sm">
             <Download className="w-3.5 h-3.5" /> Export
           </a>
@@ -406,6 +474,64 @@ export default function ContactsPage() {
           onClose={() => setShowNew(false)}
           onSave={handleCreate}
         />
+      )}
+
+      {showDuplicates && (
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="modal-header">
+              <h2>Duplicate {template.contactLabel.plural}</h2>
+              <button onClick={() => setShowDuplicates(false)} className="modal-close">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="modal-body space-y-4">
+              {duplicateGroups.length === 0 ? (
+                <p className="text-sm text-surface-500 py-4 text-center">No duplicates found</p>
+              ) : (
+                duplicateGroups.map((group, gi) => (
+                  <div key={gi} className="border border-surface-100 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">
+                      Group {gi + 1} — {group.length} contacts
+                    </p>
+                    <div className="space-y-2">
+                      {group.map(c => (
+                        <label key={c.id} className={cn(
+                          'flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors',
+                          selectedPrimary[gi] === c.id ? 'bg-brand-50 border border-brand-200' : 'hover:bg-surface-50'
+                        )}>
+                          <input
+                            type="radio"
+                            name={`dup-group-${gi}`}
+                            checked={selectedPrimary[gi] === c.id}
+                            onChange={() => setSelectedPrimary(prev => ({ ...prev, [gi]: c.id }))}
+                            className="accent-brand-600"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-surface-800 truncate">{c.name}</p>
+                            <p className="text-xs text-surface-400 truncate">
+                              {[c.email, c.phone, c.company_name].filter(Boolean).join(' · ') || 'No details'}
+                            </p>
+                          </div>
+                          {selectedPrimary[gi] === c.id && (
+                            <span className="badge badge-blue text-[10px]">Primary</span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => mergeGroup(gi)}
+                      disabled={merging}
+                      className="btn-primary btn-sm mt-3 w-full"
+                    >
+                      <GitMerge className="w-3.5 h-3.5" /> {merging ? 'Merging...' : 'Merge Group'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

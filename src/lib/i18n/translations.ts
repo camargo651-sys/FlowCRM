@@ -263,6 +263,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.wa_inbox': 'Bandeja WA',
     'nav.extensions': 'Extensiones',
     'nav.import': 'Importar',
+    'nav.custom_reports': 'Reportes Custom',
 
     // Tickets
     'tickets.title': 'Tickets de Servicio',
@@ -348,6 +349,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.wa_inbox': 'WA Inbox',
     'nav.extensions': 'Extensions',
     'nav.import': 'Import',
+    'nav.custom_reports': 'Custom Reports',
     'section.sales': 'Sales',
     'section.operations': 'Operations',
     'section.finance': 'Finance',
@@ -834,6 +836,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.wa_inbox': 'Caixa WA',
     'nav.extensions': 'Extensões',
     'nav.import': 'Importar',
+    'nav.custom_reports': 'Relatórios Custom',
 
     // Tickets
     'tickets.title': 'Tickets de Serviço',
@@ -1123,6 +1126,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.wa_inbox': 'Boîte WA',
     'nav.extensions': 'Extensions',
     'nav.import': 'Importer',
+    'nav.custom_reports': 'Rapports Perso.',
 
     // Tickets
     'tickets.title': 'Tickets de service',
@@ -1412,6 +1416,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.wa_inbox': 'WA-Posteingang',
     'nav.extensions': 'Erweiterungen',
     'nav.import': 'Importieren',
+    'nav.custom_reports': 'Eigene Berichte',
 
     // Tickets
     'tickets.title': 'Service-Tickets',

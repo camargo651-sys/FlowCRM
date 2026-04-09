@@ -129,6 +129,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/accounting', icon: BookOpen, label: t('nav.accounting') },
       { href: '/expenses', icon: CreditCard, label: t('nav.expenses') },
       { href: '/reports', icon: PieChart, label: t('nav.reports') },
+      { href: '/reports/custom', icon: BarChart2, label: t('nav.custom_reports') },
     ]},
     { key: 'people', label: t('section.people'), items: [
       { href: '/hr', icon: Briefcase, label: t('nav.hr') },

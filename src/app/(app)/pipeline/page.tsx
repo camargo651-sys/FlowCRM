@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2 } from 'lucide-react'
+import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -147,11 +147,33 @@ function NewDealModal({ stages, contacts, onClose, onSave, workspaceId, customFi
   )
 }
 
+// --- DEAL AGE HELPER ---
+function getDealAgeDays(deal: DealWithContact): number {
+  const ref = deal.updated_at || deal.created_at
+  if (!ref) return 0
+  return Math.floor((Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function DealAgeBadge({ days }: { days: number }) {
+  const color = days < 7 ? 'bg-emerald-100 text-emerald-700' : days <= 14 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+  return <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', color)}>{days}d</span>
+}
+
 // --- DEAL CARD ---
 function DealCard({ deal, onClick }: { deal: DealWithContact; onClick: () => void }) {
+  const ageDays = getDealAgeDays(deal)
+
   return (
     <div onClick={onClick} className="deal-card">
-      <p className="text-sm font-semibold text-surface-800 mb-1 leading-snug">{deal.title}</p>
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <p className="text-sm font-semibold text-surface-800 leading-snug">{deal.title}</p>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {deal.probability != null && (
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{deal.probability}%</span>
+          )}
+          <DealAgeBadge days={ageDays} />
+        </div>
+      </div>
       {deal.contacts?.name && (
         <p className="text-xs text-surface-400 mb-2.5 flex items-center gap-1">
           <span className="w-4 h-4 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0">
@@ -383,6 +405,40 @@ function DealWhatsApp({ deal, onClose }: { deal: DealWithContact; onClose: () =>
   )
 }
 
+// --- LOSS REASON MODAL ---
+function LossReasonModal({ dealTitle, onConfirm, onCancel }: {
+  dealTitle: string
+  onConfirm: (reason: string) => void
+  onCancel: () => void
+}) {
+  const [reason, setReason] = useState('')
+  return (
+    <div className="modal-overlay">
+      <div className="modal-panel max-w-sm">
+        <div className="modal-header">
+          <h2 className="text-sm font-bold">Why was this deal lost?</h2>
+          <button onClick={onCancel} className="modal-close"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="modal-body space-y-3">
+          <p className="text-xs text-surface-500">Provide a reason for losing &ldquo;{dealTitle}&rdquo;.</p>
+          <textarea
+            className="input min-h-[80px] text-sm"
+            placeholder="e.g. Budget constraints, went with competitor..."
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button type="button" onClick={onCancel} className="btn-secondary flex-1">Cancel</button>
+            <button type="button" disabled={!reason.trim()} onClick={() => onConfirm(reason.trim())}
+              className="btn-primary flex-1 disabled:opacity-50">Mark as Lost</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // --- MAIN PAGE ---
 interface PipelineInfo {
   id: string
@@ -405,6 +461,9 @@ export default function PipelinePage() {
   const [selectedDeal, setSelectedDeal] = useState<DealWithContact | null>(null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [lossReasonPrompt, setLossReasonPrompt] = useState<{ dealId: string; dealTitle: string; stageId: string } | null>(null)
+  const [wonThisMonthValue, setWonThisMonthValue] = useState(0)
+  const [mobileStage, setMobileStage] = useState<string | null>(null)
 
   const loadData = useCallback(async (pipelineId?: string) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -425,15 +484,20 @@ export default function PipelinePage() {
 
     if (!activeId) { setLoading(false); return }
 
-    const [stagesRes, dealsRes, contactsRes] = await Promise.all([
+    const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+
+    const [stagesRes, dealsRes, contactsRes, wonThisMonthRes] = await Promise.all([
       supabase.from('pipeline_stages').select('*').eq('pipeline_id', activeId).order('order_index'),
       supabase.from('deals').select('*, contacts(name, email)').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'open').order('order_index'),
       supabase.from('contacts').select('id, name, email').eq('workspace_id', ws.id).order('name'),
+      supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'won').gte('updated_at', firstOfMonth),
     ])
 
     const stages: PipelineStage[] = stagesRes.data || []
     const deals: DealWithContact[] = dealsRes.data || []
     setContacts(contactsRes.data || [])
+    const wonDeals: { id: string; value: number }[] = wonThisMonthRes.data || []
+    setWonThisMonthValue(wonDeals.reduce((s, d) => s + (d.value || 0), 0))
 
     setColumns(stages.map(stage => ({
       ...stage,
@@ -478,10 +542,15 @@ export default function PipelinePage() {
       }
     }
 
+    // Intercept lost stage: require a reason
+    if (targetStage.is_lost) {
+      setLossReasonPrompt({ dealId, dealTitle: deal.title, stageId: newStageId })
+      return
+    }
+
     await supabase.from('deals').update({
       stage_id: newStageId,
       ...(targetStage.is_won ? { status: 'won' } : {}),
-      ...(targetStage.is_lost ? { status: 'lost' } : {}),
     }).eq('id', dealId)
 
     setColumns(prev => {
@@ -494,7 +563,29 @@ export default function PipelinePage() {
     })
 
     if (targetStage.is_won) toast.success(`Deal won! 🎉`)
-    if (targetStage.is_lost) toast.error(`Deal marked as lost`)
+  }
+
+  const handleLossConfirm = async (reason: string) => {
+    if (!lossReasonPrompt) return
+    const { dealId, stageId } = lossReasonPrompt
+    const deal = columns.flatMap(c => c.deals).find(d => d.id === dealId)
+    if (!deal) return
+
+    await supabase.from('deals').update({
+      stage_id: stageId,
+      status: 'lost',
+      lost_reason: reason,
+    }).eq('id', dealId)
+
+    setColumns(prev => prev.map(col => ({
+      ...col,
+      deals: col.id === stageId
+        ? [...col.deals.filter(d => d.id !== dealId), { ...deal, stage_id: stageId, status: 'lost', lost_reason: reason }]
+        : col.deals.filter(d => d.id !== dealId),
+    })))
+
+    toast.error('Deal marked as lost')
+    setLossReasonPrompt(null)
   }
 
   const filteredColumns = columns.map(col => ({
@@ -505,8 +596,10 @@ export default function PipelinePage() {
     ),
   }))
 
-  const totalValue = columns.flatMap(c => c.deals).reduce((s, d) => s + (d.value || 0), 0)
-  const totalDeals = columns.flatMap(c => c.deals).length
+  const allOpenDeals = columns.flatMap(c => c.deals)
+  const totalValue = allOpenDeals.reduce((s, d) => s + (d.value || 0), 0)
+  const totalDeals = allOpenDeals.length
+  const weightedForecast = allOpenDeals.reduce((s, d) => s + ((d.value || 0) * ((d.probability ?? 50) / 100)), 0)
   const activePipeline = pipelines.find(p => p.id === activePipelineId)
 
   if (loading) return (
@@ -525,10 +618,10 @@ export default function PipelinePage() {
             {totalDeals} {template.dealLabel.plural.toLowerCase()} · {formatCurrency(totalValue)} total
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-            <input className="input pl-9 w-56 text-xs"
+            <input className="input pl-9 w-full sm:w-56 text-xs"
               placeholder={`Search ${template.dealLabel.plural.toLowerCase()}...`}
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
@@ -569,7 +662,85 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {/* Kanban with drag-drop */}
+      {/* Revenue Forecast */}
+      {columns.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 flex-shrink-0">
+          <div className="card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-50 dark:bg-blue-950 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-surface-500 font-medium">Pipeline Value</p>
+              <p className="text-sm font-bold text-surface-900">{formatCurrency(totalValue)}</p>
+            </div>
+          </div>
+          <div className="card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 bg-violet-50 dark:bg-violet-950 rounded-lg flex items-center justify-center">
+              <Filter className="w-4 h-4 text-violet-600" />
+            </div>
+            <div>
+              <p className="text-xs text-surface-500 font-medium">Weighted Forecast</p>
+              <p className="text-sm font-bold text-violet-700">{formatCurrency(weightedForecast)}</p>
+            </div>
+          </div>
+          <div className="card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-950 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs text-surface-500 font-medium">Won This Month</p>
+              <p className="text-sm font-bold text-emerald-700">{formatCurrency(wonThisMonthValue)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Accordion View */}
+      {columns.length > 0 && (
+        <div className="md:hidden space-y-2 pb-4 flex-1 overflow-y-auto">
+          {filteredColumns.map(col => {
+            const colValue = col.deals.reduce((s, d) => s + (d.value || 0), 0)
+            const isOpen = mobileStage === col.id
+            return (
+              <div key={col.id} className="card overflow-hidden">
+                <button
+                  onClick={() => setMobileStage(isOpen ? null : col.id)}
+                  className="w-full flex items-center justify-between p-3 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || '#6172f3' }} />
+                    <span className="text-xs font-bold text-surface-700 dark:text-surface-300 uppercase tracking-wide">{col.name}</span>
+                    <span className="text-[10px] text-surface-400 font-semibold bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded-full">{col.deals.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {colValue > 0 && <span className="text-xs font-semibold text-surface-500">{formatCurrency(colValue)}</span>}
+                    {isOpen ? <ChevronUp className="w-4 h-4 text-surface-400" /> : <ChevronDown className="w-4 h-4 text-surface-400" />}
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="px-3 pb-3 space-y-2">
+                    {col.deals.length === 0 ? (
+                      <div className="h-12 flex items-center justify-center text-xs text-surface-400 border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-xl">
+                        No {template.dealLabel.plural.toLowerCase()} in this stage
+                      </div>
+                    ) : (
+                      col.deals.map(deal => (
+                        <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} />
+                      ))
+                    )}
+                    <button onClick={() => setShowNewDeal(true)}
+                      className="w-full flex items-center gap-1.5 p-2 rounded-xl text-xs text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+                      <Plus className="w-3.5 h-3.5" /> Add {template.dealLabel.singular.toLowerCase()}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Desktop Kanban with drag-drop */}
       {columns.length > 0 && (
         <DragDropContext onDragEnd={(result: DropResult) => {
           if (!result.destination) return
@@ -579,7 +750,7 @@ export default function PipelinePage() {
             handleMoveDeal(dealId, newStageId)
           }
         }}>
-          <div className="flex gap-4 overflow-x-auto pb-4 flex-1 no-scrollbar">
+          <div className="hidden md:flex gap-4 overflow-x-auto pb-4 flex-1 no-scrollbar">
             {filteredColumns.map(col => {
               const colValue = col.deals.reduce((s, d) => s + (d.value || 0), 0)
               return (
@@ -643,6 +814,14 @@ export default function PipelinePage() {
 
       {selectedDeal && (
         <DealWhatsApp deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
+      )}
+
+      {lossReasonPrompt && (
+        <LossReasonModal
+          dealTitle={lossReasonPrompt.dealTitle}
+          onConfirm={handleLossConfirm}
+          onCancel={() => setLossReasonPrompt(null)}
+        />
       )}
     </div>
   )
