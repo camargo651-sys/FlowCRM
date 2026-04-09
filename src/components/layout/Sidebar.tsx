@@ -143,6 +143,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/ai-setup', icon: Sparkles, label: t('nav.ai_setup') },
       { href: '/roles', icon: Shield, label: t('nav.roles') },
       { href: '/team', icon: UserPlus, label: t('nav.team') },
+      { href: '/settings/extensions', icon: Plug, label: 'Extensions' },
       { href: '/integrations', icon: Plug, label: t('nav.integrations') },
       { href: '/import', icon: Package, label: 'Import' },
       { href: '/automations', icon: Zap, label: t('nav.automations') },

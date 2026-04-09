@@ -21,6 +21,8 @@ create table if not exists workspaces (
   team_size   text,
   language    text default 'en',
   terminology jsonb default '{}',
+  providers   jsonb default '[]',
+  enabled_modules jsonb default '{}',
   onboarding_completed boolean default false,
   created_at  timestamptz default now()
 );
