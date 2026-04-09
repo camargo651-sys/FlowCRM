@@ -62,6 +62,12 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // White-label branding
+  const [customDomain, setCustomDomain] = useState('')
+  const [faviconUrl, setFaviconUrl] = useState('')
+  const [loginMessage, setLoginMessage] = useState('')
+  const [poweredByVisible, setPoweredByVisible] = useState(true)
+
   // Terminology
   const [dealLabel, setDealLabel] = useState({ singular: 'Deal', plural: 'Deals' })
   const [contactLabel, setContactLabel] = useState({ singular: 'Contact', plural: 'Contacts' })
@@ -104,6 +110,15 @@ export default function SettingsPage() {
     setWorkspaceName(ws.name)
     setPrimaryColor(ws.primary_color || '#6172f3')
     setLogoUrl(ws.logo_url || '')
+    setCustomDomain(ws.custom_domain || '')
+
+    // Load branding config
+    if (ws.branding_config) {
+      const bc = ws.branding_config as { favicon_url?: string; login_message?: string; powered_by_visible?: boolean }
+      setFaviconUrl(bc.favicon_url || '')
+      setLoginMessage(bc.login_message || '')
+      setPoweredByVisible(bc.powered_by_visible !== false)
+    }
 
     // Load WhatsApp bot config
     if (ws.whatsapp_bot_config) {
@@ -334,7 +349,17 @@ export default function SettingsPage() {
   // --- BRAND ---
   const saveBrand = async () => {
     setSaving(true)
-    await supabase.from('workspaces').update({ name: workspaceName, primary_color: primaryColor, logo_url: logoUrl || null }).eq('id', workspaceId)
+    await supabase.from('workspaces').update({
+      name: workspaceName,
+      primary_color: primaryColor,
+      logo_url: logoUrl || null,
+      custom_domain: customDomain || null,
+      branding_config: {
+        favicon_url: faviconUrl || null,
+        login_message: loginMessage || null,
+        powered_by_visible: poweredByVisible,
+      },
+    }).eq('id', workspaceId)
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -730,6 +755,39 @@ export default function SettingsPage() {
                 <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-2 border-surface-200" />
               </div>
             </div>
+            {/* Custom Domain */}
+            <div>
+              <label className="label">Custom Domain</label>
+              <input className="input" value={customDomain} onChange={e => setCustomDomain(e.target.value)} placeholder="crm.mycompany.com" />
+              <p className="text-[11px] text-surface-400 mt-1">Point your domain CNAME to tracktio.app to use a custom domain</p>
+            </div>
+
+            {/* Favicon URL */}
+            <div>
+              <label className="label">Favicon URL</label>
+              <input className="input" value={faviconUrl} onChange={e => setFaviconUrl(e.target.value)} placeholder="https://mycompany.com/favicon.ico" />
+              <p className="text-[11px] text-surface-400 mt-1">URL to a .ico or .png file for the browser tab icon</p>
+            </div>
+
+            {/* Custom Login Message */}
+            <div>
+              <label className="label">Custom Login Message</label>
+              <textarea className="input resize-none" rows={3} value={loginMessage} onChange={e => setLoginMessage(e.target.value)} placeholder="Welcome to our CRM! Please sign in with your company credentials." />
+              <p className="text-[11px] text-surface-400 mt-1">Shown on the login page for your users</p>
+            </div>
+
+            {/* Powered by Toggle */}
+            <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100">
+              <div>
+                <p className="text-sm font-semibold text-surface-900">Show &quot;Powered by Tracktio&quot;</p>
+                <p className="text-xs text-surface-400 mt-0.5">Display Tracktio branding in the footer</p>
+              </div>
+              <button onClick={() => setPoweredByVisible(!poweredByVisible)}
+                className={cn('relative w-11 h-6 rounded-full transition-colors', poweredByVisible ? 'bg-brand-600' : 'bg-surface-300')}>
+                <span className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform', poweredByVisible ? 'translate-x-5.5 left-0.5' : 'left-0.5')} />
+              </button>
+            </div>
+
             <button onClick={saveBrand} disabled={saving} className="btn-primary">
               {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
               {saved ? t('settings.saved') : t('settings.save_changes')}

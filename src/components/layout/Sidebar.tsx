@@ -151,6 +151,8 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/integrations', icon: Plug, label: t('nav.integrations') },
       { href: '/import', icon: Package, label: t('nav.import') },
       { href: '/automations', icon: Zap, label: t('nav.automations') },
+      { href: '/billing', icon: CreditCard, label: t('nav.billing') },
+      { href: '/templates-marketplace', icon: Sparkles, label: t('nav.marketplace') },
       { href: '/settings/widget', icon: Code, label: t('nav.widget') },
       { href: '/api-docs', icon: Code, label: t('nav.api_docs') },
       { href: '/audit-log', icon: Shield, label: t('nav.audit_log') },

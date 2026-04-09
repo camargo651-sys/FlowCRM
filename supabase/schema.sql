@@ -1769,4 +1769,8 @@ ALTER TABLE activities ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS priority text DEFAULT 'medium' CHECK (priority IN ('low','medium','high','urgent'));
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES auth.users(id);
 
+-- MIGRATION: White-label branding
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS custom_domain text;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS branding_config jsonb DEFAULT '{}';
+
 -- Done! Your Tracktio database is ready.

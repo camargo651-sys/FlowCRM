@@ -326,6 +326,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'leads.incomplete': 'Incompleto (sin teléfono)',
     'routing.smart': 'Enrutamiento Inteligente',
     'routing.auto_followup': 'Seguimiento Automático',
+    'nav.billing': 'Facturaci\u00f3n',
+    'nav.marketplace': 'Marketplace',
   },
 
   en: {
@@ -629,6 +631,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'leads.incomplete': 'Incomplete (no phone)',
     'routing.smart': 'Smart Routing',
     'routing.auto_followup': 'Auto Follow-up',
+    'nav.billing': 'Billing',
+    'nav.marketplace': 'Marketplace',
   },
 
   pt: {
@@ -939,6 +943,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'leads.incomplete': 'Incompleto (sem telefone)',
     'routing.smart': 'Roteamento Inteligente',
     'routing.auto_followup': 'Acompanhamento Automático',
+    'nav.billing': 'Faturamento',
+    'nav.marketplace': 'Marketplace',
   },
 
   fr: {
@@ -1249,6 +1255,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'leads.incomplete': 'Incomplet (sans téléphone)',
     'routing.smart': 'Routage Intelligent',
     'routing.auto_followup': 'Suivi Automatique',
+    'nav.billing': 'Facturation',
+    'nav.marketplace': 'Marketplace',
   },
 
   de: {
@@ -1559,6 +1567,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'leads.incomplete': 'Unvollständig (ohne Telefon)',
     'routing.smart': 'Intelligentes Routing',
     'routing.auto_followup': 'Automatische Nachverfolgung',
+    'nav.billing': 'Abrechnung',
+    'nav.marketplace': 'Marketplace',
   },
 }
 

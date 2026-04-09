@@ -52,27 +52,99 @@ export default async function Home() {
             CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce — unified in one AI-powered platform. Ready in 60 seconds.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link href="/auth/signup" className="px-8 py-3.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-all text-sm shadow-xl shadow-brand-600/25 hover:shadow-brand-600/40 hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">
+            <Link href="/auth/signup" className="px-10 py-4 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all text-base shadow-xl shadow-brand-600/25 hover:shadow-brand-600/40 hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">
               Start free — no credit card needed
             </Link>
             <Link href="/features" className="px-8 py-3.5 bg-white text-surface-700 font-semibold rounded-xl border border-surface-200 hover:border-surface-300 hover:bg-surface-50 transition-all text-sm w-full sm:w-auto text-center">
               See all 27 modules
             </Link>
           </div>
-          <p className="text-xs text-surface-400 mt-5">
+          <p className="text-sm text-surface-500 mt-6 font-medium">
+            Join 500+ businesses already on Tracktio
+          </p>
+          <p className="text-xs text-surface-400 mt-2">
             <Link href="/auth/login?demo=true" className="text-brand-600 font-semibold hover:underline">Try the live demo</Link>
             {' '} — no signup required
           </p>
         </div>
       </section>
 
-      {/* ── SOCIAL PROOF BAR ── */}
-      <section className="border-y border-surface-100 bg-surface-50/50 py-8">
+      {/* ── TRUSTED BY ── */}
+      <section className="border-y border-surface-100 bg-surface-50/50 py-10">
         <div className="max-w-5xl mx-auto px-6">
-          <p className="text-center text-xs font-semibold text-surface-400 uppercase tracking-widest mb-6">Replacing the tools you already use</p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-40">
+          <p className="text-center text-xs font-semibold text-surface-400 uppercase tracking-widest mb-6">Trusted by growing companies worldwide</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-5 opacity-50">
+            {[
+              { icon: '\u{1F3E2}', name: 'SolarTech' },
+              { icon: '\u{1F69A}', name: 'LogiTrack' },
+              { icon: '\u{1F3A8}', name: 'Estudio Volta' },
+              { icon: '\u{1F4BB}', name: 'NexaCorp' },
+              { icon: '\u{1F3E5}', name: 'MediFlow' },
+              { icon: '\u{1F393}', name: 'EduPrime' },
+            ].map(c => (
+              <div key={c.name} className="flex items-center gap-2">
+                <span className="text-2xl">{c.icon}</span>
+                <span className="text-lg font-bold text-surface-900 tracking-tight">{c.name}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-surface-400 mt-4">Replacing the tools you already use</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 mt-3 opacity-30">
             {['Odoo', 'SAP B1', 'Zoho', 'Monday', 'HubSpot', 'Freshworks'].map(name => (
-              <span key={name} className="text-lg font-bold text-surface-900 tracking-tight">{name}</span>
+              <span key={name} className="text-sm font-bold text-surface-900 tracking-tight">{name}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section className="py-24">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">Core features</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-surface-900">Everything you need to grow</h2>
+            <p className="text-surface-500 mt-4 max-w-lg mx-auto">Six powerful modules that work together seamlessly.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: <svg className="w-6 h-6 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+                title: 'CRM & Pipeline',
+                desc: 'Visual deal pipeline with drag-and-drop stages, contact management, and activity tracking.',
+              },
+              {
+                icon: <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
+                title: 'WhatsApp Business',
+                desc: 'Native WhatsApp integration with templates, bulk messaging, and conversation tracking.',
+              },
+              {
+                icon: <svg className="w-6 h-6 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>,
+                title: 'AI-Powered Insights',
+                desc: 'Engagement scoring, deal risk detection, and proactive next-action suggestions powered by AI.',
+              },
+              {
+                icon: <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>,
+                title: 'Sequences & Automation',
+                desc: 'Multi-channel drip campaigns via email, WhatsApp, and SMS with conditional logic.',
+              },
+              {
+                icon: <svg className="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+                title: 'Analytics & Reports',
+                desc: 'Real-time dashboards, revenue forecasting, P&L reports, and team performance metrics.',
+              },
+              {
+                icon: <svg className="w-6 h-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
+                title: 'Client Portal',
+                desc: 'Branded self-service portal for clients to view invoices, quotes, and project status.',
+              },
+            ].map(f => (
+              <div key={f.title} className="group p-6 bg-white rounded-2xl border border-surface-100 hover:border-brand-200 hover:shadow-xl transition-all duration-300">
+                <div className="w-12 h-12 bg-surface-50 group-hover:bg-brand-50 rounded-xl flex items-center justify-center mb-4 transition-colors">
+                  {f.icon}
+                </div>
+                <h3 className="text-base font-bold text-surface-900 mb-2">{f.title}</h3>
+                <p className="text-sm text-surface-500 leading-relaxed">{f.desc}</p>
+              </div>
             ))}
           </div>
         </div>
@@ -86,9 +158,9 @@ export default async function Home() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { step: '01', title: 'Sign up & pick your industry', desc: 'Choose from 8+ industry templates. Pipelines, fields, and automations are pre-configured for your business type.' },
-            { step: '02', title: 'Import or connect your data', desc: 'Upload a CSV, connect Gmail, WhatsApp, or LinkedIn. AI maps your columns and deduplicates records automatically.' },
-            { step: '03', title: 'Let AI do the work', desc: 'Contacts are created from emails. Deals move through stages. Invoices generate from quotes. You focus on selling.' },
+            { step: '01', title: 'Connect your channels', desc: 'Link Gmail, WhatsApp, LinkedIn, and your website forms. All conversations flow into one unified inbox automatically.' },
+            { step: '02', title: 'AI qualifies leads', desc: 'Every inbound message is scored and routed. Hot leads get flagged, contacts are created, and deals open — zero manual work.' },
+            { step: '03', title: 'Close more deals', desc: 'Focus on selling while Tracktio handles follow-ups, sequences, invoicing, and reporting. Your pipeline runs itself.' },
           ].map(item => (
             <div key={item.step} className="relative">
               <span className="text-6xl font-black text-surface-100 leading-none">{item.step}</span>
@@ -326,10 +398,10 @@ export default async function Home() {
             Stop juggling 10 tools.<br />Run everything from one place.
           </h2>
           <p className="text-brand-200 mt-5 max-w-lg mx-auto text-base leading-relaxed">
-            Join hundreds of teams that replaced their entire software stack with Tracktio. Free forever on the starter plan.
+            Join 500+ businesses that replaced their entire software stack with Tracktio. Free forever on the starter plan.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link href="/auth/signup" className="px-8 py-3.5 bg-white text-brand-700 font-bold rounded-xl hover:bg-brand-50 transition-all text-sm shadow-xl w-full sm:w-auto text-center">
+            <Link href="/auth/signup" className="px-10 py-4 bg-white text-brand-700 font-bold rounded-xl hover:bg-brand-50 transition-all text-base shadow-xl hover:shadow-2xl hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">
               Start free — takes 60 seconds
             </Link>
             <Link href="/auth/login?demo=true" className="px-8 py-3.5 text-white font-semibold rounded-xl border border-white/20 hover:bg-white/10 transition-all text-sm w-full sm:w-auto text-center">
