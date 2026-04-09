@@ -2,17 +2,36 @@
 import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, X, UserPlus, MessageCircle, ArrowRight, ExternalLink, DollarSign, User } from 'lucide-react'
+import { Plus, Search, X, UserPlus, MessageCircle, ArrowRight, ExternalLink, DollarSign, User, MoreHorizontal, Phone, Mail, AlarmClock, TrendingUp, Clock, AlertCircle, CheckCircle, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import BulkActions from '@/components/shared/BulkActions'
 
 const PLATFORM_ICONS: Record<string, string> = {
   instagram: '📸', facebook: '📘', tiktok: '🎵', linkedin: '💼', twitter: '🐦', youtube: '📺', other: '🌐',
 }
 const STATUS_STYLES: Record<string, string> = {
   new: 'badge-blue', contacted: 'badge-yellow', qualified: 'badge-violet', converted: 'badge-green', discarded: 'badge-gray', incomplete: 'badge-orange',
+}
+
+function daysSince(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function LeadAgeBadge({ createdAt, status }: { createdAt: string; status: string }) {
+  const days = daysSince(createdAt)
+  const hours = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60))
+  const color = days < 1 ? 'bg-green-100 text-green-700' : days <= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+  const label = days < 1 ? `${hours}h` : `${days}d`
+  const showAlarm = status === 'new' && hours >= 24
+  return (
+    <span className={cn('inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium', color)}>
+      {showAlarm && <AlarmClock className="w-2.5 h-2.5" />}
+      {label}
+    </span>
+  )
 }
 
 export default function LeadsPage() {
@@ -38,6 +57,17 @@ export default function LeadsPage() {
   const [currentUserName, setCurrentUserName] = useState('')
   const [filterAssignment, setFilterAssignment] = useState('all')
   const [profiles, setProfiles] = useState<DbRow[]>([])
+
+  // Improvement 1: Bulk Actions
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  // Improvement 7: Actions Dropdown
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Improvement 8: Lead Notes
+  const [editingNote, setEditingNote] = useState<string | null>(null)
+  const [noteText, setNoteText] = useState('')
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -67,6 +97,39 @@ export default function LeadsPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Improvement 6: Supabase Realtime
+  useEffect(() => {
+    if (!workspaceId) return
+    const channel = supabase
+      .channel('leads-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'social_leads',
+        filter: `workspace_id=eq.${workspaceId}`,
+      }, (payload) => {
+        const newLead = payload.new as DbRow
+        setLeads(prev => [newLead, ...prev])
+        toast.success(`New lead: ${newLead.author_name || 'Unknown'}`)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [workspaceId])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (openMenu && menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openMenu])
 
   const createLead = async () => {
     if (!form.author_name) return
@@ -184,6 +247,71 @@ export default function LeadsPage() {
     return profile?.full_name || profile?.email || 'Unknown'
   }
 
+  // Improvement 8: Save note
+  const saveNote = async (leadId: string) => {
+    await supabase.from('social_leads').update({ notes: noteText || null }).eq('id', leadId)
+    setEditingNote(null)
+    setNoteText('')
+    toast.success('Note saved')
+    load()
+  }
+
+  // Improvement 1: Bulk actions
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const bulkDiscard = async () => {
+    const ids = Array.from(selected)
+    for (const id of ids) {
+      await supabase.from('social_leads').update({ status: 'discarded' }).eq('id', id)
+    }
+    toast.success(`${selected.size} leads discarded`)
+    setSelected(new Set())
+    load()
+  }
+
+  const bulkAssignToMe = async () => {
+    const ids = Array.from(selected)
+    for (const id of ids) {
+      await supabase.from('social_leads').update({ assigned_to: currentUserId }).eq('id', id)
+    }
+    toast.success(`${selected.size} leads assigned to you`)
+    setSelected(new Set())
+    load()
+  }
+
+  const bulkConvert = async () => {
+    const ids = Array.from(selected)
+    for (const id of ids) {
+      const lead = leads.find(l => l.id === id)
+      if (lead && lead.status !== 'converted') {
+        await convertToContact(lead)
+      }
+    }
+    toast.success(`Bulk conversion complete`)
+    setSelected(new Set())
+    load()
+  }
+
+  // Helpers
+  const getLeadPhone = (lead: DbRow): string | null => {
+    return lead.metadata?.phone || null
+  }
+
+  const getLeadEmail = (lead: DbRow): string | null => {
+    return lead.metadata?.email || null
+  }
+
+  const hasPhone = (lead: DbRow): boolean => {
+    return !!(lead.metadata?.phone || lead.metadata?.has_phone)
+  }
+
   const filtered = leads.filter(l => {
     if (filterStatus !== 'all' && l.status !== filterStatus) return false
     if (filterPlatform !== 'all' && l.platform !== filterPlatform) return false
@@ -196,6 +324,31 @@ export default function LeadsPage() {
   const newCount = leads.filter(l => l.status === 'new').length
   const platforms = Array.from(new Set(leads.map(l => l.platform)))
 
+  // Improvement 3: Conversion Stats
+  const totalLeads = leads.length
+  const convertedCount = leads.filter(l => l.status === 'converted').length
+  const conversionRate = totalLeads > 0 ? ((convertedCount / totalLeads) * 100).toFixed(1) : '0'
+  const qualifiedCount = leads.filter(l => l.status === 'qualified').length
+  const unattendedCount = leads.filter(l => l.status === 'new').length
+
+  // Avg response time: average time from created_at to when status changed from 'new'
+  // We approximate by looking at non-new leads' updated_at vs created_at
+  const respondedLeads = leads.filter(l => l.status !== 'new' && l.status !== 'discarded' && l.updated_at && l.created_at)
+  const avgResponseMs = respondedLeads.length > 0
+    ? respondedLeads.reduce((acc, l) => acc + (new Date(l.updated_at).getTime() - new Date(l.created_at).getTime()), 0) / respondedLeads.length
+    : 0
+  const avgResponseHours = Math.round(avgResponseMs / (1000 * 60 * 60))
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every(l => selected.has(l.id))
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(filtered.map(l => l.id)))
+    }
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 
   return (
@@ -205,11 +358,32 @@ export default function LeadsPage() {
         <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Lead</button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {/* Platform stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         <div className="card p-4 flex items-center gap-3"><span className="text-2xl">📸</span><div><p className="text-lg font-bold">{leads.filter(l => l.platform === 'instagram').length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Instagram</p></div></div>
         <div className="card p-4 flex items-center gap-3"><span className="text-2xl">📘</span><div><p className="text-lg font-bold">{leads.filter(l => l.platform === 'facebook').length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Facebook</p></div></div>
         <div className="card p-4 flex items-center gap-3"><span className="text-2xl">🎵</span><div><p className="text-lg font-bold">{leads.filter(l => l.platform === 'tiktok').length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">TikTok</p></div></div>
         <div className="card p-4 flex items-center gap-3"><span className="text-2xl">💼</span><div><p className="text-lg font-bold">{leads.filter(l => l.platform === 'linkedin').length}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">LinkedIn</p></div></div>
+      </div>
+
+      {/* Improvement 3: Conversion Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="card p-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center"><TrendingUp className="w-4 h-4 text-green-600" /></div>
+          <div><p className="text-lg font-bold">{conversionRate}%</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Conversion Rate</p></div>
+        </div>
+        <div className="card p-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center"><Clock className="w-4 h-4 text-blue-600" /></div>
+          <div><p className="text-lg font-bold">{avgResponseHours}h</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Avg Response Time</p></div>
+        </div>
+        <div className="card p-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center"><AlertCircle className="w-4 h-4 text-orange-600" /></div>
+          <div><p className="text-lg font-bold">{unattendedCount}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">New (unattended)</p></div>
+        </div>
+        <div className="card p-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center"><CheckCircle className="w-4 h-4 text-violet-600" /></div>
+          <div><p className="text-lg font-bold">{qualifiedCount}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Qualified</p></div>
+        </div>
       </div>
 
       <div className="flex gap-3 mb-6">
@@ -237,57 +411,204 @@ export default function LeadsPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(lead => (
-            <div key={lead.id} className="card p-4 flex items-start gap-3">
+          {/* Improvement 1: Select all header */}
+          <div className="flex items-center gap-2 px-1 mb-1">
+            <input
+              type="checkbox"
+              checked={allFilteredSelected}
+              onChange={toggleSelectAll}
+              className="w-3.5 h-3.5 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="text-[10px] text-surface-400 font-medium">Select all ({filtered.length})</span>
+          </div>
+
+          {filtered.map(lead => {
+            const phone = getLeadPhone(lead)
+            const email = getLeadEmail(lead)
+            const leadHasPhone = hasPhone(lead)
+
+            return (
+            <div key={lead.id} className={cn('card p-4 flex items-start gap-3', selected.has(lead.id) && 'ring-2 ring-brand-300 bg-brand-50/30')}>
+              {/* Improvement 1: Checkbox */}
+              <input
+                type="checkbox"
+                checked={selected.has(lead.id)}
+                onChange={() => toggleSelect(lead.id)}
+                className="w-3.5 h-3.5 mt-1 rounded border-surface-300 text-brand-600 focus:ring-brand-500 flex-shrink-0"
+              />
               <span className="text-xl mt-0.5">{PLATFORM_ICONS[lead.platform] || '🌐'}</span>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-sm font-bold text-surface-900">{lead.author_name}</span>
                   {lead.author_username && <span className="text-[10px] text-surface-400">@{lead.author_username}</span>}
                   <span className={cn('badge text-[10px]', STATUS_STYLES[lead.status])}>{lead.status}</span>
                   <span className="text-[10px] text-surface-300">{lead.source_type}</span>
+                  {/* Improvement 4: Phone/Email badges */}
+                  {phone && (
+                    <a href={`tel:${phone}`} className="inline-flex items-center gap-0.5 text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full hover:bg-green-100 transition-colors">
+                      <Phone className="w-2.5 h-2.5" /> {phone}
+                    </a>
+                  )}
+                  {!phone && leadHasPhone && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full">
+                      <Phone className="w-2.5 h-2.5" /> Has phone
+                    </span>
+                  )}
+                  {email && (
+                    <a href={`mailto:${email}`} className="inline-flex items-center gap-0.5 text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
+                      <Mail className="w-2.5 h-2.5" /> {email}
+                    </a>
+                  )}
                 </div>
                 {lead.message && <p className="text-xs text-surface-600 line-clamp-2">{lead.message}</p>}
+
+                {/* Improvement 8: Show existing notes */}
+                {lead.notes && editingNote !== lead.id && (
+                  <p className="text-[11px] text-surface-400 italic mt-1">{lead.notes}</p>
+                )}
+
+                {/* Improvement 8: Inline note editor */}
+                {editingNote === lead.id && (
+                  <div className="mt-2 flex gap-1.5">
+                    <textarea
+                      className="input text-xs resize-none flex-1"
+                      rows={2}
+                      value={noteText}
+                      onChange={e => setNoteText(e.target.value)}
+                      placeholder="Add an internal note..."
+                      autoFocus
+                    />
+                    <div className="flex flex-col gap-1">
+                      <button onClick={() => saveNote(lead.id)} className="btn-primary btn-sm text-[10px] px-2 py-1">Save</button>
+                      <button onClick={() => setEditingNote(null)} className="btn-ghost btn-sm text-[10px] px-2 py-1">Cancel</button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-[10px] text-surface-300">{new Date(lead.created_at).toLocaleString()}</span>
+                  {/* Improvement 2: Lead Age */}
+                  <LeadAgeBadge createdAt={lead.created_at} status={lead.status} />
                   {lead.post_url && <a href={lead.post_url} target="_blank" className="text-[10px] text-brand-600 hover:underline flex items-center gap-0.5"><ExternalLink className="w-2.5 h-2.5" /> View post</a>}
                   {lead.assigned_to && (
                     <span className="text-[10px] text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
                       <User className="w-2.5 h-2.5" /> {getAssigneeName(lead.assigned_to)}
                     </span>
                   )}
+                  {/* Improvement 8: Add note link */}
+                  {editingNote !== lead.id && (
+                    <button
+                      onClick={() => { setEditingNote(lead.id); setNoteText(lead.notes || '') }}
+                      className="text-[10px] text-surface-400 hover:text-surface-600 flex items-center gap-0.5 transition-colors"
+                    >
+                      <StickyNote className="w-2.5 h-2.5" /> {lead.notes ? 'Edit note' : 'Add note'}
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex gap-1 flex-shrink-0 items-center">
-                {lead.status === 'new' && <button onClick={() => updateStatus(lead.id, 'contacted')} className="btn-secondary btn-sm text-[10px]">Contacted</button>}
-                {(lead.status === 'new' || lead.status === 'contacted') && <button onClick={() => updateStatus(lead.id, 'qualified')} className="btn-secondary btn-sm text-[10px]">Qualify</button>}
-                {lead.status !== 'converted' && lead.status !== 'discarded' && (
-                  <button onClick={() => convertToContact(lead)} className="btn-sm bg-brand-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><UserPlus className="w-3 h-3" /> Convert</button>
-                )}
-                {lead.status !== 'converted' && lead.status !== 'discarded' && pipelines.length > 0 && (
-                  <button onClick={() => openDealModal(lead)} className="btn-sm bg-emerald-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><DollarSign className="w-3 h-3" /> Convert to Deal</button>
-                )}
-                {lead.status !== 'converted' && lead.status !== 'discarded' && (
-                  <select
-                    className="input w-auto text-[10px] py-1 px-1.5 h-auto"
-                    value={lead.assigned_to || ''}
-                    onChange={e => assignLead(lead.id, e.target.value || null)}
+
+              {/* Improvement 7: Actions - Convert visible, rest in dropdown */}
+              <div className="flex gap-1 flex-shrink-0 items-center relative" ref={openMenu === lead.id ? menuRef : undefined}>
+                {/* Improvement 5: WhatsApp button */}
+                {(phone || leadHasPhone) && (
+                  <button
+                    onClick={() => {
+                      if (lead.contact_id) {
+                        window.location.href = `/whatsapp?contact=${lead.contact_id}`
+                      } else {
+                        // Convert first, then redirect
+                        convertToContact(lead).then(() => {
+                          // After conversion, the lead will have contact_id; reload to get it
+                          toast.info('Contact created. Opening WhatsApp...')
+                        })
+                      }
+                    }}
+                    className="btn-sm bg-green-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"
+                    title="WhatsApp"
                   >
-                    <option value="">Assign...</option>
-                    <option value={currentUserId}>Assign to me</option>
-                    {profiles.filter(p => p.id !== currentUserId).map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name || p.email}</option>
-                    ))}
-                  </select>
+                    <MessageCircle className="w-3 h-3" />
+                    <span className="hidden md:inline">WA</span>
+                  </button>
                 )}
-                {lead.status !== 'discarded' && lead.status !== 'converted' && (
-                  <button onClick={() => updateStatus(lead.id, 'discarded')} className="btn-ghost btn-sm text-[10px] text-red-500">Discard</button>
+
+                {/* Primary action: Convert (hidden on mobile, goes into dropdown) */}
+                {lead.status !== 'converted' && lead.status !== 'discarded' && (
+                  <button onClick={() => convertToContact(lead)} className="btn-sm bg-brand-600 text-white text-[10px] rounded-lg px-2 py-1 items-center gap-1 hidden md:inline-flex"><UserPlus className="w-3 h-3" /> Convert</button>
+                )}
+
+                {/* More actions dropdown */}
+                <button
+                  onClick={() => setOpenMenu(openMenu === lead.id ? null : lead.id)}
+                  className="btn-ghost btn-sm p-1 rounded-lg hover:bg-surface-100"
+                >
+                  <MoreHorizontal className="w-4 h-4 text-surface-500" />
+                </button>
+
+                {openMenu === lead.id && (
+                  <div className="absolute right-0 top-8 z-30 bg-white border border-surface-200 rounded-xl shadow-lg py-1 min-w-[160px]">
+                    {/* Convert (visible on mobile in dropdown) */}
+                    {lead.status !== 'converted' && lead.status !== 'discarded' && (
+                      <button onClick={() => { convertToContact(lead); setOpenMenu(null) }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-surface-50 flex items-center gap-2 md:hidden">
+                        <UserPlus className="w-3 h-3" /> Convert to Contact
+                      </button>
+                    )}
+                    {lead.status === 'new' && (
+                      <button onClick={() => { updateStatus(lead.id, 'contacted'); setOpenMenu(null) }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-surface-50 flex items-center gap-2">
+                        <ArrowRight className="w-3 h-3" /> Mark Contacted
+                      </button>
+                    )}
+                    {(lead.status === 'new' || lead.status === 'contacted') && (
+                      <button onClick={() => { updateStatus(lead.id, 'qualified'); setOpenMenu(null) }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-surface-50 flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3" /> Qualify
+                      </button>
+                    )}
+                    {lead.status !== 'converted' && lead.status !== 'discarded' && pipelines.length > 0 && (
+                      <button onClick={() => { openDealModal(lead); setOpenMenu(null) }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-surface-50 flex items-center gap-2">
+                        <DollarSign className="w-3 h-3" /> Convert to Deal
+                      </button>
+                    )}
+                    {lead.status !== 'converted' && lead.status !== 'discarded' && (
+                      <>
+                        <div className="border-t border-surface-100 my-1" />
+                        <button onClick={() => { assignLead(lead.id, currentUserId); setOpenMenu(null) }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-surface-50 flex items-center gap-2">
+                          <User className="w-3 h-3" /> Assign to me
+                        </button>
+                        {profiles.filter(p => p.id !== currentUserId).map(p => (
+                          <button key={p.id} onClick={() => { assignLead(lead.id, p.id); setOpenMenu(null) }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-surface-50 flex items-center gap-2 pl-7">
+                            {p.full_name || p.email}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {lead.status !== 'discarded' && lead.status !== 'converted' && (
+                      <>
+                        <div className="border-t border-surface-100 my-1" />
+                        <button onClick={() => { updateStatus(lead.id, 'discarded'); setOpenMenu(null) }} className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 flex items-center gap-2">
+                          <X className="w-3 h-3" /> Discard
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
+
+      {/* Improvement 1: Bulk Actions Bar */}
+      <BulkActions
+        count={selected.size}
+        onClear={() => setSelected(new Set())}
+        onDelete={bulkDiscard}
+      >
+        <button onClick={bulkAssignToMe} className="flex items-center gap-1.5 text-xs font-medium hover:text-brand-300 transition-colors px-1">
+          <User className="w-3.5 h-3.5" /> Assign to me
+        </button>
+        <button onClick={bulkConvert} className="flex items-center gap-1.5 text-xs font-medium hover:text-green-300 transition-colors px-1">
+          <UserPlus className="w-3.5 h-3.5" /> Convert all
+        </button>
+      </BulkActions>
 
       {showNew && (
         <div className="modal-overlay">

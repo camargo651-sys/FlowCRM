@@ -8,9 +8,10 @@ interface BulkActionsProps {
   onExport?: () => void
   onTag?: (tag: string) => void
   onClear: () => void
+  children?: React.ReactNode
 }
 
-export default function BulkActions({ count, onDelete, onExport, onTag, onClear }: BulkActionsProps) {
+export default function BulkActions({ count, onDelete, onExport, onTag, onClear, children }: BulkActionsProps) {
   if (count === 0) return null
 
   return (
@@ -36,6 +37,7 @@ export default function BulkActions({ count, onDelete, onExport, onTag, onClear 
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
         )}
+        {children}
         <div className="w-px h-5 bg-surface-700" />
         <button onClick={onClear} aria-label="Clear selection" className="text-surface-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
       </div>
