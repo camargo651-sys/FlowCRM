@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download, GitMerge, MapPin, ChevronDown, Tag, Flame, Thermometer, Snowflake } from 'lucide-react'
+import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download, GitMerge, MapPin, ChevronDown, Tag } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
 import BulkActions from '@/components/shared/BulkActions'
 import ViewToggle from '@/components/shared/ViewToggle'
@@ -406,7 +406,7 @@ export default function ContactsPage() {
       )}
 
       {/* Filter tabs */}
-      <div className="segmented-control mb-6">
+      <div className="segmented-control mb-4">
         {(['all', 'person', 'company'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
             data-active={filter === f}
@@ -414,6 +414,66 @@ export default function ContactsPage() {
             {f === 'all' ? `All (${contacts.length})` : f === 'person' ? `People (${contacts.filter(c => c.type === 'person').length})` : `Companies (${contacts.filter(c => c.type === 'company').length})`}
           </button>
         ))}
+      </div>
+
+      {/* Advanced filters row */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        {/* Tag filter */}
+        <div className="relative">
+          <button onClick={() => setShowTagFilter(!showTagFilter)}
+            className={cn('btn-secondary btn-sm', filterTags.length > 0 && 'ring-2 ring-brand-200')}>
+            <Tag className="w-3.5 h-3.5" /> Tags {filterTags.length > 0 && `(${filterTags.length})`}
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          {showTagFilter && (
+            <div className="absolute z-20 mt-1 bg-white border border-surface-200 rounded-xl shadow-lg p-2 min-w-[180px] max-h-60 overflow-y-auto">
+              {allTags.length === 0 ? (
+                <p className="text-xs text-surface-400 p-2">No tags found</p>
+              ) : (
+                <>
+                  {allTags.map(tag => (
+                    <label key={tag} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-50 cursor-pointer">
+                      <input type="checkbox" className="rounded border-surface-300 accent-brand-600"
+                        checked={filterTags.includes(tag)}
+                        onChange={e => {
+                          if (e.target.checked) setFilterTags(prev => [...prev, tag])
+                          else setFilterTags(prev => prev.filter(t => t !== tag))
+                        }} />
+                      <span className="text-xs text-surface-700">{tag}</span>
+                    </label>
+                  ))}
+                  {filterTags.length > 0 && (
+                    <button onClick={() => setFilterTags([])} className="text-xs text-brand-600 hover:underline px-2 pt-1">Clear all</button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Score filter */}
+        <select value={filterScore} onChange={e => setFilterScore(e.target.value)}
+          className={cn('btn-secondary btn-sm appearance-none pr-7 cursor-pointer', filterScore !== 'all' && 'ring-2 ring-brand-200')}>
+          <option value="all">All Scores</option>
+          <option value="hot">Hot</option>
+          <option value="warm">Warm</option>
+          <option value="cold">Cold</option>
+        </select>
+
+        {/* Owner filter */}
+        <select value={filterOwner} onChange={e => setFilterOwner(e.target.value)}
+          className={cn('btn-secondary btn-sm appearance-none pr-7 cursor-pointer', filterOwner !== 'all' && 'ring-2 ring-brand-200')}>
+          <option value="all">All Owners</option>
+          <option value="mine">Mine</option>
+        </select>
+
+        {/* Clear all filters */}
+        {(filterTags.length > 0 || filterScore !== 'all' || filterOwner !== 'all') && (
+          <button onClick={() => { setFilterTags([]); setFilterScore('all'); setFilterOwner('all') }}
+            className="text-xs text-brand-600 hover:underline">
+            Clear filters
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -424,6 +484,49 @@ export default function ContactsPage() {
           <p className="empty-state-title">No {template.contactLabel.plural.toLowerCase()} yet</p>
           <p className="empty-state-desc">Add your first {template.contactLabel.singular.toLowerCase()} to get started</p>
           <button onClick={() => setShowNew(true)} className="btn-primary"><Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}</button>
+        </div>
+      ) : view === 'kanban' ? (
+        /* ====== KANBAN VIEW ====== */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {(['hot', 'warm', 'cold', 'unscored'] as const).map(label => {
+            const items = filtered.filter(c => {
+              const sl = c.score_label || 'cold'
+              if (label === 'unscored') return !c.score_label || c.score_label === 'inactive'
+              return sl === label
+            })
+            const colorMap: Record<string, string> = {
+              hot: 'border-t-red-500 bg-red-50/30',
+              warm: 'border-t-amber-500 bg-amber-50/30',
+              cold: 'border-t-blue-500 bg-blue-50/30',
+              unscored: 'border-t-surface-300 bg-surface-50/30',
+            }
+            return (
+              <div key={label} className={cn('rounded-xl border border-surface-200 border-t-4 p-3 min-h-[200px]', colorMap[label])}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold capitalize text-surface-700">{label}</h3>
+                  <span className="text-[10px] font-semibold bg-white px-2 py-0.5 rounded-full text-surface-500 shadow-sm">{items.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {items.map(contact => (
+                    <div key={contact.id} onClick={() => router.push(`/contacts/${contact.id}`)}
+                      className="bg-white rounded-lg p-3 shadow-sm hover:shadow-card-hover cursor-pointer transition-all border border-surface-100">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0 ${avatarColor(contact.name)}`}>
+                          {getInitials(contact.name)}
+                        </div>
+                        <p className="text-xs font-semibold text-surface-800 truncate">{contact.name}</p>
+                      </div>
+                      {contact.email && <p className="text-[10px] text-brand-600 truncate">{contact.email}</p>}
+                      {contact.company_name && <p className="text-[10px] text-surface-400 truncate">{contact.company_name}</p>}
+                    </div>
+                  ))}
+                  {items.length === 0 && (
+                    <p className="text-xs text-surface-400 text-center py-4">No contacts</p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : view === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -465,6 +568,7 @@ export default function ContactsPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden lg:table-cell">Company</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden lg:table-cell">Phone</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden xl:table-cell">Score</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase tracking-wide hidden lg:table-cell">Last Activity</th>
                 <th className="px-4 py-3 w-10"></th>
               </tr>
             </thead>
@@ -511,6 +615,13 @@ export default function ContactsPage() {
                       </div>
                     ) : (
                       <span className="text-xs text-surface-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    {lastInteractions[contact.id] ? (
+                      <span className="text-xs text-surface-500">Last: {timeAgo(lastInteractions[contact.id])}</span>
+                    ) : (
+                      <span className="text-xs text-surface-300">--</span>
                     )}
                   </td>
                   <td className="px-4 py-3">

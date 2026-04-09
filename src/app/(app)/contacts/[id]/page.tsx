@@ -18,6 +18,8 @@ interface ContactDetail {
   email?: string; phone?: string; company_name?: string; job_title?: string;
   website?: string; address?: string; notes?: string; tags?: string[];
   custom_fields?: DbRow; created_at: string; updated_at: string;
+  social_profiles?: { instagram?: string; linkedin?: string; facebook?: string; tiktok?: string };
+  owner_id?: string; engagement_score?: number; score_label?: string;
 }
 
 interface DealRow {
@@ -123,6 +125,7 @@ export default function ContactDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
+  const [companyPeople, setCompanyPeople] = useState<{ id: string; name: string; job_title?: string; email?: string }[]>([])
 
   // New activity form
   const [actType, setActType] = useState('task')
@@ -152,6 +155,21 @@ export default function ContactDetailPage() {
       const { data: stagesData } = await supabase.from('pipeline_stages').select('id, name').eq('workspace_id', contactRes.data.workspace_id).order('order_index').limit(20)
       setStages(stagesData || [])
       if (stagesData?.[0]) setDealStageId(stagesData[0].id)
+
+      // Company hierarchy: if company, load people with matching company_name
+      if (contactRes.data.type === 'company') {
+        const { data: people } = await supabase
+          .from('contacts')
+          .select('id, name, job_title, email')
+          .eq('workspace_id', contactRes.data.workspace_id)
+          .eq('type', 'person')
+          .eq('company_name', contactRes.data.name)
+          .order('name')
+          .limit(50)
+        setCompanyPeople(people || [])
+      } else {
+        setCompanyPeople([])
+      }
     }
 
     setDeals(dealsRes.data || [])
@@ -312,6 +330,35 @@ export default function ContactDetailPage() {
                 </a>
               )}
             </div>
+            {/* Social profile badges */}
+            {contact.social_profiles && Object.keys(contact.social_profiles).some(k => (contact.social_profiles as Record<string, string>)?.[k]) && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {contact.social_profiles.instagram && (
+                  <a href={contact.social_profiles.instagram.startsWith('http') ? contact.social_profiles.instagram : `https://instagram.com/${contact.social_profiles.instagram}`}
+                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-100 text-pink-700 hover:bg-pink-200 transition-colors">
+                    Instagram
+                  </a>
+                )}
+                {contact.social_profiles.linkedin && (
+                  <a href={contact.social_profiles.linkedin.startsWith('http') ? contact.social_profiles.linkedin : `https://linkedin.com/in/${contact.social_profiles.linkedin}`}
+                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors">
+                    LinkedIn
+                  </a>
+                )}
+                {contact.social_profiles.facebook && (
+                  <a href={contact.social_profiles.facebook.startsWith('http') ? contact.social_profiles.facebook : `https://facebook.com/${contact.social_profiles.facebook}`}
+                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors">
+                    Facebook
+                  </a>
+                )}
+                {contact.social_profiles.tiktok && (
+                  <a href={contact.social_profiles.tiktok.startsWith('http') ? contact.social_profiles.tiktok : `https://tiktok.com/@${contact.social_profiles.tiktok}`}
+                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-900 text-white hover:bg-surface-700 transition-colors">
+                    TikTok
+                  </a>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {contact.email && (
@@ -353,6 +400,41 @@ export default function ContactDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Company Hierarchy */}
+      {contact.type === 'company' && companyPeople.length > 0 && (
+        <div className="card p-4 mb-6">
+          <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">
+            <Users className="w-3.5 h-3.5 inline mr-1" /> People at {contact.name} ({companyPeople.length})
+          </h3>
+          <div className="space-y-2">
+            {companyPeople.map(p => (
+              <div key={p.id} onClick={() => router.push(`/contacts/${p.id}`)}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-50 cursor-pointer transition-colors">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${AVATAR_COLORS[p.name.charCodeAt(0) % AVATAR_COLORS.length]}`}>
+                  {getInitials(p.name)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-surface-800 truncate">{p.name}</p>
+                  {p.job_title && <p className="text-[10px] text-surface-400">{p.job_title}</p>}
+                </div>
+                {p.email && <p className="text-[10px] text-brand-600 ml-auto truncate">{p.email}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {contact.type === 'person' && contact.company_name && (
+        <div className="card p-4 mb-6">
+          <p className="text-xs text-surface-500">
+            Works at{' '}
+            <button onClick={() => router.push(`/contacts?company=${encodeURIComponent(contact.company_name!)}`)}
+              className="text-brand-600 font-semibold hover:underline">
+              {contact.company_name}
+            </button>
+          </p>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="segmented-control mb-8">
