@@ -53,7 +53,8 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
 
         if (profile?.custom_role_id) {
           // Load custom role permissions from DB
-          const { data: customRole } = await supabase.from('custom_roles').select('permissions').eq('id', profile.custom_role_id).single()
+          const { data: customRoleRows } = await supabase.from('custom_roles').select('permissions').eq('id', profile.custom_role_id).limit(1)
+          const customRole = customRoleRows?.[0] || null
           if (customRole?.permissions) setUserPermissions(customRole.permissions as Record<string, string[]>)
         } else if (profile?.role === 'admin') {
           // Admin sees everything
@@ -61,7 +62,8 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         }
 
         // Load workspace enabled modules
-        const { data: ws } = await supabase.from('workspaces').select('id, enabled_modules').eq('owner_id', user.id).single()
+        const { data: wsRows } = await supabase.from('workspaces').select('id, enabled_modules').eq('owner_id', user.id).limit(1)
+        const ws = wsRows?.[0] || null
         if (ws?.enabled_modules && typeof ws.enabled_modules === 'object') {
           const mods = Object.entries(ws.enabled_modules as Record<string, boolean>)
             .filter(([_, v]) => v).map(([k]) => k)

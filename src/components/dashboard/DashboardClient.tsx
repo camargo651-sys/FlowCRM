@@ -13,7 +13,8 @@ export default function DashboardClient() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: ws } = await supabase.from('workspaces').select('id, name, onboarding_completed').eq('owner_id', user.id).single()
+      const { data: wsRows } = await supabase.from('workspaces').select('id, name, onboarding_completed').eq('owner_id', user.id).limit(1)
+      const ws = wsRows?.[0] || null
       if (ws && !ws.onboarding_completed) {
         setWorkspaceId(ws.id)
         setWorkspaceName(ws.name)

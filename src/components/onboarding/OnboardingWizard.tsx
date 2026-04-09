@@ -72,7 +72,8 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
 
   const applyTemplate = async (template: IndustryTemplate) => {
     // 1. Create or get pipeline
-    let pipeline = await supabase.from('pipelines').select('id').eq('workspace_id', workspaceId).single()
+    const pipelineRes = await supabase.from('pipelines').select('id').eq('workspace_id', workspaceId).limit(1)
+    const pipeline = { data: pipelineRes.data?.[0] || null }
     let pipelineId: string
 
     if (pipeline.data) {

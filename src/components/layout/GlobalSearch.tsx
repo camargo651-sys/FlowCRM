@@ -138,7 +138,8 @@ export default function GlobalSearch() {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    const { data: wsRows } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).limit(1)
+    const ws = wsRows?.[0] || null
     if (!ws) { setLoading(false); return }
 
     // Escape LIKE wildcards to prevent pattern injection

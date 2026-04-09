@@ -113,8 +113,8 @@ async function seedRichDemoData(supabase: any, wsId: string, userId: string) {
   }
 
   // ── PIPELINE & STAGES ──
-  const { data: pipeline } = await supabase.from('pipelines').select('id').eq('workspace_id', wsId).limit(1).single()
-  let pipelineId = pipeline?.id
+  const { data: pipelineRows } = await supabase.from('pipelines').select('id').eq('workspace_id', wsId).limit(1)
+  let pipelineId = pipelineRows?.[0]?.id
   if (!pipelineId) {
     const { data: newP } = await supabase.from('pipelines').insert({
       workspace_id: wsId, name: 'Sales Pipeline', color: '#6172f3',

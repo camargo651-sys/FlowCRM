@@ -26,12 +26,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       const activeWsId = typeof window !== 'undefined' ? localStorage.getItem('tracktio_active_workspace') : null
       let ws: { language?: string } | null = null
       if (activeWsId) {
-        const { data } = await supabase.from('workspaces').select('language').eq('id', activeWsId).single()
-        ws = data
+        const { data } = await supabase.from('workspaces').select('language').eq('id', activeWsId).limit(1)
+        ws = data?.[0] || null
       }
       if (!ws) {
-        const { data } = await supabase.from('workspaces').select('language').eq('owner_id', user.id).order('created_at').limit(1).single()
-        ws = data
+        const { data } = await supabase.from('workspaces').select('language').eq('owner_id', user.id).order('created_at').limit(1)
+        ws = data?.[0] || null
       }
       if (ws?.language) setLocaleState(ws.language as Locale)
     }

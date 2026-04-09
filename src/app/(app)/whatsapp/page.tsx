@@ -665,7 +665,8 @@ export default function WhatsAppInboxPage() {
     setSavingAction(true)
     try {
       // Get first pipeline
-      const { data: pipeline } = await supabase.from('pipelines').select('id').eq('workspace_id', workspaceId).limit(1).single()
+      const { data: pipelines } = await supabase.from('pipelines').select('id').eq('workspace_id', workspaceId).limit(1)
+      const pipeline = pipelines?.[0]
       if (!pipeline) { toast.error('No pipeline found'); return }
       // Get first stage
       const { data: stage } = await supabase.from('pipeline_stages').select('id').eq('pipeline_id', pipeline.id).order('order_index').limit(1).single()

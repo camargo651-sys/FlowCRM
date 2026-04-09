@@ -24,12 +24,15 @@ export async function requireAuth() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: ws } = await supabase.from('workspaces').select('id, enabled_modules').eq('owner_id', user.id).single()
-  const { data: profile } = await supabase.from('profiles').select('role, custom_role_id').eq('id', user.id).single()
+  const { data: wsRows } = await supabase.from('workspaces').select('id, enabled_modules').eq('owner_id', user.id).limit(1)
+  const ws = wsRows?.[0] || null
+  const { data: profileRows } = await supabase.from('profiles').select('role, custom_role_id').eq('id', user.id).limit(1)
+  const profile = profileRows?.[0] || null
 
   let permissions: Record<string, string[]> | null = null
   if (profile?.custom_role_id) {
-    const { data: customRole } = await supabase.from('custom_roles').select('permissions').eq('id', profile.custom_role_id).single()
+    const { data: customRoleRows } = await supabase.from('custom_roles').select('permissions').eq('id', profile.custom_role_id).limit(1)
+    const customRole = customRoleRows?.[0] || null
     if (customRole?.permissions) permissions = customRole.permissions as Record<string, string[]>
   }
 
