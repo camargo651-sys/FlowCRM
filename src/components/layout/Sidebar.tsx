@@ -173,14 +173,9 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
 
   const displayName = wsName || workspaceName || 'Tracktio'
 
-  // Active module — derived from pathname, with localStorage persistence
+  // Active module — always derive from pathname to avoid hydration mismatch
   const pathnameModule = findActiveModule(pathname)
-  const [selectedModule, setSelectedModule] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('tracktio_active_module') || pathnameModule
-    }
-    return pathnameModule
-  })
+  const [selectedModule, setSelectedModule] = useState<string>(pathnameModule)
 
   // Keep selectedModule in sync when pathname changes
   useEffect(() => {
