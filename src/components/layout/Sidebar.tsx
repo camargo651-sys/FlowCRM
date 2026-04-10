@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import {
   Zap, LogOut, ChevronDown, Search, Plus,
 } from 'lucide-react'
+import TracktioIcons from '@/components/icons/TracktioIcons'
 import NotificationBell from './NotificationBell'
 import ThemeToggle from '@/components/shared/ThemeToggle'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
@@ -34,11 +35,11 @@ export interface ModuleDef {
 
 export const MODULES: ModuleDef[] = [
   {
-    key: 'home', icon: '\u{1F3E0}', label: 'Home', always: true,
+    key: 'home', icon: 'home', label: 'Home', always: true,
     items: [{ href: '/dashboard', label: 'Dashboard' }],
   },
   {
-    key: 'sales', icon: '\u{1F500}', label: 'Sales',
+    key: 'sales', icon: 'sales', label: 'Sales',
     enableKeys: ['crm'],
     items: [
       { href: '/pipeline', label: 'Pipeline' },
@@ -53,7 +54,7 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: 'finance', icon: '\u{1F9FE}', label: 'Finance',
+    key: 'finance', icon: 'finance', label: 'Finance',
     enableKeys: ['invoicing', 'accounting', 'expenses'],
     items: [
       { href: '/invoices', label: 'Invoices' },
@@ -64,7 +65,7 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: 'operations', icon: '\u{1F4E6}', label: 'Operations',
+    key: 'operations', icon: 'operations', label: 'Operations',
     enableKeys: ['inventory', 'purchasing', 'manufacturing', 'pos', 'ecommerce'],
     items: [
       { href: '/inventory', label: 'Inventory' },
@@ -75,7 +76,7 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: 'people', icon: '\u{1F465}', label: 'People',
+    key: 'people', icon: 'people', label: 'People',
     enableKeys: ['hr'],
     items: [
       { href: '/hr', label: 'HR' },
@@ -85,14 +86,14 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: 'support', icon: '\u{1F3AB}', label: 'Support',
+    key: 'support', icon: 'support', label: 'Support',
     enableKeys: ['crm'],
     items: [
       { href: '/tickets', label: 'Tickets' },
     ],
   },
   {
-    key: 'settings', icon: '\u{2699}\u{FE0F}', label: 'Settings', always: true,
+    key: 'settings', icon: 'settings', label: 'Settings', always: true,
     items: [
       { href: '/settings', label: 'General' },
       { href: '/settings/company', label: 'Company' },
@@ -114,6 +115,23 @@ export const MODULES: ModuleDef[] = [
 ]
 
 // ─── Helpers ────────────────────────────────────────────────────
+
+/** Map icon keys to Tracktio brand SVG components */
+const ICON_MAP: Record<string, (props: { className?: string }) => React.ReactNode> = {
+  home: (p) => <TracktioIcons.Home {...p} />,
+  sales: (p) => <TracktioIcons.Sales {...p} />,
+  finance: (p) => <TracktioIcons.Finance {...p} />,
+  operations: (p) => <TracktioIcons.Operations {...p} />,
+  people: (p) => <TracktioIcons.People {...p} />,
+  support: (p) => <TracktioIcons.Support {...p} />,
+  settings: (p) => <TracktioIcons.Settings {...p} />,
+}
+
+function ModuleIcon({ icon, className }: { icon: string; className?: string }) {
+  const Renderer = ICON_MAP[icon]
+  if (Renderer) return <>{Renderer({ className })}</>
+  return <span className={className}>{icon}</span>
+}
 
 /** Find which module owns the current pathname */
 function findActiveModule(pathname: string): string {
@@ -203,7 +221,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
             {logoUrl ? (
               <img src={logoUrl} alt="" className="w-5 h-5 object-contain" />
             ) : (
-              <Zap className="w-4 h-4" />
+              <TracktioIcons.Logo className="w-9 h-9 text-brand-600" />
             )}
           </div>
         </div>
@@ -224,7 +242,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
                     : 'text-surface-400 hover:bg-surface-700 hover:text-white'
                 )}
               >
-                <span className="text-base leading-none">{mod.icon}</span>
+                <ModuleIcon icon={mod.icon} className="w-5 h-5" />
                 {/* Tooltip */}
                 <span className="absolute left-full ml-2 px-2 py-1 bg-surface-800 text-white text-[11px] font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
                   {mod.label}
