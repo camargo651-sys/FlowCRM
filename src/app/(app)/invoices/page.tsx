@@ -2,6 +2,7 @@
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, FileText, Send, DollarSign, CheckCircle2, X, Clock, AlertTriangle, Download, CreditCard, Copy, Repeat, ChevronDown, ChevronRight } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
@@ -26,6 +27,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default function InvoicesPage() {
+  const router = useRouter()
   const supabase = createClient()
   const { t } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -444,7 +446,7 @@ export default function InvoicesPage() {
             <tbody>
               {filtered.map(inv => (
                 <>
-                <tr key={inv.id} className={cn('border-b border-surface-50 hover:bg-surface-50 transition-colors', inv.status === 'draft' && 'cursor-pointer')} onClick={() => { if (inv.status === 'draft') openEditInvoice(inv) }}>
+                <tr key={inv.id} className="border-b border-surface-50 hover:bg-surface-50 transition-colors cursor-pointer" onClick={() => router.push('/invoices/' + inv.id)}>
                   <td className="px-4 py-3">
                     <span className="text-sm font-semibold text-surface-800 font-mono inline-flex items-center gap-1.5">
                       {hasRecurringParent(inv) && <span title="Recurring invoice"><Repeat className="w-3 h-3 text-brand-500" /></span>}

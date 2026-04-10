@@ -3,6 +3,7 @@ import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, X, UserPlus, MessageCircle, ArrowRight, ExternalLink, DollarSign, User, MoreHorizontal, Phone, Mail, AlarmClock, TrendingUp, Clock, AlertCircle, CheckCircle, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -36,6 +37,7 @@ function LeadAgeBadge({ createdAt, status }: { createdAt: string; status: string
 
 export default function LeadsPage() {
   const supabase = createClient()
+  const router = useRouter()
   const { t } = useI18n()
   const [leads, setLeads] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -428,12 +430,13 @@ export default function LeadsPage() {
             const leadHasPhone = hasPhone(lead)
 
             return (
-            <div key={lead.id} className={cn('card p-4 flex items-start gap-3', selected.has(lead.id) && 'ring-2 ring-brand-300 bg-brand-50/30')}>
+            <div key={lead.id} onClick={() => router.push(`/leads/${lead.id}`)} className={cn('card p-4 flex items-start gap-3 cursor-pointer hover:shadow-md transition-shadow', selected.has(lead.id) && 'ring-2 ring-brand-300 bg-brand-50/30')}>
               {/* Improvement 1: Checkbox */}
               <input
                 type="checkbox"
                 checked={selected.has(lead.id)}
                 onChange={() => toggleSelect(lead.id)}
+                onClick={e => e.stopPropagation()}
                 className="w-3.5 h-3.5 mt-1 rounded border-surface-300 text-brand-600 focus:ring-brand-500 flex-shrink-0"
               />
               <span className="text-xl mt-0.5">{PLATFORM_ICONS[lead.platform] || '🌐'}</span>
@@ -469,7 +472,7 @@ export default function LeadsPage() {
 
                 {/* Improvement 8: Inline note editor */}
                 {editingNote === lead.id && (
-                  <div className="mt-2 flex gap-1.5">
+                  <div className="mt-2 flex gap-1.5" onClick={e => e.stopPropagation()}>
                     <textarea
                       className="input text-xs resize-none flex-1"
                       rows={2}
@@ -508,7 +511,7 @@ export default function LeadsPage() {
               </div>
 
               {/* Improvement 7: Actions - Convert visible, rest in dropdown */}
-              <div className="flex gap-1 flex-shrink-0 items-center relative" ref={openMenu === lead.id ? menuRef : undefined}>
+              <div className="flex gap-1 flex-shrink-0 items-center relative" onClick={e => e.stopPropagation()} ref={openMenu === lead.id ? menuRef : undefined}>
                 {/* Improvement 5: WhatsApp button */}
                 {(phone || leadHasPhone) && (
                   <button

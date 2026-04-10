@@ -3,6 +3,7 @@ import { DbRow } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Ticket, X, MessageCircle, Clock, AlertTriangle, StickyNote, UserCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -29,6 +30,7 @@ interface TicketForm { subject: string; description: string; priority: string; c
 
 export default function TicketsPage() {
   const supabase = createClient()
+  const router = useRouter()
   const { t } = useI18n()
   const [tickets, setTickets] = useState<DbRow[]>([])
   const [contacts, setContacts] = useState<DbRow[]>([])
@@ -169,7 +171,7 @@ export default function TicketsPage() {
             const sla = getSlaColor(ticket.created_at)
             const assignee = ticket.assigned_to ? getMemberName(ticket.assigned_to) : null
             return (
-              <div key={ticket.id} className="card p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => openDetail(ticket)}>
+              <div key={ticket.id} className="card p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push(`/tickets/${ticket.id}`)}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-[10px] font-mono text-surface-400">{ticket.ticket_number}</span>
