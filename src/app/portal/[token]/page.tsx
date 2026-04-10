@@ -22,7 +22,7 @@ export default function PortalPage() {
     }).catch(() => setLoading(false))
   }, [token])
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: '-apple-system, sans-serif' }}><div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTop: '3px solid #6172f3', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: '-apple-system, sans-serif' }}><div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTop: '3px solid #0891B2', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>
 
   if (!data) return (
     <div style={{ textAlign: 'center', padding: '80px 20px', fontFamily: '-apple-system, sans-serif' }}>
@@ -31,7 +31,7 @@ export default function PortalPage() {
     </div>
   )
 
-  const color = data.company?.primary_color || '#6172f3'
+  const color = data.company?.primary_color || '#0891B2'
   const STATUS_COLORS: Record<string, string> = {
     draft: '#94a3b8', sent: '#3b82f6', paid: '#10b981', partial: '#f59e0b',
     overdue: '#ef4444', active: '#10b981', expired: '#ef4444', accepted: '#10b981',
@@ -166,7 +166,7 @@ export default function PortalPage() {
                       <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 600 }}>{d.title}</td>
                       <td style={{ padding: '10px 12px' }}>
                         {d.pipeline_stages ? (
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (d.pipeline_stages.color || '#6172f3') + '20', color: d.pipeline_stages.color || '#6172f3', textTransform: 'uppercase' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (d.pipeline_stages.color || '#0891B2') + '20', color: d.pipeline_stages.color || '#0891B2', textTransform: 'uppercase' }}>
                             {d.pipeline_stages.name}
                           </span>
                         ) : <span style={{ fontSize: 12, color: '#94a3b8' }}>—</span>}

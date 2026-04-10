@@ -9,8 +9,8 @@ import { LOCALES } from '@/lib/i18n/translations'
 import type { PipelineStage } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
-const STAGE_COLORS = ['#6172f3','#8b5cf6','#ec4899','#f97316','#f59e0b','#10b981','#06b6d4','#64748b']
-const BRAND_COLORS = ['#6172f3','#8b5cf6','#ec4899','#ef4444','#f97316','#f59e0b','#10b981','#06b6d4','#3b82f6','#64748b']
+const STAGE_COLORS = ['#0891B2','#8b5cf6','#ec4899','#f97316','#f59e0b','#10b981','#06b6d4','#64748b']
+const BRAND_COLORS = ['#0891B2','#8b5cf6','#ec4899','#ef4444','#f97316','#f59e0b','#10b981','#06b6d4','#3b82f6','#64748b']
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
@@ -56,7 +56,7 @@ export default function SettingsPage() {
   const [companies, setCompanies] = useState<CompanyContact[]>([])
   const [workspaceId, setWorkspaceId] = useState('')
   const [workspaceName, setWorkspaceName] = useState('')
-  const [primaryColor, setPrimaryColor] = useState('#6172f3')
+  const [primaryColor, setPrimaryColor] = useState('#0891B2')
   const [logoUrl, setLogoUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -108,7 +108,7 @@ export default function SettingsPage() {
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
     setWorkspaceName(ws.name)
-    setPrimaryColor(ws.primary_color || '#6172f3')
+    setPrimaryColor(ws.primary_color || '#0891B2')
     setLogoUrl(ws.logo_url || '')
     setCustomDomain(ws.custom_domain || '')
 
@@ -181,7 +181,7 @@ export default function SettingsPage() {
     if (pipelinesList.length === 0 && !ws.onboarding_completed) {
       // Create default pipeline
       const { data: newPipeline } = await supabase.from('pipelines').insert([{
-        workspace_id: ws.id, name: 'Sales Pipeline', color: '#6172f3', order_index: 0,
+        workspace_id: ws.id, name: 'Sales Pipeline', color: '#0891B2', order_index: 0,
       }]).select().single()
       if (newPipeline) {
         const defaults = ['Lead','Qualified','Proposal','Negotiation','Closed Won'].map((name, i) => ({

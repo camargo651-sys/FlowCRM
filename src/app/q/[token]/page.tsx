@@ -45,7 +45,7 @@ export default async function QuoteViewPage({ params }: { params: { token: strin
           th { text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
           td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
           .text-right { text-align: right; }
-          .total-row { font-size: 18px; font-weight: 700; color: #6172f3; }
+          .total-row { font-size: 18px; font-weight: 700; color: #0891B2; }
           .section-tag { display: inline-block; padding: 2px 8px; background: #eff6ff; color: #3b82f6; border-radius: 4px; font-size: 11px; font-weight: 600; }
           .notes { padding: 16px; background: #fefce8; border-radius: 8px; margin-top: 16px; font-size: 13px; color: #854d0e; }
           .footer { text-align: center; padding: 24px; color: #94a3b8; font-size: 12px; }

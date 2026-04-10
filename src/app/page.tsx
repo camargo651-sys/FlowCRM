@@ -45,11 +45,13 @@ export default async function Home() {
             Now in open beta — free for early teams
           </div>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-surface-900 leading-[1.08] tracking-tight">
-            Run your business,<br />
-            <span className="bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent">not your software.</span>
+            <span className="bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent">Built to close.</span>
           </h1>
-          <p className="text-lg sm:text-xl text-surface-500 mt-8 max-w-2xl mx-auto leading-relaxed">
-            CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce — unified in one AI-powered platform. Ready in 60 seconds.
+          <p className="text-xl sm:text-2xl text-surface-700 mt-5 max-w-2xl mx-auto font-semibold leading-snug">
+            The modular business platform for teams that sell.
+          </p>
+          <p className="text-base sm:text-lg text-surface-500 mt-4 max-w-2xl mx-auto leading-relaxed">
+            CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce — 27 modules, one AI-powered platform. Ready in 60 seconds.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
             <Link href="/auth/signup" className="px-10 py-4 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all text-base shadow-xl shadow-brand-600/25 hover:shadow-brand-600/40 hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">

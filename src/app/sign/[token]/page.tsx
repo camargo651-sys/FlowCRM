@@ -55,7 +55,7 @@ export default function SignPage() {
   const d = doc.data as Record<string, unknown>
   const workspace = d.workspaces as { name?: string; primary_color?: string; logo_url?: string } | null
   const contact = d.contacts as { name?: string; email?: string } | null
-  const color = workspace?.primary_color || '#6172f3'
+  const color = workspace?.primary_color || '#0891B2'
 
   if (signed || doc.already_signed) return (
     <div className="min-h-screen bg-surface-50 flex items-center justify-center p-6">

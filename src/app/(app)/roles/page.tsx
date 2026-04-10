@@ -23,7 +23,7 @@ export default function RolesPage() {
   // Form
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [color, setColor] = useState('#6172f3')
+  const [color, setColor] = useState('#0891B2')
   const [permissions, setPermissions] = useState<Record<string, string[]>>({})
 
   const load = useCallback(async () => {
@@ -44,7 +44,7 @@ export default function RolesPage() {
     setEditing(role)
     setName(role.name)
     setDescription(role.description || '')
-    setColor(role.color || '#6172f3')
+    setColor(role.color || '#0891B2')
     setPermissions(role.permissions || {})
     setShowNew(true)
   }
@@ -106,13 +106,13 @@ export default function RolesPage() {
     for (const [key, template] of Object.entries(ROLE_TEMPLATES)) {
       await supabase.from('custom_roles').upsert({
         workspace_id: workspaceId, name: template.label, description: template.description,
-        permissions: template.permissions, is_system: true, color: key === 'admin' ? '#6172f3' : key === 'sales' ? '#10b981' : key === 'accountant' ? '#8b5cf6' : key === 'warehouse' ? '#f59e0b' : key === 'hr_manager' ? '#ec4899' : '#64748b',
+        permissions: template.permissions, is_system: true, color: key === 'admin' ? '#0891B2' : key === 'sales' ? '#10b981' : key === 'accountant' ? '#8b5cf6' : key === 'warehouse' ? '#f59e0b' : key === 'hr_manager' ? '#ec4899' : '#64748b',
       }, { onConflict: 'workspace_id,name' })
     }
     load()
   }
 
-  const COLORS = ['#6172f3','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#64748b']
+  const COLORS = ['#0891B2','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#64748b']
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 

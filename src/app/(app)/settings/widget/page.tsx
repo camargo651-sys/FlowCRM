@@ -19,7 +19,7 @@ interface WidgetConfig {
 const DEFAULT_CONFIG: WidgetConfig = {
   greeting: 'Hi! How can we help you?',
   button_text: 'Chat with us',
-  color: '#6172f3',
+  color: '#0891B2',
   auto_whatsapp_reply: true,
   auto_reply_message: "Hi {name}! Thanks for reaching out via our website. We'll be in touch shortly.",
 }
@@ -32,7 +32,7 @@ export default function WidgetSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
-  const [config, setConfig] = useState<WidgetConfig>({ ...DEFAULT_CONFIG, color: primaryColor || '#6172f3' })
+  const [config, setConfig] = useState<WidgetConfig>({ ...DEFAULT_CONFIG, color: primaryColor || '#0891B2' })
   const [previewOpen, setPreviewOpen] = useState(false)
 
   const load = useCallback(async () => {

@@ -34,7 +34,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Property', plural: 'Properties' },
     contactLabel: { singular: 'Client', plural: 'Clients' },
     stages: [
-      { name: 'New Listing', color: '#6172f3' },
+      { name: 'New Listing', color: '#0891B2' },
       { name: 'Viewing Scheduled', color: '#8b5cf6' },
       { name: 'Viewing Done', color: '#06b6d4' },
       { name: 'Offer Made', color: '#f59e0b' },
@@ -71,7 +71,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Project', plural: 'Projects' },
     contactLabel: { singular: 'Client', plural: 'Clients' },
     stages: [
-      { name: 'Proposal', color: '#6172f3' },
+      { name: 'Proposal', color: '#0891B2' },
       { name: 'Approved', color: '#8b5cf6' },
       { name: 'In Progress', color: '#f59e0b' },
       { name: 'Review', color: '#06b6d4' },
@@ -104,7 +104,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Order', plural: 'Orders' },
     contactLabel: { singular: 'Customer', plural: 'Customers' },
     stages: [
-      { name: 'Quote Requested', color: '#6172f3' },
+      { name: 'Quote Requested', color: '#0891B2' },
       { name: 'Quote Sent', color: '#8b5cf6' },
       { name: 'Confirmed', color: '#f59e0b' },
       { name: 'In Preparation', color: '#06b6d4' },
@@ -141,7 +141,7 @@ const templates: Record<string, IndustryTemplate> = {
     contactLabel: { singular: 'Contact', plural: 'Contacts' },
     stages: [
       { name: 'Prospecting', color: '#64748b' },
-      { name: 'Discovery', color: '#6172f3' },
+      { name: 'Discovery', color: '#0891B2' },
       { name: 'Demo / Meeting', color: '#8b5cf6' },
       { name: 'Proposal Sent', color: '#f59e0b' },
       { name: 'Negotiation', color: '#f97316' },
@@ -176,7 +176,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Lead', plural: 'Leads' },
     contactLabel: { singular: 'Customer', plural: 'Customers' },
     stages: [
-      { name: 'New Lead', color: '#6172f3' },
+      { name: 'New Lead', color: '#0891B2' },
       { name: 'Contacted', color: '#8b5cf6' },
       { name: 'Interested', color: '#f59e0b' },
       { name: 'Quote Sent', color: '#06b6d4' },
@@ -208,7 +208,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Project', plural: 'Projects' },
     contactLabel: { singular: 'Client', plural: 'Clients' },
     stages: [
-      { name: 'Lead', color: '#6172f3' },
+      { name: 'Lead', color: '#0891B2' },
       { name: 'Proposal', color: '#8b5cf6' },
       { name: 'Onboarding', color: '#f59e0b' },
       { name: 'Active', color: '#10b981' },
@@ -242,7 +242,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Treatment', plural: 'Treatments' },
     contactLabel: { singular: 'Patient', plural: 'Patients' },
     stages: [
-      { name: 'Inquiry', color: '#6172f3' },
+      { name: 'Inquiry', color: '#0891B2' },
       { name: 'Appointment Scheduled', color: '#8b5cf6' },
       { name: 'Consultation Done', color: '#06b6d4' },
       { name: 'Treatment Plan', color: '#f59e0b' },
@@ -277,7 +277,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Enrollment', plural: 'Enrollments' },
     contactLabel: { singular: 'Student', plural: 'Students' },
     stages: [
-      { name: 'Interested', color: '#6172f3' },
+      { name: 'Interested', color: '#0891B2' },
       { name: 'Info Sent', color: '#8b5cf6' },
       { name: 'Trial / Demo', color: '#06b6d4' },
       { name: 'Application', color: '#f59e0b' },
@@ -310,7 +310,7 @@ const templates: Record<string, IndustryTemplate> = {
     dealLabel: { singular: 'Deal', plural: 'Deals' },
     contactLabel: { singular: 'Contact', plural: 'Contacts' },
     stages: [
-      { name: 'Lead', color: '#6172f3' },
+      { name: 'Lead', color: '#0891B2' },
       { name: 'Qualified', color: '#8b5cf6' },
       { name: 'Proposal', color: '#f59e0b' },
       { name: 'Negotiation', color: '#f97316' },

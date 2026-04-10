@@ -294,7 +294,7 @@ function QuoteEditor({ quote, contacts, deals, products, workspaceId, onClose, o
                       <h2 style="color:#1e293b">Quote: ${title}</h2>
                       <p style="color:#64748b">Total: ${formatCurrency(total)}</p>
                       <p style="color:#64748b">Please review your quote by clicking the link below:</p>
-                      <a href="${viewLink}" style="display:inline-block;padding:10px 24px;background:#6172f3;color:#fff;border-radius:8px;text-decoration:none;margin-top:12px">View Quote</a>
+                      <a href="${viewLink}" style="display:inline-block;padding:10px 24px;background:#0891B2;color:#fff;border-radius:8px;text-decoration:none;margin-top:12px">View Quote</a>
                     </div>`
                     await fetch('/api/email-send', {
                       method: 'POST',

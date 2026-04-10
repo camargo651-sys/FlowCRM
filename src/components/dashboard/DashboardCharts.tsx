@@ -28,15 +28,15 @@ export default function DashboardCharts({ trendData, leadsByPlatform }: Dashboar
             <AreaChart data={trendData}>
               <defs>
                 <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6172f3" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#6172f3" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#0891B2" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#0891B2" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} />
               <XAxis dataKey="day" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
               <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: number) => [formatCurrency(v), 'Won']} />
-              <Area type="monotone" dataKey="value" stroke="#6172f3" strokeWidth={2} fill="url(#trendGrad)" />
+              <Area type="monotone" dataKey="value" stroke="#0891B2" strokeWidth={2} fill="url(#trendGrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -59,7 +59,7 @@ export default function DashboardCharts({ trendData, leadsByPlatform }: Dashboar
               <XAxis dataKey="platform" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: number) => [v, 'Leads']} />
-              <Bar dataKey="count" fill="#6172f3" radius={[6, 6, 0, 0]} barSize={32} />
+              <Bar dataKey="count" fill="#0891B2" radius={[6, 6, 0, 0]} barSize={32} />
             </BarChart>
           </ResponsiveContainer>
         </div>

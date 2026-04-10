@@ -60,7 +60,7 @@ export default function LoginPage() {
             </div>
             <span className="text-white font-bold text-xl tracking-tight">Tracktio</span>
           </div>
-          <p className="text-white/50 text-sm mt-3">Run your business, not your software.</p>
+          <p className="text-white/50 text-sm mt-3">Built to close.</p>
         </div>
         <div className="relative z-10 space-y-6">
           <blockquote className="text-white/90 text-2xl font-light leading-relaxed">

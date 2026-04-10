@@ -35,7 +35,7 @@ function generateInvoiceHTML(invoice: InvoiceRecord, items: InvoiceItem[], conta
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e293b;margin:0;padding:40px}
     .header{display:flex;justify-content:space-between;margin-bottom:40px}
-    .company{font-size:24px;font-weight:800;color:#6172f3}
+    .company{font-size:24px;font-weight:800;color:#0891B2}
     .doc-title{font-size:32px;font-weight:800;color:#1e293b;margin-bottom:4px}
     .doc-number{font-size:14px;color:#64748b}
     .meta{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
@@ -46,7 +46,7 @@ function generateInvoiceHTML(invoice: InvoiceRecord, items: InvoiceItem[], conta
     th{text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;border-bottom:2px solid #e2e8f0}
     .totals{margin-left:auto;width:280px}
     .total-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px}
-    .total-final{font-size:20px;font-weight:800;color:#6172f3;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
+    .total-final{font-size:20px;font-weight:800;color:#0891B2;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
     .status{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase}
     .status-paid{background:#d1fae5;color:#059669}
     .status-sent{background:#dbeafe;color:#2563eb}

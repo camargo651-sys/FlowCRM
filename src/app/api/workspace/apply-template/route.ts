@@ -172,7 +172,7 @@ export async function POST(request: Request) {
     const { data: newPipeline } = await supabase.from('pipelines').insert({
       workspace_id: ws.id,
       name: `${template.dealLabel.singular} Pipeline`,
-      color: '#6172f3',
+      color: '#0891B2',
       order_index: 0,
     }).select('id').single()
     pipelineId = newPipeline!.id

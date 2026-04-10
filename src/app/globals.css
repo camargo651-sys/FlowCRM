@@ -29,13 +29,13 @@
   .dark .stat-card { background: #1a1f3a; }
   .dark .nav-item { color: #6b75a0; }
   .dark .nav-item:hover { background: #1a1f3a; color: #e2e8f0; }
-  .dark .nav-item-active { background: rgba(97, 114, 243, 0.12); color: #8098f9; }
+  .dark .nav-item-active { background: rgba(8, 145, 178, 0.12); color: #22d3ee; }
   .dark aside { background: #0c1025; border-color: #1a1f3a; }
   .dark table th { color: #4e5880; }
   .dark table td { border-color: #1a1f3a; }
-  .dark tr:hover { background: rgba(97, 114, 243, 0.04) !important; }
+  .dark tr:hover { background: rgba(8, 145, 178, 0.04) !important; }
   .dark .badge-gray { background: #262d4a; color: #9ba3c0; }
-  .dark .badge-blue { background: rgba(97, 114, 243, 0.12); color: #8098f9; }
+  .dark .badge-blue { background: rgba(8, 145, 178, 0.12); color: #22d3ee; }
   .dark .badge-green { background: rgba(16, 185, 129, 0.12); color: #34d399; }
   .dark .badge-red { background: rgba(239, 68, 68, 0.12); color: #f87171; }
   .dark .badge-yellow { background: rgba(245, 158, 11, 0.12); color: #fbbf24; }
@@ -130,7 +130,7 @@
     @apply w-4 h-4 rounded border-surface-300 text-brand-600 cursor-pointer
            focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-0
            transition-colors duration-100;
-    accent-color: #6172f3;
+    accent-color: #0891B2;
   }
 
   /* --- CARDS --- */

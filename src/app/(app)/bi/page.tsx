@@ -68,7 +68,7 @@ interface GlobalFilters {
 // Constants
 // ---------------------------------------------------------------------------
 
-const COLORS = ['#6172f3', '#34d399', '#f59e0b', '#f87171', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
+const COLORS = ['#0891B2', '#34d399', '#f59e0b', '#f87171', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
 
 const WIDGET_TYPE_META: { type: WidgetType; label: string; icon: typeof BarChart2; description: string }[] = [
   { type: 'kpi', label: 'KPI Card', icon: TrendingUp, description: 'Single metric with trend' },
@@ -421,7 +421,7 @@ function BarRenderer({ result }: { result: QueryResult }) {
         <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
         <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-        <Bar dataKey="value" fill="#6172f3" radius={[4, 4, 0, 0]}>
+        <Bar dataKey="value" fill="#0891B2" radius={[4, 4, 0, 0]}>
           {result.aggregated.slice(0, 15).map((_, i) => (
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
           ))}
@@ -440,7 +440,7 @@ function LineRenderer({ result }: { result: QueryResult }) {
         <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
         <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-        <Line type="monotone" dataKey="value" stroke="#6172f3" strokeWidth={2.5} dot={{ r: 3, fill: '#6172f3' }} />
+        <Line type="monotone" dataKey="value" stroke="#0891B2" strokeWidth={2.5} dot={{ r: 3, fill: '#0891B2' }} />
       </LineChart>
     </ResponsiveContainer>
   )

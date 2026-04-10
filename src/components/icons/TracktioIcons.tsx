@@ -140,12 +140,17 @@ function Add(props: IconProps) {
   )
 }
 
-/** Logo — Tracktio bolt mark */
+/** Logo — Tracktio geometric T with forward momentum */
 function Logo(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" width={props.size || 24} height={props.size || 24} className={props.className}>
       <rect width="24" height="24" rx="6" fill="currentColor" />
-      <path d="M13 5l-5 8h4l-1 6 5-8h-4l1-6z" fill="white" />
+      {/* Horizontal bar with forward chevron arrow shape */}
+      <polygon points="4,6 18,6 20,8.5 18,11 4,11" fill="white" />
+      {/* Vertical bar leaning slightly forward for dynamism */}
+      <polygon points="9,11 13,11 14,20 10,20" fill="white" />
+      {/* Small accent dot at top-right for distinction */}
+      <circle cx="19.5" cy="6" r="1.5" fill="white" opacity="0.6" />
     </svg>
   )
 }

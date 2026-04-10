@@ -13,7 +13,7 @@ test.describe('Public pages', () => {
   test('Landing page loads', async ({ page }) => {
     await page.goto(BASE)
     await expect(page.getByRole('link', { name: 'Tracktio' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: /Run your business/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Built to close/ })).toBeVisible()
   })
 
   test('Features page loads', async ({ page }) => {

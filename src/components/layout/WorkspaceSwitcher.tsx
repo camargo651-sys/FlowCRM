@@ -74,7 +74,7 @@ export default function WorkspaceSwitcher({ currentName, currentColor }: { curre
                 className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors',
                   ws.id === currentId ? 'bg-brand-50 text-brand-700' : 'text-surface-700 hover:bg-surface-50')}>
                 <div className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-bold"
-                  style={{ backgroundColor: ws.primary_color || '#6172f3' }}>{ws.name.charAt(0)}</div>
+                  style={{ backgroundColor: ws.primary_color || '#0891B2' }}>{ws.name.charAt(0)}</div>
                 <span className="flex-1 truncate font-medium text-left">{ws.name}</span>
                 {ws.id === currentId && <Check className="w-3 h-3 text-brand-600" />}
               </button>

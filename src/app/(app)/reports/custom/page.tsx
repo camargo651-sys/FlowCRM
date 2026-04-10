@@ -304,7 +304,7 @@ export default function CustomReportsPage() {
                   tickFormatter={(v: number) => metric === 'count' ? String(v) : formatCurrency(v)} />
                 <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }}
                   formatter={(v: number) => [metric === 'count' ? v : formatCurrency(v)]} />
-                <Bar dataKey="value" fill="#6172f3" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="#0891B2" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

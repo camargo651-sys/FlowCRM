@@ -5,7 +5,7 @@
   if (!script) return;
 
   var WORKSPACE_ID = script.getAttribute('data-workspace');
-  var COLOR = script.getAttribute('data-color') || '#6172f3';
+  var COLOR = script.getAttribute('data-color') || '#0891B2';
   var GREETING = script.getAttribute('data-greeting') || 'Hi! How can we help you?';
   var BTN_TEXT = script.getAttribute('data-button-text') || 'Chat with us';
   var API_BASE = script.src ? script.src.replace(/\/widget\.js.*$/, '') : '';

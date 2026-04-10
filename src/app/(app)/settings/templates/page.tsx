@@ -96,12 +96,12 @@ function blocksToHTML(blocks: Block[]): string {
       case 'header':
         return `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #e2e8f0;">
   <div>
-    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#6172f3;margin-bottom:8px;">LOGO</div>
+    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0891B2;margin-bottom:8px;">LOGO</div>
     <h1 style="font-size:22px;font-weight:800;color:#1e293b;margin:0;">${esc(b.content || '{{company_name}}')}</h1>
     <p style="color:#64748b;font-size:12px;margin-top:2px;">{{company_address}}</p>
   </div>
   <div style="text-align:right;">
-    <h2 style="font-size:20px;font-weight:800;color:#6172f3;margin:0;">DOCUMENT</h2>
+    <h2 style="font-size:20px;font-weight:800;color:#0891B2;margin:0;">DOCUMENT</h2>
     <p style="color:#64748b;font-size:12px;">{{invoice_number}}</p>
     <p style="color:#64748b;font-size:12px;">{{issue_date}}</p>
   </div>
@@ -120,7 +120,7 @@ function blocksToHTML(blocks: Block[]): string {
         return `<div style="text-align:right;margin-bottom:24px;padding:16px;background:#f8fafc;border-radius:8px;">
   <p style="font-size:13px;color:#64748b;margin:0 0 4px 0;">Subtotal: {{subtotal}}</p>
   <p style="font-size:13px;color:#64748b;margin:0 0 8px 0;">Tax: {{tax}}</p>
-  <p style="font-size:20px;font-weight:800;color:#6172f3;margin:0;">Total: {{total}}</p>
+  <p style="font-size:20px;font-weight:800;color:#0891B2;margin:0;">Total: {{total}}</p>
 </div>`
       case 'signature':
         return `<div style="margin-top:40px;margin-bottom:20px;">
@@ -224,13 +224,13 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
     html_content: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:800px;margin:0 auto;padding:40px;color:#1e293b;">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #e2e8f0;">
   <div>
-    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#6172f3;margin-bottom:8px;">LOGO</div>
+    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0891B2;margin-bottom:8px;">LOGO</div>
     <h1 style="font-size:22px;font-weight:800;color:#1e293b;margin:0;">{{company_name}}</h1>
     <p style="color:#64748b;font-size:12px;margin-top:2px;">{{company_address}}</p>
     <p style="color:#64748b;font-size:11px;margin-top:1px;">Tax ID: {{company_tax_id}}</p>
   </div>
   <div style="text-align:right;">
-    <h2 style="font-size:28px;font-weight:800;color:#6172f3;margin:0;">INVOICE</h2>
+    <h2 style="font-size:28px;font-weight:800;color:#0891B2;margin:0;">INVOICE</h2>
     <p style="color:#64748b;font-size:12px;margin-top:4px;">{{invoice_number}}</p>
     <p style="color:#64748b;font-size:12px;">Date: {{issue_date}}</p>
     <p style="color:#64748b;font-size:12px;">Due: {{due_date}}</p>
@@ -245,7 +245,7 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
 <div style="text-align:right;margin:20px 0 24px;padding:16px;background:#f8fafc;border-radius:8px;">
   <p style="font-size:13px;color:#64748b;margin:0 0 4px 0;">Subtotal: {{subtotal}}</p>
   <p style="font-size:13px;color:#64748b;margin:0 0 8px 0;">Tax: {{tax}}</p>
-  <p style="font-size:22px;font-weight:800;color:#6172f3;margin:0;">Total: {{total}}</p>
+  <p style="font-size:22px;font-weight:800;color:#0891B2;margin:0;">Total: {{total}}</p>
 </div>
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
 <div style="font-size:12px;color:#64748b;margin-bottom:8px;">{{notes}}</div>
@@ -272,17 +272,17 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
     html_content: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:800px;margin:0 auto;padding:40px;color:#1e293b;">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #e2e8f0;">
   <div>
-    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#6172f3;margin-bottom:8px;">LOGO</div>
+    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0891B2;margin-bottom:8px;">LOGO</div>
     <h1 style="font-size:22px;font-weight:800;color:#1e293b;margin:0;">{{company_name}}</h1>
     <p style="color:#64748b;font-size:12px;margin-top:2px;">{{company_address}}</p>
   </div>
   <div style="text-align:right;">
-    <h2 style="font-size:24px;font-weight:800;color:#6172f3;margin:0;">PROPOSAL</h2>
+    <h2 style="font-size:24px;font-weight:800;color:#0891B2;margin:0;">PROPOSAL</h2>
     <p style="color:#64748b;font-size:12px;">{{quote_number}}</p>
     <p style="color:#64748b;font-size:12px;">{{date}}</p>
   </div>
 </div>
-<div style="background:#6172f3;color:white;padding:24px;border-radius:12px;margin-bottom:24px;text-align:center;">
+<div style="background:#0891B2;color:white;padding:24px;border-radius:12px;margin-bottom:24px;text-align:center;">
   <p style="font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 4px 0;opacity:0.8;">Prepared for</p>
   <h3 style="font-size:20px;font-weight:700;margin:0;">{{client_name}}</h3>
 </div>
@@ -293,7 +293,7 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
 <div style="text-align:right;margin:20px 0;padding:16px;background:#f8fafc;border-radius:8px;">
   <p style="font-size:13px;color:#64748b;margin:0 0 4px 0;">Subtotal: {{subtotal}}</p>
   <p style="font-size:13px;color:#64748b;margin:0 0 8px 0;">Tax: {{tax}}</p>
-  <p style="font-size:20px;font-weight:800;color:#6172f3;margin:0;">Total: {{total}}</p>
+  <p style="font-size:20px;font-weight:800;color:#0891B2;margin:0;">Total: {{total}}</p>
 </div>
 <h3 style="font-size:16px;font-weight:700;color:#1e293b;margin:24px 0 12px 0;">Timeline</h3>
 <div style="margin-bottom:20px;font-size:14px;line-height:1.7;color:#334155;">Work will commence within 5 business days of acceptance and will be completed within the estimated timeframe for each deliverable.</div>
@@ -329,7 +329,7 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
 <div style="text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #e2e8f0;">
   <h1 style="font-size:22px;font-weight:800;color:#1e293b;margin:0;">{{company_name}}</h1>
   <p style="color:#64748b;font-size:12px;margin-top:2px;">{{company_address}}</p>
-  <h2 style="font-size:20px;font-weight:800;color:#6172f3;margin:16px 0 0 0;">SERVICE AGREEMENT</h2>
+  <h2 style="font-size:20px;font-weight:800;color:#0891B2;margin:16px 0 0 0;">SERVICE AGREEMENT</h2>
   <p style="color:#64748b;font-size:12px;">Contract {{contract_number}}</p>
 </div>
 <div style="margin-bottom:20px;font-size:14px;line-height:1.7;color:#334155;">This Service Agreement ("Agreement") is entered into as of <strong>{{start_date}}</strong> by and between <strong>{{company_name}}</strong> ("Provider") and <strong>{{client_name}}</strong> ("Client").</div>
@@ -589,7 +589,7 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
       { id: 'te9', type: 'terms', content: 'This certificate is non-transferable and cannot be redeemed for cash. Must be presented at time of service. Expired certificates will not be honored.' },
     ],
     html_content: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:40px;color:#1e293b;">
-<div style="background:linear-gradient(135deg,#6172f3 0%,#a855f7 100%);color:white;padding:40px;border-radius:16px;text-align:center;margin-bottom:24px;">
+<div style="background:linear-gradient(135deg,#0891B2 0%,#a855f7 100%);color:white;padding:40px;border-radius:16px;text-align:center;margin-bottom:24px;">
   <p style="font-size:11px;text-transform:uppercase;letter-spacing:3px;margin:0 0 8px 0;opacity:0.8;">{{company_name}}</p>
   <h1 style="font-size:32px;font-weight:800;margin:0;">Gift Certificate</h1>
   <div style="width:60px;height:2px;background:rgba(255,255,255,0.5);margin:16px auto;"></div>
@@ -598,7 +598,7 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
 </div>
 <div style="text-align:center;padding:24px;background:#f8fafc;border-radius:12px;margin-bottom:20px;">
   <p style="font-size:12px;color:#94a3b8;text-transform:uppercase;margin:0 0 4px 0;">Value</p>
-  <p style="font-size:36px;font-weight:800;color:#6172f3;margin:0;">{{total}}</p>
+  <p style="font-size:36px;font-weight:800;color:#0891B2;margin:0;">{{total}}</p>
   <p style="font-size:12px;color:#64748b;margin:8px 0 0 0;">Valid until: {{valid_until}}</p>
 </div>
 <div style="text-align:center;margin-bottom:16px;">
@@ -624,7 +624,7 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
     html_content: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:40px;color:#1e293b;">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #e2e8f0;">
   <div>
-    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#6172f3;margin-bottom:8px;">LOGO</div>
+    <div style="width:60px;height:60px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0891B2;margin-bottom:8px;">LOGO</div>
     <h1 style="font-size:22px;font-weight:800;color:#1e293b;margin:0;">{{company_name}}</h1>
     <p style="color:#64748b;font-size:12px;margin-top:2px;">{{company_address}}</p>
   </div>

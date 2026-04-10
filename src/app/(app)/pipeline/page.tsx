@@ -1229,7 +1229,7 @@ export default function PipelinePage() {
                   className="w-full flex items-center justify-between p-3 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || '#6172f3' }} />
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || '#0891B2' }} />
                     <span className="text-xs font-bold text-surface-700 dark:text-surface-300 uppercase tracking-wide">{col.name}</span>
                     <span className="text-[10px] text-surface-400 font-semibold bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded-full">{col.deals.length}</span>
                   </div>
@@ -1278,7 +1278,7 @@ export default function PipelinePage() {
                 <div key={col.id} className="flex-shrink-0 w-72 flex flex-col">
                   <div className="flex items-center justify-between mb-3 px-1">
                     <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || '#6172f3' }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || '#0891B2' }} />
                       <span className="text-xs font-bold text-surface-700 dark:text-surface-300 uppercase tracking-wide">{col.name}</span>
                       <span className="text-[10px] text-surface-400 font-semibold bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded-full">{col.deals.length}</span>
                     </div>

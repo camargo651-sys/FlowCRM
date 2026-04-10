@@ -49,7 +49,7 @@ export default function PublicFormPage() {
 
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: '-apple-system, sans-serif' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTop: '3px solid #6172f3', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTop: '3px solid #0891B2', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
@@ -62,7 +62,7 @@ export default function PublicFormPage() {
   )
 
   if (!config) return null
-  const color = config.workspace.color || '#6172f3'
+  const color = config.workspace.color || '#0891B2'
 
   if (submitted) return (
     <div className="min-h-screen bg-surface-50 flex items-center justify-center p-6">

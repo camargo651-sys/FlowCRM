@@ -64,7 +64,7 @@ export default function StorefrontPage() {
     setSubmitting(false)
   }
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTop: '3px solid #6172f3', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTop: '3px solid #0891B2', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>
 
   if (!store) return (
     <div style={{ textAlign: 'center', padding: '80px 20px', fontFamily: '-apple-system, sans-serif' }}>
@@ -81,7 +81,7 @@ export default function StorefrontPage() {
       <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>Order Placed!</h1>
       <p style={{ color: '#64748b', marginTop: 8 }}>Your order <strong>{orderPlaced}</strong> has been received.</p>
       <p style={{ color: '#94a3b8', fontSize: 14, marginTop: 4 }}>We'll contact you shortly to confirm.</p>
-      <button onClick={() => setOrderPlaced(null)} style={{ marginTop: 24, padding: '10px 24px', background: store.color || '#6172f3', color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer' }}>
+      <button onClick={() => setOrderPlaced(null)} style={{ marginTop: 24, padding: '10px 24px', background: store.color || '#0891B2', color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer' }}>
         Continue Shopping
       </button>
     </div>
@@ -95,8 +95,8 @@ export default function StorefrontPage() {
           {store.logo && <img src={store.logo} alt={store.name || 'Store logo'} style={{ width: 32, height: 32, borderRadius: 8 }} />}
           <span style={{ fontWeight: 800, fontSize: 18 }}>{store.name}</span>
         </div>
-        <button onClick={() => setShowCart(true)} style={{ position: 'relative', padding: '8px 16px', background: store.color || '#6172f3', color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-          🛒 Cart {cartCount > 0 && <span style={{ background: 'white', color: store.color || '#6172f3', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>{cartCount}</span>}
+        <button onClick={() => setShowCart(true)} style={{ position: 'relative', padding: '8px 16px', background: store.color || '#0891B2', color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          🛒 Cart {cartCount > 0 && <span style={{ background: 'white', color: store.color || '#0891B2', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>{cartCount}</span>}
         </button>
       </header>
 
@@ -118,9 +118,9 @@ export default function StorefrontPage() {
               <h3 style={{ fontWeight: 700, fontSize: 14 }}>{product.name}</h3>
               {product.short_description && <p style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>{product.short_description}</p>}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-                <span style={{ fontSize: 20, fontWeight: 800, color: store.color || '#6172f3' }}>${product.unit_price.toLocaleString()}</span>
+                <span style={{ fontSize: 20, fontWeight: 800, color: store.color || '#0891B2' }}>${product.unit_price.toLocaleString()}</span>
                 <button onClick={() => addToCart(product)} disabled={product.stock_quantity <= 0}
-                  style={{ padding: '8px 16px', background: product.stock_quantity > 0 ? (store.color || '#6172f3') : '#e2e8f0', color: product.stock_quantity > 0 ? 'white' : '#94a3b8', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 12, cursor: product.stock_quantity > 0 ? 'pointer' : 'default' }}>
+                  style={{ padding: '8px 16px', background: product.stock_quantity > 0 ? (store.color || '#0891B2') : '#e2e8f0', color: product.stock_quantity > 0 ? 'white' : '#94a3b8', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 12, cursor: product.stock_quantity > 0 ? 'pointer' : 'default' }}>
                   {product.stock_quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
                 </button>
               </div>
@@ -163,10 +163,10 @@ export default function StorefrontPage() {
             {cart.length > 0 && (
               <div style={{ padding: 16, borderTop: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18, marginBottom: 16 }}>
-                  <span>Total</span><span style={{ color: store.color || '#6172f3' }}>${cartTotal.toLocaleString()}</span>
+                  <span>Total</span><span style={{ color: store.color || '#0891B2' }}>${cartTotal.toLocaleString()}</span>
                 </div>
                 <button onClick={() => { setShowCart(false); setShowCheckout(true) }}
-                  style={{ width: '100%', padding: 14, background: store.color || '#6172f3', color: 'white', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ width: '100%', padding: 14, background: store.color || '#0891B2', color: 'white', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer' }}>
                   Checkout
                 </button>
               </div>
@@ -190,7 +190,7 @@ export default function StorefrontPage() {
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
               <button onClick={() => setShowCheckout(false)} style={{ flex: 1, padding: 12, background: '#f1f5f9', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
               <button onClick={placeOrder} disabled={!checkoutForm.name || !checkoutForm.email || submitting}
-                style={{ flex: 1, padding: 12, background: store.color || '#6172f3', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer', opacity: (!checkoutForm.name || !checkoutForm.email) ? 0.5 : 1 }}>
+                style={{ flex: 1, padding: 12, background: store.color || '#0891B2', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer', opacity: (!checkoutForm.name || !checkoutForm.email) ? 0.5 : 1 }}>
                 {submitting ? 'Placing...' : 'Place Order'}
               </button>
             </div>

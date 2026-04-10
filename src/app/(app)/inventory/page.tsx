@@ -259,7 +259,7 @@ export default function InventoryPage() {
 
       {/* ===== DASHBOARD TAB ===== */}
       {tab === 'dashboard' && (() => {
-        const COLORS = ['#6172f3','#34d399','#f87171','#fbbf24','#a78bfa','#22d3ee']
+        const COLORS = ['#0891B2','#34d399','#f87171','#fbbf24','#a78bfa','#22d3ee']
         const categoryDist = categories.map((c, i) => ({
           name: c.name,
           value: products.filter(p => p.category_id === c.id).length,
@@ -286,7 +286,7 @@ export default function InventoryPage() {
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
                     <Tooltip formatter={(v: number) => [formatCurrency(v), 'Value']} contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#6172f3" radius={[6,6,0,0]} />
+                    <Bar dataKey="value" fill="#0891B2" radius={[6,6,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : <p className="text-surface-400 text-sm text-center py-8">No products yet</p>}

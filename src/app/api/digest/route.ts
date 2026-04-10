@@ -89,7 +89,7 @@ function digestEmail(data: {
   const { firstName, workspaceName, newContacts, newDeals, wonDeals, wonRevenue, collected, overdueTasks, activitiesDone, appUrl } = data
 
   const kpis = [
-    { label: 'New Contacts', value: String(newContacts), color: '#6172f3' },
+    { label: 'New Contacts', value: String(newContacts), color: '#0891B2' },
     { label: 'New Deals', value: String(newDeals), color: '#8b5cf6' },
     { label: 'Deals Won', value: String(wonDeals), color: '#10b981' },
     { label: 'Revenue Won', value: `$${wonRevenue.toLocaleString()}`, color: '#10b981' },
@@ -105,7 +105,7 @@ function digestEmail(data: {
 <body style="margin:0;padding:0;background:#f8f9fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#6172f3,#3b3fce);border-radius:14px;line-height:48px;color:white;font-size:20px;">⚡</div>
+    <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#0891B2,#0e7490);border-radius:14px;line-height:48px;color:white;font-size:20px;">⚡</div>
   </div>
   <div style="background:white;border-radius:16px;padding:40px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
     <h1 style="margin:0 0 4px;font-size:22px;color:#151b3a;">Weekly Digest</h1>
@@ -125,7 +125,7 @@ function digestEmail(data: {
     </div>` : ''}
 
     <div style="text-align:center;margin-top:28px;">
-      <a href="${appUrl}/dashboard" style="display:inline-block;padding:12px 32px;background:#6172f3;color:white;text-decoration:none;border-radius:12px;font-size:14px;font-weight:600;">Open Dashboard</a>
+      <a href="${appUrl}/dashboard" style="display:inline-block;padding:12px 32px;background:#0891B2;color:white;text-decoration:none;border-radius:12px;font-size:14px;font-weight:600;">Open Dashboard</a>
     </div>
   </div>
   <p style="text-align:center;margin-top:24px;color:#9ba3c0;font-size:11px;">

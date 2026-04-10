@@ -19,13 +19,13 @@ interface WorkspaceConfig {
 const defaultTemplate = getTemplate('generic')
 
 const WorkspaceContext = createContext<WorkspaceConfig>({
-  id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#6172f3',
+  id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#0891B2',
   logoUrl: '', template: defaultTemplate, customFields: [], enabledModules: {}, loading: true,
 })
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<WorkspaceConfig>({
-    id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#6172f3',
+    id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#0891B2',
     logoUrl: '', template: defaultTemplate, customFields: [], enabledModules: {}, loading: true,
   })
 
@@ -82,7 +82,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         name: ws.name,
         industry: ws.industry || 'generic',
         plan: ws.plan || 'free',
-        primaryColor: ws.primary_color || '#6172f3',
+        primaryColor: ws.primary_color || '#0891B2',
         logoUrl: ws.logo_url || '',
         template,
         customFields: fields || [],

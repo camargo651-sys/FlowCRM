@@ -97,7 +97,7 @@ export function welcomeEmail(userName: string) {
 <body style="margin:0;padding:0;background:#f8f9fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#6172f3,#3b3fce);border-radius:14px;line-height:48px;color:white;font-size:20px;">⚡</div>
+    <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#0891B2,#0e7490);border-radius:14px;line-height:48px;color:white;font-size:20px;">⚡</div>
   </div>
   <div style="background:white;border-radius:16px;padding:40px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
     <h1 style="margin:0 0 8px;font-size:22px;color:#151b3a;">Welcome to Tracktio, ${name}!</h1>
@@ -117,11 +117,11 @@ export function welcomeEmail(userName: string) {
     </div>
 
     <div style="text-align:center;">
-      <a href="https://tracktio.app/dashboard" style="display:inline-block;padding:12px 32px;background:#6172f3;color:white;text-decoration:none;border-radius:12px;font-size:14px;font-weight:600;">Go to Dashboard</a>
+      <a href="https://tracktio.app/dashboard" style="display:inline-block;padding:12px 32px;background:#0891B2;color:white;text-decoration:none;border-radius:12px;font-size:14px;font-weight:600;">Go to Dashboard</a>
     </div>
   </div>
   <p style="text-align:center;margin-top:24px;color:#9ba3c0;font-size:12px;">
-    Tracktio — Run your business, not your software.
+    Tracktio — Built to close.
   </p>
 </div>
 </body></html>`,
@@ -137,7 +137,7 @@ export function invoiceEmail(clientName: string, invoiceNumber: string, total: s
 <body style="margin:0;padding:0;background:#f8f9fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#6172f3,#3b3fce);border-radius:14px;line-height:48px;color:white;font-size:20px;">⚡</div>
+    <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#0891B2,#0e7490);border-radius:14px;line-height:48px;color:white;font-size:20px;">⚡</div>
   </div>
   <div style="background:white;border-radius:16px;padding:40px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
     <h1 style="margin:0 0 8px;font-size:22px;color:#151b3a;">Invoice ${invoiceNumber}</h1>
@@ -165,7 +165,7 @@ export function invoiceEmail(clientName: string, invoiceNumber: string, total: s
     ` : ''}
   </div>
   <p style="text-align:center;margin-top:24px;color:#9ba3c0;font-size:12px;">
-    Sent via Tracktio — Run your business, not your software.
+    Sent via Tracktio — Built to close.
   </p>
 </div>
 </body></html>`,

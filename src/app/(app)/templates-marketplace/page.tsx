@@ -32,7 +32,7 @@ interface AutomationConfig {
   action_config: Record<string, string | number | boolean>
 }
 
-const STAGE_COLORS = ['#6172f3','#8b5cf6','#ec4899','#f97316','#f59e0b','#10b981','#06b6d4','#64748b']
+const STAGE_COLORS = ['#0891B2','#8b5cf6','#ec4899','#f97316','#f59e0b','#10b981','#06b6d4','#64748b']
 
 const TEMPLATES: Template[] = [
   // Pipeline Templates

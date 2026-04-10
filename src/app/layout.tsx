@@ -3,15 +3,15 @@ import './globals.css'
 import Providers from '@/components/providers/Providers'
 
 export const metadata: Metadata = {
-  title: { default: 'Tracktio — Run your business, not your software', template: '%s | Tracktio' },
-  description: 'AI-powered ERP with 27 modules: CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce. Replace 10 tools with one platform. Free to start.',
+  title: { default: 'Tracktio — Built to close.', template: '%s | Tracktio' },
+  description: 'The modular business platform for teams that sell. CRM, invoicing, inventory, manufacturing, HR, accounting, POS, and e-commerce — 27 modules, one AI-powered platform.',
   manifest: '/manifest.json',
-  themeColor: '#6172f3',
+  themeColor: '#0891B2',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Tracktio' },
   openGraph: {
-    title: 'Tracktio — Run your business, not your software',
-    description: '27 modules. One platform. Zero configuration. CRM, invoicing, inventory, HR, accounting, and more — powered by AI. Free to start.',
+    title: 'Tracktio — Built to close.',
+    description: 'The modular business platform for teams that sell. 27 modules, one AI-powered platform. Free to start.',
     type: 'website',
     siteName: 'Tracktio',
   },
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#6172f3" />
+        <meta name="theme-color" content="#0891B2" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>

@@ -215,7 +215,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         <div className="mb-4">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm cursor-pointer"
-            style={{ backgroundColor: primaryColor || '#6172f3' }}
+            style={{ backgroundColor: primaryColor || '#0891B2' }}
             title={displayName}
           >
             {logoUrl ? (
@@ -295,7 +295,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             title={userName || userEmail}
             className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 shadow-sm mt-1 relative group"
-            style={{ backgroundColor: primaryColor || '#6172f3' }}
+            style={{ backgroundColor: primaryColor || '#0891B2' }}
           >
             {getInitials(userName || userEmail)}
             <span className="absolute left-full ml-2 px-2 py-1 bg-surface-800 text-white text-[11px] font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
@@ -313,7 +313,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
             <span className="text-lg">{activeModuleDef.icon}</span>
             <p className="font-bold text-surface-900 text-sm truncate leading-tight">{activeModuleDef.label}</p>
           </div>
-          <WorkspaceSwitcher currentName={displayName} currentColor={primaryColor || '#6172f3'} />
+          <WorkspaceSwitcher currentName={displayName} currentColor={primaryColor || '#0891B2'} />
         </div>
 
         {/* Search trigger */}

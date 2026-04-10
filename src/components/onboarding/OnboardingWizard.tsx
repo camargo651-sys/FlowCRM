@@ -8,7 +8,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { cn } from '@/lib/utils'
 
 const TEAM_SIZES = ['Solo', '2-5', '6-15', '16-50', '51-200', '200+']
-const BRAND_COLORS = ['#6172f3','#8b5cf6','#ec4899','#ef4444','#f97316','#f59e0b','#10b981','#06b6d4','#3b82f6','#64748b']
+const BRAND_COLORS = ['#0891B2','#8b5cf6','#ec4899','#ef4444','#f97316','#f59e0b','#10b981','#06b6d4','#3b82f6','#64748b']
 
 interface OnboardingWizardProps {
   workspaceId: string
@@ -23,7 +23,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
   const [companyName, setCompanyName] = useState(workspaceName || '')
   const [industryKey, setIndustryKey] = useState('')
   const [teamSize, setTeamSize] = useState('')
-  const [primaryColor, setPrimaryColor] = useState('#6172f3')
+  const [primaryColor, setPrimaryColor] = useState('#0891B2')
   const [selectedLocale, setSelectedLocale] = useState<Locale>(locale)
   const [logoUrl, setLogoUrl] = useState('')
   const [saving, setSaving] = useState(false)

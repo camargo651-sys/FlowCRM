@@ -117,7 +117,7 @@ async function seedRichDemoData(supabase: any, wsId: string, userId: string) {
   let pipelineId = pipelineRows?.[0]?.id
   if (!pipelineId) {
     const { data: newP } = await supabase.from('pipelines').insert({
-      workspace_id: wsId, name: 'Sales Pipeline', color: '#6172f3',
+      workspace_id: wsId, name: 'Sales Pipeline', color: '#0891B2',
     }).select('id').single()
     pipelineId = newP?.id
   }

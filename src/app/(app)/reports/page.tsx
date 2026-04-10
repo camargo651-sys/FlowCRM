@@ -281,12 +281,12 @@ export default function ReportsPage() {
               <h3 className="font-semibold text-surface-900 mb-4">Net Cash Flow Trend</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={cashflow.monthly}>
-                  <defs><linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6172f3" stopOpacity={0.2}/><stop offset="95%" stopColor="#6172f3" stopOpacity={0}/></linearGradient></defs>
+                  <defs><linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0891B2" stopOpacity={0.2}/><stop offset="95%" stopColor="#0891B2" stopOpacity={0}/></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
                   <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: number) => [formatCurrency(v), 'Net']} />
-                  <Area type="monotone" dataKey="net" stroke="#6172f3" strokeWidth={2.5} fill="url(#netGrad)" />
+                  <Area type="monotone" dataKey="net" stroke="#0891B2" strokeWidth={2.5} fill="url(#netGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -416,7 +416,7 @@ export default function ReportsPage() {
                     <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#9ba3c0' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e4e7f0', fontSize: 12 }} formatter={(v: number, name: string) => [name === 'value' ? formatCurrency(v) : v, name === 'value' ? 'Revenue' : 'Deals Won']} />
-                    <Bar yAxisId="left" dataKey="won" fill="#6172f3" radius={[4,4,0,0]} name="won" />
+                    <Bar yAxisId="left" dataKey="won" fill="#0891B2" radius={[4,4,0,0]} name="won" />
                     <Line yAxisId="right" type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2.5} dot={{ r: 4, fill: '#34d399' }} name="value" />
                   </BarChart>
                 </ResponsiveContainer>

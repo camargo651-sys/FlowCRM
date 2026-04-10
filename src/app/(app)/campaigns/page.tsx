@@ -22,10 +22,10 @@ const TEMPLATES = [
 <h1 style="font-size:28px;color:#151b3a;">Special Offer!</h1>
 <p style="color:#6b75a0;font-size:16px;">Hi {{first_name}}, we have something special for you.</p>
 <div style="margin:32px 0;padding:24px;background:#f0f4ff;border-radius:16px;">
-<p style="font-size:36px;font-weight:800;color:#6172f3;margin:0;">20% OFF</p>
+<p style="font-size:36px;font-weight:800;color:#0891B2;margin:0;">20% OFF</p>
 <p style="color:#6b75a0;font-size:14px;margin:4px 0 0;">Use code: SPECIAL20</p>
 </div>
-<a href="#" style="display:inline-block;padding:14px 32px;background:#6172f3;color:white;text-decoration:none;border-radius:12px;font-weight:600;">Claim Offer</a>
+<a href="#" style="display:inline-block;padding:14px 32px;background:#0891B2;color:white;text-decoration:none;border-radius:12px;font-weight:600;">Claim Offer</a>
 </div>` },
   { name: 'Follow-up', subject: 'Quick follow-up, {{first_name}}', body: `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;">
 <p style="color:#374068;font-size:15px;line-height:1.7;">Hi {{first_name}},</p>
