@@ -2,9 +2,20 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, GripVertical, Save, X, Type, Hash, Calendar, ToggleLeft, List, Link2, DollarSign, Eye, EyeOff, ChevronDown, Mail, Phone, Building2, Briefcase, Globe, MapPin, Tag, StickyNote, User } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, X, Type, Hash, Calendar, ToggleLeft, List, Link2, DollarSign, Eye, EyeOff, ChevronDown, Mail, Phone, Building2, Briefcase, Globe, MapPin, Tag, StickyNote, User, Calculator, Variable, BarChart3, Clock, Filter, Zap, TrendingUp, MessageSquare, FileText, Activity, ShoppingBag, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import {
+  FormulaConfig,
+  SOURCE_NUMERIC_FIELDS,
+  SOURCE_STATUS_OPTIONS,
+  SOURCE_RELATIONSHIPS,
+  TIME_FILTER_OPTIONS,
+  AGGREGATION_OPTIONS,
+  SOURCE_ENTITY_OPTIONS,
+  describeFormula,
+  formulaPreviewValue,
+} from '@/lib/formula-engine'
 
 interface FieldDef {
   id: string
@@ -26,6 +37,7 @@ const FIELD_TYPES = [
   { value: 'boolean', label: 'Yes/No', icon: ToggleLeft },
   { value: 'select', label: 'Dropdown', icon: List },
   { value: 'url', label: 'URL', icon: Link2 },
+  { value: 'formula', label: 'Formula', icon: Calculator },
 ]
 
 const ENTITIES = [
@@ -90,7 +102,240 @@ const ENTITY_SAMPLE_NAMES: Record<string, { name: string; badge: string }> = {
   ticket: { name: 'Login issue', badge: 'Open' },
 }
 
-function PreviewFieldInput({ type, options, label }: { type: string; options: string[] | null; label: string }) {
+// ─── Pre-defined variable definitions ────────────────────────────
+
+interface VariableDef {
+  key: string
+  label: string
+  description: string
+  icon: typeof Calculator
+  formulaConfig: FormulaConfig
+}
+
+const CONTACT_VARIABLES: VariableDef[] = [
+  {
+    key: 'deals_count', label: 'Number of deals', description: 'Total deals linked to this contact', icon: Briefcase,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'count', field: null, time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'deals_total_value', label: 'Total deal value', description: 'Sum of all deal values', icon: DollarSign,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'sum', field: 'value', time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'deals_won_count', label: 'Won deals', description: 'Number of deals marked as won', icon: TrendingUp,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'count', field: null, time_filter: null, status_filter: 'won', relationship: 'contact_id' },
+  },
+  {
+    key: 'quotes_count', label: 'Quotes sent', description: 'Total quotes linked to this contact', icon: FileText,
+    formulaConfig: { type: 'formula', source: 'quotes', aggregation: 'count', field: null, time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'invoices_total', label: 'Total invoiced', description: 'Sum of all invoice totals', icon: DollarSign,
+    formulaConfig: { type: 'formula', source: 'invoices', aggregation: 'sum', field: 'total', time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'invoices_outstanding', label: 'Outstanding balance', description: 'Sum of unpaid invoice balances', icon: DollarSign,
+    formulaConfig: { type: 'formula', source: 'invoices', aggregation: 'sum', field: 'balance_due', time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'last_activity_date', label: 'Last interaction', description: 'Date of the most recent activity', icon: Clock,
+    formulaConfig: { type: 'formula', source: 'activities', aggregation: 'last', field: 'created_at', time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'whatsapp_messages_count', label: 'WhatsApp messages', description: 'Total WhatsApp messages exchanged', icon: MessageSquare,
+    formulaConfig: { type: 'formula', source: 'whatsapp_messages', aggregation: 'count', field: null, time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'days_since_created', label: 'Days as customer', description: 'Days since contact was created', icon: Calendar,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'count', field: null, time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+  {
+    key: 'activities_count', label: 'Total activities', description: 'All activities on this contact', icon: Activity,
+    formulaConfig: { type: 'formula', source: 'activities', aggregation: 'count', field: null, time_filter: null, status_filter: null, relationship: 'contact_id' },
+  },
+]
+
+const DEAL_VARIABLES: VariableDef[] = [
+  {
+    key: 'contact_name', label: 'Contact name', description: 'Name of the linked contact', icon: User,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'last', field: 'contact_id', time_filter: null, status_filter: null, relationship: 'id' },
+  },
+  {
+    key: 'contact_email', label: 'Contact email', description: 'Email of the linked contact', icon: Mail,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'last', field: 'contact_id', time_filter: null, status_filter: null, relationship: 'id' },
+  },
+  {
+    key: 'contact_phone', label: 'Contact phone', description: 'Phone of the linked contact', icon: Phone,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'last', field: 'contact_id', time_filter: null, status_filter: null, relationship: 'id' },
+  },
+  {
+    key: 'days_in_stage', label: 'Days in current stage', description: 'How long this deal has been in its stage', icon: Clock,
+    formulaConfig: { type: 'formula', source: 'deals', aggregation: 'last', field: 'updated_at', time_filter: null, status_filter: null, relationship: 'id' },
+  },
+  {
+    key: 'activities_count', label: 'Activities on this deal', description: 'Number of activities linked to this deal', icon: Activity,
+    formulaConfig: { type: 'formula', source: 'activities', aggregation: 'count', field: null, time_filter: null, status_filter: null, relationship: 'deal_id' },
+  },
+  {
+    key: 'quotes_count', label: 'Linked quotes', description: 'Quotes associated with this deal', icon: FileText,
+    formulaConfig: { type: 'formula', source: 'quotes', aggregation: 'count', field: null, time_filter: null, status_filter: null, relationship: 'deal_id' },
+  },
+  {
+    key: 'invoices_total', label: 'Invoiced amount', description: 'Total invoiced for this deal', icon: DollarSign,
+    formulaConfig: { type: 'formula', source: 'invoices', aggregation: 'sum', field: 'total', time_filter: null, status_filter: null, relationship: 'deal_id' },
+  },
+]
+
+const VARIABLE_MAP: Record<string, VariableDef[]> = {
+  contact: CONTACT_VARIABLES,
+  deal: DEAL_VARIABLES,
+}
+
+// ─── Formula builder sub-component ──────────────────────────────
+
+function FormulaBuilderUI({
+  entity,
+  formulaConfig,
+  onChange,
+}: {
+  entity: string
+  formulaConfig: FormulaConfig
+  onChange: (config: FormulaConfig) => void
+}) {
+  const needsField = ['sum', 'avg', 'min', 'max'].includes(formulaConfig.aggregation)
+  const numericFields = SOURCE_NUMERIC_FIELDS[formulaConfig.source] || []
+  const statusOptions = SOURCE_STATUS_OPTIONS[formulaConfig.source] || []
+  const relationships = SOURCE_RELATIONSHIPS[formulaConfig.source] || {}
+  const availableRelationships = Object.entries(relationships)
+    .filter(([etype]) => etype === entity)
+    .map(([, col]) => col)
+
+  return (
+    <div className="space-y-3 p-3 bg-surface-50 rounded-xl border border-surface-200">
+      <div className="flex items-center gap-2 mb-1">
+        <Calculator className="w-4 h-4 text-brand-600" />
+        <span className="text-xs font-semibold text-surface-700">Formula Configuration</span>
+      </div>
+
+      {/* Source entity */}
+      <div>
+        <label className="label">Source Entity</label>
+        <select
+          className="input text-sm"
+          value={formulaConfig.source}
+          onChange={e => {
+            const newSource = e.target.value
+            const newRel = SOURCE_RELATIONSHIPS[newSource]?.[entity] || ''
+            onChange({ ...formulaConfig, source: newSource, field: null, status_filter: null, relationship: newRel })
+          }}
+        >
+          {SOURCE_ENTITY_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Aggregation */}
+      <div>
+        <label className="label">Aggregation</label>
+        <select
+          className="input text-sm"
+          value={formulaConfig.aggregation}
+          onChange={e => onChange({ ...formulaConfig, aggregation: e.target.value as FormulaConfig['aggregation'], field: needsField ? formulaConfig.field : null })}
+        >
+          {AGGREGATION_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Field to aggregate (only for sum/avg/min/max) */}
+      {needsField && numericFields.length > 0 && (
+        <div>
+          <label className="label">Field to Aggregate</label>
+          <select
+            className="input text-sm"
+            value={formulaConfig.field || ''}
+            onChange={e => onChange({ ...formulaConfig, field: e.target.value || null })}
+          >
+            <option value="">Select field...</option>
+            {numericFields.map(f => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Time filter */}
+      <div>
+        <label className="label">Time Filter</label>
+        <select
+          className="input text-sm"
+          value={formulaConfig.time_filter || ''}
+          onChange={e => onChange({ ...formulaConfig, time_filter: e.target.value || null })}
+        >
+          {TIME_FILTER_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Status filter */}
+      {statusOptions.length > 0 && (
+        <div>
+          <label className="label">Status Filter (optional)</label>
+          <select
+            className="input text-sm"
+            value={formulaConfig.status_filter || ''}
+            onChange={e => onChange({ ...formulaConfig, status_filter: e.target.value || null })}
+          >
+            <option value="">Any status</option>
+            {statusOptions.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Relationship */}
+      <div>
+        <label className="label">Relationship Column</label>
+        <input
+          className="input text-sm"
+          value={formulaConfig.relationship}
+          onChange={e => onChange({ ...formulaConfig, relationship: e.target.value })}
+          placeholder="e.g. contact_id"
+        />
+        {availableRelationships.length > 0 && (
+          <p className="text-[10px] text-surface-400 mt-0.5">
+            Detected: {availableRelationships.join(', ')}
+          </p>
+        )}
+      </div>
+
+      {/* Preview */}
+      <div className="pt-2 border-t border-surface-200">
+        <p className="text-[10px] text-surface-500">
+          <span className="font-semibold">Preview:</span> {describeFormula(formulaConfig)}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Preview components ──────────────────────────────────────────
+
+function PreviewFieldInput({ type, options, label, formulaConfig }: { type: string; options: string[] | null; label: string; formulaConfig?: FormulaConfig | null }) {
+  if (type === 'formula' && formulaConfig) {
+    return (
+      <div className="w-full h-8 border border-violet-200 rounded-md bg-violet-50 flex items-center px-2 gap-1.5">
+        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-violet-200 text-violet-700 text-[8px] font-bold flex-shrink-0">fx</span>
+        <span className="text-[10px] text-violet-700 font-medium truncate">{formulaPreviewValue(formulaConfig)}</span>
+        <span className="text-[9px] text-violet-400 ml-auto flex-shrink-0">{describeFormula(formulaConfig)}</span>
+      </div>
+    )
+  }
+
   switch (type) {
     case 'boolean':
       return (
@@ -221,15 +466,21 @@ function LivePreviewPanel({ entity, customFields }: { entity: string; customFiel
                   {section === 'General' ? 'Custom Fields' : section}
                 </p>
                 <div className="space-y-2.5">
-                  {sectionFields.map(field => (
-                    <div key={field.id} className="animate-fade-in">
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <label className="text-[10px] font-medium text-surface-700">{field.label}</label>
-                        {field.required && <span className="text-red-500 text-[10px]">*</span>}
+                  {sectionFields.map(field => {
+                    const formulaConfig = field.type === 'formula' ? parseFormulaOptions(field.options) : null
+                    return (
+                      <div key={field.id} className="animate-fade-in">
+                        <div className="flex items-center gap-1 mb-0.5">
+                          {field.type === 'formula' && (
+                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded bg-violet-200 text-violet-700 text-[7px] font-bold flex-shrink-0">fx</span>
+                          )}
+                          <label className="text-[10px] font-medium text-surface-700">{field.label}</label>
+                          {field.required && <span className="text-red-500 text-[10px]">*</span>}
+                        </div>
+                        <PreviewFieldInput type={field.type} options={field.options} label={field.label} formulaConfig={formulaConfig} />
                       </div>
-                      <PreviewFieldInput type={field.type} options={field.options} label={field.label} />
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )
@@ -247,6 +498,100 @@ function LivePreviewPanel({ entity, customFields }: { entity: string; customFiel
   )
 }
 
+/** Parse formula config from the options column (stored as a JSON string in a text[] slot) */
+function parseFormulaOptions(options: string[] | null): FormulaConfig | null {
+  if (!options || options.length === 0) return null
+  try {
+    const parsed = JSON.parse(options[0])
+    if (parsed && parsed.type === 'formula') return parsed as FormulaConfig
+  } catch {}
+  return null
+}
+
+// ─── Variable Picker Modal ──────────────────────────────────────
+
+function VariablePickerModal({
+  entity,
+  existingKeys,
+  onAdd,
+  onClose,
+}: {
+  entity: string
+  existingKeys: Set<string>
+  onAdd: (variable: VariableDef) => void
+  onClose: () => void
+}) {
+  const variables = VARIABLE_MAP[entity] || []
+  if (variables.length === 0) {
+    return (
+      <div className="modal-overlay">
+        <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up">
+          <div className="flex items-center justify-between p-5 border-b border-surface-100">
+            <h2 className="font-semibold text-surface-900">Add Variable</h2>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
+          </div>
+          <div className="p-8 text-center">
+            <Variable className="w-10 h-10 text-surface-300 mx-auto mb-3" />
+            <p className="text-sm text-surface-500">No pre-defined variables available for <strong>{entity}</strong> entities.</p>
+            <p className="text-xs text-surface-400 mt-1">Use the Formula field type to create custom computed fields.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
+          <div>
+            <h2 className="font-semibold text-surface-900">Add Variable</h2>
+            <p className="text-xs text-surface-400 mt-0.5">Pick a pre-defined computed field for {entity}s</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
+        </div>
+        <div className="p-4 overflow-y-auto flex-1">
+          <div className="space-y-2">
+            {variables.map(v => {
+              const alreadyAdded = existingKeys.has(v.key)
+              return (
+                <div
+                  key={v.key}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border transition-all',
+                    alreadyAdded
+                      ? 'border-surface-100 bg-surface-50 opacity-50'
+                      : 'border-surface-200 hover:border-brand-300 hover:bg-brand-50/30 cursor-pointer'
+                  )}
+                  onClick={() => !alreadyAdded && onAdd(v)}
+                >
+                  <div className={cn(
+                    'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                    alreadyAdded ? 'bg-surface-100 text-surface-400' : 'bg-violet-100 text-violet-600'
+                  )}>
+                    <v.icon className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-surface-800">{v.label}</p>
+                    <p className="text-[10px] text-surface-400">{v.description}</p>
+                  </div>
+                  {alreadyAdded ? (
+                    <span className="text-[10px] px-2 py-0.5 bg-surface-100 rounded text-surface-400 font-medium">Added</span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 bg-brand-50 rounded text-brand-600 font-medium">+ Add</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ───────────────────────────────────────────────────
+
 export default function FormBuilderPage() {
   const supabase = createClient()
   const [fields, setFields] = useState<FieldDef[]>([])
@@ -255,8 +600,18 @@ export default function FormBuilderPage() {
   const [entity, setEntity] = useState('contact')
   const [workspaceId, setWorkspaceId] = useState('')
   const [showNew, setShowNew] = useState(false)
+  const [showVariablePicker, setShowVariablePicker] = useState(false)
   const [newField, setNewField] = useState({ label: '', type: 'text', section: 'General', required: false, options: '' })
   const [showPreview, setShowPreview] = useState(false)
+  const [formulaConfig, setFormulaConfig] = useState<FormulaConfig>({
+    type: 'formula',
+    source: 'deals',
+    aggregation: 'count',
+    field: null,
+    time_filter: null,
+    status_filter: null,
+    relationship: 'contact_id',
+  })
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -276,24 +631,52 @@ export default function FormBuilderPage() {
   useEffect(() => { load() }, [load])
 
   const entityFields = fields.filter(f => f.entity === entity)
+  const existingKeys = new Set(entityFields.map(f => f.key))
   const sections = Array.from(new Set(entityFields.map(f => (f as { section?: string }).section || 'General')))
 
   const addField = async () => {
     if (!newField.label) return
     const key = newField.label.toLowerCase().replace(/[^a-z0-9]/g, '_')
+
+    let fieldOptions: string[] | null = null
+    if (newField.type === 'select') {
+      fieldOptions = newField.options.split(',').map(o => o.trim()).filter(Boolean)
+    } else if (newField.type === 'formula') {
+      fieldOptions = [JSON.stringify(formulaConfig)]
+    }
+
     await supabase.from('custom_field_defs').insert({
       workspace_id: workspaceId,
       entity,
       label: newField.label,
       key,
       type: newField.type,
-      options: newField.type === 'select' ? newField.options.split(',').map(o => o.trim()).filter(Boolean) : null,
+      options: fieldOptions,
       required: newField.required,
       order_index: entityFields.length,
     })
     setNewField({ label: '', type: 'text', section: 'General', required: false, options: '' })
+    setFormulaConfig({
+      type: 'formula', source: 'deals', aggregation: 'count', field: null,
+      time_filter: null, status_filter: null, relationship: SOURCE_RELATIONSHIPS['deals']?.[entity] || 'contact_id',
+    })
     setShowNew(false)
     toast.success('Field added')
+    load()
+  }
+
+  const addVariable = async (variable: VariableDef) => {
+    await supabase.from('custom_field_defs').insert({
+      workspace_id: workspaceId,
+      entity,
+      label: variable.label,
+      key: variable.key,
+      type: 'formula',
+      options: [JSON.stringify(variable.formulaConfig)],
+      required: false,
+      order_index: entityFields.length,
+    })
+    toast.success(`Variable "${variable.label}" added`)
     load()
   }
 
@@ -325,6 +708,14 @@ export default function FormBuilderPage() {
     load()
   }
 
+  // Reset formula config relationship when entity changes
+  useEffect(() => {
+    setFormulaConfig(prev => ({
+      ...prev,
+      relationship: SOURCE_RELATIONSHIPS[prev.source]?.[entity] || 'contact_id',
+    }))
+  }, [entity])
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 
   return (
@@ -342,6 +733,9 @@ export default function FormBuilderPage() {
           >
             {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             {showPreview ? 'Hide Preview' : 'Show Preview'}
+          </button>
+          <button onClick={() => setShowVariablePicker(true)} className="btn-secondary btn-sm">
+            <Variable className="w-3.5 h-3.5" /> Add Variable
           </button>
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Field</button>
         </div>
@@ -376,14 +770,19 @@ export default function FormBuilderPage() {
               <Type className="w-10 h-10 text-surface-300 mx-auto mb-3" />
               <p className="text-surface-600 font-medium mb-1">No custom fields for {entity}s</p>
               <p className="text-xs text-surface-400 mb-4">Add fields to customize your {entity} forms</p>
-              <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Field</button>
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={() => setShowVariablePicker(true)} className="btn-secondary btn-sm"><Variable className="w-3.5 h-3.5" /> Add Variable</button>
+                <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Field</button>
+              </div>
             </div>
           ) : (
             <div className="space-y-1">
               {entityFields.map((field, i) => {
                 const TypeIcon = FIELD_TYPES.find(t => t.value === field.type)?.icon || Type
+                const isFormula = field.type === 'formula'
+                const fc = isFormula ? parseFormulaOptions(field.options) : null
                 return (
-                  <div key={field.id} className="card p-3 flex items-center gap-3 group">
+                  <div key={field.id} className={cn('card p-3 flex items-center gap-3 group', isFormula && 'border-violet-100')}>
                     <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => moveField(field.id, -1)} disabled={i === 0} className="text-surface-300 hover:text-surface-600 disabled:opacity-20">
                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 15l-6-6-6 6"/></svg>
@@ -393,22 +792,27 @@ export default function FormBuilderPage() {
                       </button>
                     </div>
                     <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-                      'bg-surface-100 text-surface-500')}>
+                      isFormula ? 'bg-violet-100 text-violet-600' : 'bg-surface-100 text-surface-500')}>
                       <TypeIcon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-surface-800">{field.label}</p>
                         <span className="text-[9px] px-1.5 py-0.5 bg-surface-100 rounded text-surface-400 font-mono">{field.key}</span>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-brand-50 rounded text-brand-600 font-medium">{field.type}</span>
+                        <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-medium',
+                          isFormula ? 'bg-violet-50 text-violet-600' : 'bg-brand-50 text-brand-600'
+                        )}>{field.type}</span>
                         {field.required && <span className="text-[9px] px-1.5 py-0.5 bg-red-50 rounded text-red-600 font-medium">required</span>}
                       </div>
-                      {field.options && <p className="text-[10px] text-surface-400 mt-0.5">Options: {field.options.join(', ')}</p>}
+                      {field.options && !isFormula && <p className="text-[10px] text-surface-400 mt-0.5">Options: {field.options.join(', ')}</p>}
+                      {fc && <p className="text-[10px] text-violet-400 mt-0.5">{describeFormula(fc)}</p>}
                     </div>
-                    <button onClick={() => toggleRequired(field.id, field.required)}
-                      className="text-[10px] text-surface-400 hover:text-brand-600">
-                      {field.required ? 'Optional' : 'Required'}
-                    </button>
+                    {!isFormula && (
+                      <button onClick={() => toggleRequired(field.id, field.required)}
+                        className="text-[10px] text-surface-400 hover:text-brand-600">
+                        {field.required ? 'Optional' : 'Required'}
+                      </button>
+                    )}
                     <button onClick={() => deleteField(field.id)} className="text-surface-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -434,7 +838,7 @@ export default function FormBuilderPage() {
       {/* New field modal */}
       {showNew && (
         <div className="modal-overlay">
-          <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up">
+          <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Custom Field</h2>
               <button onClick={() => setShowNew(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
@@ -446,7 +850,8 @@ export default function FormBuilderPage() {
                   {FIELD_TYPES.map(t => (
                     <button key={t.value} onClick={() => setNewField(f => ({ ...f, type: t.value }))}
                       className={cn('p-2 rounded-lg text-center transition-all border-2 text-[10px] font-medium',
-                        newField.type === t.value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-surface-100 hover:border-surface-200 text-surface-600')}>
+                        newField.type === t.value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-surface-100 hover:border-surface-200 text-surface-600',
+                        t.value === 'formula' && newField.type === t.value && 'border-violet-500 bg-violet-50 text-violet-700')}>
                       <t.icon className="w-4 h-4 mx-auto mb-1" />
                       {t.label}
                     </button>
@@ -456,18 +861,40 @@ export default function FormBuilderPage() {
               {newField.type === 'select' && (
                 <div><label className="label">Options (comma separated)</label><input className="input" value={newField.options} onChange={e => setNewField(f => ({ ...f, options: e.target.value }))} placeholder="Option 1, Option 2, Option 3" /></div>
               )}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded border-surface-300 text-brand-600"
-                  checked={newField.required} onChange={e => setNewField(f => ({ ...f, required: e.target.checked }))} />
-                <span className="text-xs text-surface-600">Required field</span>
-              </label>
+              {newField.type === 'formula' && (
+                <FormulaBuilderUI
+                  entity={entity}
+                  formulaConfig={formulaConfig}
+                  onChange={setFormulaConfig}
+                />
+              )}
+              {newField.type !== 'formula' && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded border-surface-300 text-brand-600"
+                    checked={newField.required} onChange={e => setNewField(f => ({ ...f, required: e.target.checked }))} />
+                  <span className="text-xs text-surface-600">Required field</span>
+                </label>
+              )}
               <div className="flex gap-2">
                 <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={addField} disabled={!newField.label} className="btn-primary flex-1">Add Field</button>
+                <button onClick={addField} disabled={!newField.label || (newField.type === 'formula' && !formulaConfig.relationship)} className="btn-primary flex-1">Add Field</button>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Variable picker modal */}
+      {showVariablePicker && (
+        <VariablePickerModal
+          entity={entity}
+          existingKeys={existingKeys}
+          onAdd={(v) => {
+            addVariable(v)
+            // Don't close — let user add multiple
+          }}
+          onClose={() => setShowVariablePicker(false)}
+        />
       )}
     </div>
   )

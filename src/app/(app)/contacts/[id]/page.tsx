@@ -12,6 +12,7 @@ import {
 import { formatCurrency, getInitials, cn, formatDate } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import EmailComposer from '@/components/shared/EmailComposer'
+import { computeFormulaField, FormulaConfig, describeFormula } from '@/lib/formula-engine'
 
 interface ContactDetail {
   id: string; workspace_id: string; type: string; name: string;
@@ -126,6 +127,7 @@ export default function ContactDetailPage() {
   const [saving, setSaving] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
   const [companyPeople, setCompanyPeople] = useState<{ id: string; name: string; job_title?: string; email?: string }[]>([])
+  const [formulaValues, setFormulaValues] = useState<Record<string, number | string | null>>({})
 
   // New activity form
   const [actType, setActType] = useState('task')
@@ -271,6 +273,27 @@ export default function ContactDetailPage() {
 
   const contactCustomFields = wsCustomFields.filter(f => f.entity === 'contact')
 
+  // Compute formula fields
+  useEffect(() => {
+    if (!contact) return
+    const formulaFields = contactCustomFields.filter(f => f.type === 'formula' && f.options && f.options.length > 0)
+    if (formulaFields.length === 0) return
+
+    const compute = async () => {
+      const results: Record<string, number | string | null> = {}
+      for (const field of formulaFields) {
+        try {
+          const config = JSON.parse(field.options![0]) as FormulaConfig
+          if (config.type === 'formula') {
+            results[field.key] = await computeFormulaField(supabase, config, contact.id, 'contact', contact.workspace_id)
+          }
+        } catch {}
+      }
+      setFormulaValues(results)
+    }
+    compute()
+  }, [contact, contactCustomFields.length])
+
   const toggleExpand = (key: string) => {
     setExpandedItems(prev => {
       const next = new Set(prev)
@@ -400,6 +423,28 @@ export default function ContactDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Formula / Computed Fields */}
+      {contactCustomFields.filter(f => f.type === 'formula').length > 0 && (
+        <div className="card p-4 mb-6">
+          <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">
+            <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-violet-200 text-violet-700 text-[8px] font-bold mr-1.5">fx</span>
+            Computed Fields
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {contactCustomFields.filter(f => f.type === 'formula').map(field => {
+              const val = formulaValues[field.key]
+              const displayVal = val !== null && val !== undefined ? (typeof val === 'number' ? val.toLocaleString() : String(val)) : '...'
+              return (
+                <div key={field.key} className="p-3 rounded-xl bg-violet-50 border border-violet-100">
+                  <p className="text-[10px] text-violet-500 font-medium mb-0.5">{field.label}</p>
+                  <p className="text-lg font-bold text-violet-900">{displayVal}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Company Hierarchy */}
       {contact.type === 'company' && companyPeople.length > 0 && (
