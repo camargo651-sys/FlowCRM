@@ -1,13 +1,14 @@
 'use client'
 import { DbRow } from '@/types'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   ArrowLeft, Mail, Phone, Building2, Globe, MapPin, Edit2, Save, X,
   Plus, FileText, TrendingUp, CheckSquare, Clock, MessageCircle,
   DollarSign, Calendar, User, Send, CheckCircle2, XCircle, Trash2,
-  ArrowDownLeft, ArrowUpRight, Users, Kanban, ChevronDown, ChevronUp
+  ArrowDownLeft, ArrowUpRight, Users, Kanban, ChevronDown, ChevronUp,
+  Zap, PhoneCall, Target, AlertCircle
 } from 'lucide-react'
 import { formatCurrency, getInitials, cn, formatDate } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -37,6 +38,7 @@ interface ActivityRow {
   id: string; type: string; title: string; notes?: string;
   due_date?: string; done: boolean; created_at: string;
   metadata?: DbRow;
+  user_id?: string;
 }
 
 interface EmailMessage {
@@ -82,16 +84,6 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(months / 12)}y ago`
 }
 
-const TIMELINE_BORDER_COLORS: Record<string, string> = {
-  deal: 'border-l-brand-500',
-  quote: 'border-l-violet-500',
-  activity: 'border-l-amber-500',
-  email: 'border-l-blue-500',
-  whatsapp: 'border-l-green-500',
-  call_log: 'border-l-orange-500',
-  social_lead: 'border-l-pink-500',
-}
-
 const ACTIVITY_ICONS: Record<string, typeof Phone> = {
   call: Phone, email: Mail, meeting: Calendar, note: FileText, task: CheckSquare, whatsapp: MessageCircle,
 }
@@ -100,6 +92,8 @@ const ACTIVITY_COLORS: Record<string, string> = {
   meeting: 'bg-violet-50 text-violet-600', note: 'bg-amber-50 text-amber-600',
   task: 'bg-surface-100 text-surface-600', whatsapp: 'bg-green-50 text-green-600',
 }
+
+const AVATAR_COLORS = ['bg-brand-500','bg-violet-500','bg-emerald-500','bg-amber-500','bg-rose-500','bg-cyan-500']
 
 export default function ContactDetailPage() {
   const { id } = useParams()
@@ -115,10 +109,8 @@ export default function ContactDetailPage() {
   const [waMessages, setWaMessages] = useState<WhatsAppMessage[]>([])
   const [callLogs, setCallLogs] = useState<CallLog[]>([])
   const [socialLeads, setSocialLeads] = useState<SocialLead[]>([])
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [waSendText, setWaSendText] = useState('')
   const [waSending, setWaSending] = useState(false)
-  const [tab, setTab] = useState<'timeline' | 'overview' | 'deals' | 'quotes' | 'activities' | 'emails' | 'whatsapp'>('timeline')
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState<Partial<ContactDetail>>({})
   const [showNewActivity, setShowNewActivity] = useState(false)
@@ -128,6 +120,26 @@ export default function ContactDetailPage() {
   const [showEmailComposer, setShowEmailComposer] = useState(false)
   const [companyPeople, setCompanyPeople] = useState<{ id: string; name: string; job_title?: string; email?: string }[]>([])
   const [formulaValues, setFormulaValues] = useState<Record<string, number | string | null>>({})
+  const [stages, setStages] = useState<{ id: string; name: string }[]>([])
+
+  // Notes chat state
+  const [noteText, setNoteText] = useState('')
+  const [noteSending, setNoteSending] = useState(false)
+  const notesEndRef = useRef<HTMLDivElement>(null)
+
+  // WhatsApp collapsible
+  const [waExpanded, setWaExpanded] = useState(true)
+  const [waVisibleCount, setWaVisibleCount] = useState(30)
+  const waEndRef = useRef<HTMLDivElement>(null)
+  const waInputRef = useRef<HTMLInputElement>(null)
+
+  // Email collapsible
+  const [emailExpanded, setEmailExpanded] = useState(false)
+
+  // Current user profile
+  const [currentUserName, setCurrentUserName] = useState('You')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({})
 
   // New activity form
   const [actType, setActType] = useState('task')
@@ -138,7 +150,6 @@ export default function ContactDetailPage() {
   // New deal form
   const [dealTitle, setDealTitle] = useState('')
   const [dealValue, setDealValue] = useState('')
-  const [stages, setStages] = useState<{ id: string; name: string }[]>([])
   const [dealStageId, setDealStageId] = useState('')
 
   const load = useCallback(async () => {
@@ -171,6 +182,19 @@ export default function ContactDetailPage() {
         setCompanyPeople(people || [])
       } else {
         setCompanyPeople([])
+      }
+
+      // Load profiles for the workspace (for note author names)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('workspace_id', contactRes.data.workspace_id)
+      if (profiles) {
+        const map: Record<string, string> = {}
+        profiles.forEach((p: { id: string; full_name?: string; email?: string }) => {
+          map[p.id] = p.full_name || p.email || 'Unknown'
+        })
+        setProfileMap(map)
       }
     }
 
@@ -219,6 +243,24 @@ export default function ContactDetailPage() {
 
   useEffect(() => { load() }, [load])
 
+  // Load current user
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+        const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('id', user.id).single()
+        if (profile) setCurrentUserName(profile.full_name || profile.email || 'You')
+      }
+    }
+    loadUser()
+  }, [])
+
+  // Auto-scroll notes to bottom
+  useEffect(() => {
+    notesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [activities])
+
   const saveContact = async () => {
     setSaving(true)
     await supabase.from('contacts').update(editData).eq('id', id)
@@ -251,6 +293,36 @@ export default function ContactDetailPage() {
     }]).select('id, title, value, status, created_at').single()
     if (data) setDeals(prev => [data, ...prev])
     setDealTitle(''); setDealValue(''); setShowNewDeal(false)
+  }
+
+  // Send note as chat message (activity type='note')
+  const sendNote = async () => {
+    if (!noteText.trim() || !contact) return
+    setNoteSending(true)
+    const { data } = await supabase.from('activities').insert([{
+      workspace_id: contact.workspace_id,
+      contact_id: id,
+      type: 'note',
+      title: noteText.trim(),
+      notes: null,
+      done: false,
+    }]).select().single()
+    if (data) setActivities(prev => [data, ...prev])
+    setNoteText('')
+    setNoteSending(false)
+  }
+
+  // Log a call activity quickly
+  const logCall = async () => {
+    if (!contact) return
+    const { data } = await supabase.from('activities').insert([{
+      workspace_id: contact.workspace_id,
+      contact_id: id,
+      type: 'call',
+      title: `Call with ${contact.name}`,
+      done: true,
+    }]).select().single()
+    if (data) setActivities(prev => [data, ...prev])
   }
 
   const handleWaSend = async () => {
@@ -294,738 +366,519 @@ export default function ContactDetailPage() {
     compute()
   }, [contact, contactCustomFields.length])
 
-  const toggleExpand = (key: string) => {
-    setExpandedItems(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
+  // Computed stats from existing data
+  const totalDeals = deals.length
+  const totalDealsValue = deals.reduce((s, d) => s + (d.value || 0), 0)
+  const wonDeals = deals.filter(d => d.status === 'won')
+  const wonDealsValue = wonDeals.reduce((s, d) => s + (d.value || 0), 0)
+  const openQuotes = quotes.filter(q => q.status === 'draft' || q.status === 'sent')
+  const openQuotesValue = openQuotes.reduce((s, q) => s + (q.total || 0), 0)
+  // Outstanding invoices - approximate from accepted quotes
+  const outstandingQuotes = quotes.filter(q => q.status === 'accepted')
+  const outstandingValue = outstandingQuotes.reduce((s, q) => s + (q.total || 0), 0)
+  // Last interaction
+  const allDates = [
+    ...activities.map(a => a.created_at),
+    ...emails.map(e => e.received_at),
+    ...waMessages.map(m => m.received_at),
+    ...callLogs.map(c => c.started_at),
+  ].filter(Boolean)
+  const lastInteraction = allDates.length > 0
+    ? allDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
+    : null
+  // Engagement score
+  const scoreLabel = contact?.score_label || (
+    contact?.engagement_score != null
+      ? contact.engagement_score >= 70 ? 'hot' : contact.engagement_score >= 40 ? 'warm' : 'cold'
+      : allDates.length > 10 ? 'warm' : 'cold'
+  )
 
-  // Build timeline from all sources
-  const timeline = [
-    ...deals.map(d => ({ type: 'deal' as const, date: d.created_at, data: d })),
-    ...quotes.map(q => ({ type: 'quote' as const, date: q.created_at, data: q })),
-    ...activities.filter(a => a.type !== 'email').map(a => ({ type: 'activity' as const, date: a.created_at, data: a })),
-    ...emails.map(e => ({ type: 'email' as const, date: e.received_at, data: e })),
-    ...callLogs.map(c => ({ type: 'call_log' as const, date: c.started_at, data: c })),
-    ...waMessages.map(m => ({ type: 'whatsapp' as const, date: m.received_at, data: m })),
-    ...socialLeads.map(s => ({ type: 'social_lead' as const, date: s.created_at, data: s })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  // Notes (activities of type='note'), sorted oldest first for chat view
+  const noteActivities = activities
+    .filter(a => a.type === 'note')
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  // Visible WA messages (last N)
+  const visibleWaMessages = waMessages.slice(Math.max(0, waMessages.length - waVisibleCount))
+  const hasMoreWa = waMessages.length > waVisibleCount
 
   if (loading || !contact) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
 
-  const AVATAR_COLORS = ['bg-brand-500','bg-violet-500','bg-emerald-500','bg-amber-500','bg-rose-500','bg-cyan-500']
   const avatarColor = AVATAR_COLORS[contact.name.charCodeAt(0) % AVATAR_COLORS.length]
 
   return (
-    <div className="animate-fade-in max-w-5xl">
+    <div className="animate-fade-in">
       {/* Back button */}
       <button onClick={() => router.push('/contacts')} className="flex items-center gap-1.5 text-sm text-surface-500 hover:text-surface-700 mb-4 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to {template.contactLabel.plural}
       </button>
 
-      {/* Header card */}
-      <div className="card p-6 mb-6">
-        <div className="flex items-start gap-4">
-          <div className={`avatar-lg ${avatarColor} text-lg`}>{getInitials(contact.name)}</div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-surface-900">{contact.name}</h1>
-              <span className={cn('badge text-[10px]', contact.type === 'company' ? 'badge-blue' : 'badge-gray')}>{contact.type}</span>
-            </div>
-            {contact.job_title && <p className="text-sm text-surface-500 mt-0.5">{contact.job_title}{contact.company_name ? ` at ${contact.company_name}` : ''}</p>}
-            <div className="flex flex-wrap gap-4 mt-3">
-              {contact.email && (
-                <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline">
-                  <Mail className="w-3.5 h-3.5" /> {contact.email}
-                </a>
-              )}
-              {contact.phone && (
-                <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 text-xs text-surface-600">
-                  <Phone className="w-3.5 h-3.5" /> {contact.phone}
-                </a>
-              )}
-              {contact.website && (
-                <a href={contact.website} target="_blank" className="flex items-center gap-1.5 text-xs text-surface-600 hover:text-brand-600">
-                  <Globe className="w-3.5 h-3.5" /> {contact.website}
-                </a>
-              )}
-            </div>
-            {/* Social profile badges */}
-            {contact.social_profiles && Object.keys(contact.social_profiles).some(k => (contact.social_profiles as Record<string, string>)?.[k]) && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {contact.social_profiles.instagram && (
-                  <a href={contact.social_profiles.instagram.startsWith('http') ? contact.social_profiles.instagram : `https://instagram.com/${contact.social_profiles.instagram}`}
-                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-100 text-pink-700 hover:bg-pink-200 transition-colors">
-                    Instagram
-                  </a>
-                )}
-                {contact.social_profiles.linkedin && (
-                  <a href={contact.social_profiles.linkedin.startsWith('http') ? contact.social_profiles.linkedin : `https://linkedin.com/in/${contact.social_profiles.linkedin}`}
-                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors">
-                    LinkedIn
-                  </a>
-                )}
-                {contact.social_profiles.facebook && (
-                  <a href={contact.social_profiles.facebook.startsWith('http') ? contact.social_profiles.facebook : `https://facebook.com/${contact.social_profiles.facebook}`}
-                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors">
-                    Facebook
-                  </a>
-                )}
-                {contact.social_profiles.tiktok && (
-                  <a href={contact.social_profiles.tiktok.startsWith('http') ? contact.social_profiles.tiktok : `https://tiktok.com/@${contact.social_profiles.tiktok}`}
-                    target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-900 text-white hover:bg-surface-700 transition-colors">
-                    TikTok
-                  </a>
+      {/* ====== TWO-COLUMN LAYOUT ====== */}
+      <div className="flex flex-col lg:flex-row gap-6">
+
+        {/* ====== LEFT COLUMN (60%) ====== */}
+        <div className="w-full lg:w-[60%] space-y-6">
+
+          {/* Header card */}
+          <div className="card p-6">
+            <div className="flex items-start gap-4">
+              <div className={`avatar-lg ${avatarColor} text-lg`}>{getInitials(contact.name)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-bold text-surface-900">{contact.name}</h1>
+                  <span className={cn('badge text-[10px]', contact.type === 'company' ? 'badge-blue' : 'badge-gray')}>{contact.type}</span>
+                </div>
+                {contact.job_title && <p className="text-sm text-surface-500 mt-0.5">{contact.job_title}{contact.company_name ? ` at ${contact.company_name}` : ''}</p>}
+                <div className="flex flex-wrap gap-4 mt-3">
+                  {contact.email && (
+                    <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline">
+                      <Mail className="w-3.5 h-3.5" /> {contact.email}
+                    </a>
+                  )}
+                  {contact.phone && (
+                    <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 text-xs text-surface-600">
+                      <Phone className="w-3.5 h-3.5" /> {contact.phone}
+                    </a>
+                  )}
+                  {contact.website && (
+                    <a href={contact.website} target="_blank" className="flex items-center gap-1.5 text-xs text-surface-600 hover:text-brand-600">
+                      <Globe className="w-3.5 h-3.5" /> {contact.website}
+                    </a>
+                  )}
+                </div>
+                {/* Social profile badges */}
+                {contact.social_profiles && Object.keys(contact.social_profiles).some(k => (contact.social_profiles as Record<string, string>)?.[k]) && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {contact.social_profiles.instagram && (
+                      <a href={contact.social_profiles.instagram.startsWith('http') ? contact.social_profiles.instagram : `https://instagram.com/${contact.social_profiles.instagram}`}
+                        target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-100 text-pink-700 hover:bg-pink-200 transition-colors">
+                        Instagram
+                      </a>
+                    )}
+                    {contact.social_profiles.linkedin && (
+                      <a href={contact.social_profiles.linkedin.startsWith('http') ? contact.social_profiles.linkedin : `https://linkedin.com/in/${contact.social_profiles.linkedin}`}
+                        target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors">
+                        LinkedIn
+                      </a>
+                    )}
+                    {contact.social_profiles.facebook && (
+                      <a href={contact.social_profiles.facebook.startsWith('http') ? contact.social_profiles.facebook : `https://facebook.com/${contact.social_profiles.facebook}`}
+                        target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors">
+                        Facebook
+                      </a>
+                    )}
+                    {contact.social_profiles.tiktok && (
+                      <a href={contact.social_profiles.tiktok.startsWith('http') ? contact.social_profiles.tiktok : `https://tiktok.com/@${contact.social_profiles.tiktok}`}
+                        target="_blank" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-900 text-white hover:bg-surface-700 transition-colors">
+                        TikTok
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+              <button onClick={() => setEditing(true)} className="btn-secondary btn-sm flex-shrink-0">
+                <Edit2 className="w-3.5 h-3.5" /> Edit
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Stats / KPIs bar */}
+          <div className="card p-4">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              <div className="text-center">
+                <p className="text-lg font-bold text-surface-900">{totalDeals}</p>
+                <p className="text-[10px] text-surface-400 font-semibold uppercase">{template.dealLabel.plural}</p>
+                <p className="text-[10px] text-surface-500">{formatCurrency(totalDealsValue)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-emerald-600">{wonDeals.length}</p>
+                <p className="text-[10px] text-surface-400 font-semibold uppercase">Won</p>
+                <p className="text-[10px] text-emerald-600">{formatCurrency(wonDealsValue)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-surface-900">{openQuotes.length}</p>
+                <p className="text-[10px] text-surface-400 font-semibold uppercase">Open Quotes</p>
+                <p className="text-[10px] text-surface-500">{formatCurrency(openQuotesValue)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-amber-600">{outstandingQuotes.length}</p>
+                <p className="text-[10px] text-surface-400 font-semibold uppercase">Outstanding</p>
+                <p className="text-[10px] text-amber-600">{formatCurrency(outstandingValue)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-surface-700">{lastInteraction ? timeAgo(lastInteraction) : 'Never'}</p>
+                <p className="text-[10px] text-surface-400 font-semibold uppercase">Last Activity</p>
+              </div>
+              <div className="text-center">
+                <span className={cn('inline-block px-2.5 py-1 rounded-full text-xs font-bold',
+                  scoreLabel === 'hot' ? 'bg-red-100 text-red-700' :
+                  scoreLabel === 'warm' ? 'bg-amber-100 text-amber-700' :
+                  'bg-blue-100 text-blue-700')}>
+                  {scoreLabel === 'hot' ? 'Hot' : scoreLabel === 'warm' ? 'Warm' : 'Cold'}
+                </span>
+                <p className="text-[10px] text-surface-400 font-semibold uppercase mt-1">Score</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions Bar */}
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => router.push(`/quotes?contact=${id}`)} className="btn-secondary btn-sm">
+              <FileText className="w-3.5 h-3.5" /> New Quote
+            </button>
+            <button onClick={() => setShowNewDeal(true)} className="btn-secondary btn-sm">
+              <TrendingUp className="w-3.5 h-3.5" /> New {template.dealLabel.singular}
+            </button>
+            <button onClick={() => { setWaExpanded(true); setTimeout(() => waInputRef.current?.focus(), 100) }} className="btn-secondary btn-sm">
+              <MessageCircle className="w-3.5 h-3.5" /> Send WhatsApp
+            </button>
             {contact.email && (
-              <button onClick={() => setShowEmailComposer(true)} className="btn-primary btn-sm">
+              <button onClick={() => setShowEmailComposer(true)} className="btn-secondary btn-sm">
                 <Send className="w-3.5 h-3.5" /> Send Email
               </button>
             )}
-            <button onClick={() => setEditing(true)} className="btn-secondary btn-sm">
-              <Edit2 className="w-3.5 h-3.5" /> Edit
+            <button onClick={() => setShowNewActivity(true)} className="btn-secondary btn-sm">
+              <CheckSquare className="w-3.5 h-3.5" /> Add Task
+            </button>
+            <button onClick={logCall} className="btn-secondary btn-sm">
+              <PhoneCall className="w-3.5 h-3.5" /> Log Call
             </button>
           </div>
-        </div>
 
-        {/* Quick stats */}
-        <div className="grid grid-cols-6 gap-3 mt-5 pt-5 border-t border-surface-100">
-          <div className="text-center">
-            <p className="text-lg font-bold text-surface-900">{deals.length}</p>
-            <p className="text-[10px] text-surface-400 font-semibold uppercase">{template.dealLabel.plural}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-surface-900">{formatCurrency(deals.filter(d => d.status === 'won').reduce((s, d) => s + (d.value || 0), 0))}</p>
-            <p className="text-[10px] text-surface-400 font-semibold uppercase">Won Revenue</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-surface-900">{quotes.length}</p>
-            <p className="text-[10px] text-surface-400 font-semibold uppercase">Quotes</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-surface-900">{emails.length}</p>
-            <p className="text-[10px] text-surface-400 font-semibold uppercase">Emails</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-surface-900">{waMessages.length}</p>
-            <p className="text-[10px] text-surface-400 font-semibold uppercase">WhatsApp</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-surface-900">{activities.filter(a => !a.done).length}</p>
-            <p className="text-[10px] text-surface-400 font-semibold uppercase">Open Tasks</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Formula / Computed Fields */}
-      {contactCustomFields.filter(f => f.type === 'formula').length > 0 && (
-        <div className="card p-4 mb-6">
-          <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-violet-200 text-violet-700 text-[8px] font-bold mr-1.5">fx</span>
-            Computed Fields
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {contactCustomFields.filter(f => f.type === 'formula').map(field => {
-              const val = formulaValues[field.key]
-              const displayVal = val !== null && val !== undefined ? (typeof val === 'number' ? val.toLocaleString() : String(val)) : '...'
-              return (
-                <div key={field.key} className="p-3 rounded-xl bg-violet-50 border border-violet-100">
-                  <p className="text-[10px] text-violet-500 font-medium mb-0.5">{field.label}</p>
-                  <p className="text-lg font-bold text-violet-900">{displayVal}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Company Hierarchy */}
-      {contact.type === 'company' && companyPeople.length > 0 && (
-        <div className="card p-4 mb-6">
-          <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">
-            <Users className="w-3.5 h-3.5 inline mr-1" /> People at {contact.name} ({companyPeople.length})
-          </h3>
-          <div className="space-y-2">
-            {companyPeople.map(p => (
-              <div key={p.id} onClick={() => router.push(`/contacts/${p.id}`)}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-50 cursor-pointer transition-colors">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${AVATAR_COLORS[p.name.charCodeAt(0) % AVATAR_COLORS.length]}`}>
-                  {getInitials(p.name)}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-surface-800 truncate">{p.name}</p>
-                  {p.job_title && <p className="text-[10px] text-surface-400">{p.job_title}</p>}
-                </div>
-                {p.email && <p className="text-[10px] text-brand-600 ml-auto truncate">{p.email}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {contact.type === 'person' && contact.company_name && (
-        <div className="card p-4 mb-6">
-          <p className="text-xs text-surface-500">
-            Works at{' '}
-            <button onClick={() => router.push(`/contacts?company=${encodeURIComponent(contact.company_name!)}`)}
-              className="text-brand-600 font-semibold hover:underline">
-              {contact.company_name}
-            </button>
-          </p>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="segmented-control mb-8">
-        {[
-          { id: 'timeline', label: 'Timeline', count: timeline.length },
-          { id: 'overview', label: 'Overview', count: timeline.length },
-          { id: 'deals', label: template.dealLabel.plural, count: deals.length },
-          { id: 'quotes', label: 'Quotes', count: quotes.length },
-          { id: 'activities', label: 'Activities', count: activities.filter(a => a.type !== 'email').length },
-          { id: 'emails', label: 'Emails', count: emails.length },
-          { id: 'whatsapp', label: 'WhatsApp', count: waMessages.length },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
-            className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-              tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
-            {t.label}
-            <span className="text-[10px] bg-surface-200/50 px-1.5 py-0.5 rounded-full">{t.count}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ====== UNIFIED TIMELINE TAB ====== */}
-      {tab === 'timeline' && (
-        <div className="space-y-2">
-          <div className="flex gap-2 mb-4">
-            <button onClick={() => setShowNewActivity(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Activity</button>
-            <button onClick={() => setShowNewDeal(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> {template.dealLabel.singular}</button>
-            <button onClick={() => router.push(`/quotes?contact=${id}`)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Quote</button>
-          </div>
-
-          {timeline.length === 0 && (
-            <div className="text-center py-12 card p-6">
-              <Clock className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium">No activity yet</p>
-              <p className="text-xs text-surface-400 mt-1">Create a {template.dealLabel.singular.toLowerCase()}, quote, or activity to start the timeline</p>
-            </div>
-          )}
-
-          {timeline.map((item) => {
-            const itemKey = `${item.type}-${item.data.id}`
-            const isExpanded = expandedItems.has(itemKey)
-
-            // Determine icon
-            let IconEl: typeof Phone = FileText
-            if (item.type === 'deal') IconEl = Kanban
-            else if (item.type === 'quote') IconEl = FileText
-            else if (item.type === 'call_log') IconEl = Phone
-            else if (item.type === 'whatsapp') IconEl = MessageCircle
-            else if (item.type === 'email') IconEl = Mail
-            else if (item.type === 'social_lead') IconEl = Users
-            else if (item.type === 'activity') IconEl = ACTIVITY_ICONS[(item.data as ActivityRow).type] || CheckSquare
-
-            // Determine title
-            let title = ''
-            if (item.type === 'deal') title = `${template.dealLabel.singular} created: ${(item.data as DealRow).title}`
-            else if (item.type === 'quote') title = `Quote: ${(item.data as QuoteRow).title}`
-            else if (item.type === 'activity') title = (item.data as ActivityRow).title
-            else if (item.type === 'email') title = (item.data as EmailMessage).subject
-            else if (item.type === 'whatsapp') title = `WhatsApp: ${((item.data as WhatsAppMessage).body || '').slice(0, 80)}`
-            else if (item.type === 'call_log') title = `Call (${Math.floor((item.data as CallLog).duration_seconds / 60)}m ${(item.data as CallLog).duration_seconds % 60}s)`
-            else if (item.type === 'social_lead') title = `Social lead: ${(item.data as SocialLead).author_name || (item.data as SocialLead).author_username} via ${(item.data as SocialLead).platform}`
-
-            // Determine expandable details
-            let details: string | null = null
-            if (item.type === 'activity') details = (item.data as ActivityRow).notes || null
-            else if (item.type === 'email') details = (item.data as EmailMessage).snippet || null
-            else if (item.type === 'call_log') details = (item.data as CallLog).summary || (item.data as CallLog).transcript || null
-            else if (item.type === 'whatsapp') details = (item.data as WhatsAppMessage).body || null
-            else if (item.type === 'social_lead') details = (item.data as SocialLead).message || null
-
-            // Determine icon bg color
-            const iconBg = item.type === 'deal' ? 'bg-brand-50 text-brand-600'
-              : item.type === 'quote' ? 'bg-violet-50 text-violet-600'
-              : item.type === 'call_log' ? 'bg-orange-50 text-orange-600'
-              : item.type === 'email' ? 'bg-blue-50 text-blue-600'
-              : item.type === 'whatsapp' ? 'bg-green-50 text-green-600'
-              : item.type === 'social_lead' ? 'bg-pink-50 text-pink-600'
-              : ACTIVITY_COLORS[(item.data as ActivityRow).type] || 'bg-surface-100 text-surface-500'
-
-            return (
-              <div key={itemKey}
-                className={cn('card p-4 border-l-4 cursor-pointer hover:shadow-card-hover transition-all', TIMELINE_BORDER_COLORS[item.type] || 'border-l-surface-300')}
-                onClick={() => details && toggleExpand(itemKey)}>
-                <div className="flex items-start gap-3">
-                  <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', iconBg)}>
-                    <IconEl className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-surface-800 line-clamp-1">{title}</p>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[10px] text-surface-400 whitespace-nowrap">{timeAgo(item.date)}</span>
-                        {details && (
-                          isExpanded
-                            ? <ChevronUp className="w-3.5 h-3.5 text-surface-400" />
-                            : <ChevronDown className="w-3.5 h-3.5 text-surface-400" />
-                        )}
-                      </div>
+          {/* Formula / Computed Fields */}
+          {contactCustomFields.filter(f => f.type === 'formula').length > 0 && (
+            <div className="card p-4">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-violet-200 text-violet-700 text-[8px] font-bold mr-1.5">fx</span>
+                Computed Fields
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {contactCustomFields.filter(f => f.type === 'formula').map(field => {
+                  const val = formulaValues[field.key]
+                  const displayVal = val !== null && val !== undefined ? (typeof val === 'number' ? val.toLocaleString() : String(val)) : '...'
+                  return (
+                    <div key={field.key} className="p-3 rounded-xl bg-violet-50 border border-violet-100">
+                      <p className="text-[10px] text-violet-500 font-medium mb-0.5">{field.label}</p>
+                      <p className="text-lg font-bold text-violet-900">{displayVal}</p>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="badge badge-gray text-[9px] capitalize">{item.type.replace('_', ' ')}</span>
-                      {item.type === 'deal' && (item.data as DealRow).value && (
-                        <span className="text-xs font-semibold text-surface-700">{formatCurrency((item.data as DealRow).value!)}</span>
-                      )}
-                      {item.type === 'deal' && (
-                        <span className={cn('badge text-[9px]',
-                          (item.data as DealRow).status === 'won' ? 'badge-green' :
-                          (item.data as DealRow).status === 'lost' ? 'badge-red' : 'badge-blue')}>
-                          {(item.data as DealRow).status}
-                        </span>
-                      )}
-                      {item.type === 'quote' && (
-                        <>
-                          <span className="text-xs font-semibold text-surface-700">{formatCurrency((item.data as QuoteRow).total)}</span>
-                          <span className={cn('badge text-[9px]',
-                            (item.data as QuoteRow).status === 'accepted' ? 'badge-green' :
-                            (item.data as QuoteRow).status === 'rejected' ? 'badge-red' : 'badge-gray')}>
-                            {(item.data as QuoteRow).status}
-                          </span>
-                        </>
-                      )}
-                      {item.type === 'activity' && (
-                        <span className={cn('badge text-[9px]', (item.data as ActivityRow).done ? 'badge-green' : 'badge-gray')}>
-                          {(item.data as ActivityRow).done ? 'Done' : (item.data as ActivityRow).type}
-                        </span>
-                      )}
-                      {item.type === 'email' && (
-                        <span className={cn('badge text-[9px]',
-                          (item.data as EmailMessage).direction === 'inbound' ? 'badge-blue' : 'badge-green')}>
-                          {(item.data as EmailMessage).direction === 'inbound' ? 'Received' : 'Sent'}
-                        </span>
-                      )}
-                      {item.type === 'social_lead' && (
-                        <span className={cn('badge text-[9px]',
-                          (item.data as SocialLead).status === 'converted' ? 'badge-green' :
-                          (item.data as SocialLead).status === 'qualified' ? 'badge-blue' : 'badge-gray')}>
-                          {(item.data as SocialLead).status}
-                        </span>
-                      )}
-                      {item.type === 'call_log' && (item.data as CallLog).sentiment && (
-                        <span className={cn('badge text-[9px]',
-                          (item.data as CallLog).sentiment === 'positive' ? 'badge-green' :
-                          (item.data as CallLog).sentiment === 'negative' ? 'badge-red' : 'badge-gray')}>
-                          {(item.data as CallLog).sentiment}
-                        </span>
-                      )}
-                    </div>
-                    {isExpanded && details && (
-                      <div className="mt-3 pt-3 border-t border-surface-100">
-                        <p className="text-xs text-surface-500 whitespace-pre-wrap">{details}</p>
-                        {item.type === 'call_log' && (item.data as CallLog).next_actions?.length > 0 && (
-                          <div className="mt-2 space-y-0.5">
-                            {(item.data as CallLog).next_actions.map((a, i) => (
-                              <p key={i} className="text-[10px] text-brand-600 font-medium">→ {a}</p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {item.type === 'activity' && (
-                    <button onClick={(e) => { e.stopPropagation(); toggleActivity(item.data.id, (item.data as ActivityRow).done) }}
-                      className={cn('w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                        (item.data as ActivityRow).done ? 'bg-emerald-500 border-emerald-500' : 'border-surface-300 hover:border-brand-400')}>
-                      {(item.data as ActivityRow).done && <CheckCircle2 className="w-3 h-3 text-white" />}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* ====== OVERVIEW TAB (legacy) ====== */}
-      {tab === 'overview' && (
-        <div className="space-y-3">
-          <div className="flex gap-2 mb-4">
-            <button onClick={() => setShowNewActivity(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Activity</button>
-            <button onClick={() => setShowNewDeal(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> {template.dealLabel.singular}</button>
-            <button onClick={() => router.push(`/quotes?contact=${id}`)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Quote</button>
-          </div>
-
-          {timeline.length === 0 && (
-            <div className="text-center py-12 card p-6">
-              <Clock className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium">No activity yet</p>
-              <p className="text-xs text-surface-400 mt-1">Create a {template.dealLabel.singular.toLowerCase()}, quote, or activity to start the timeline</p>
-            </div>
-          )}
-
-          {timeline.map((item, i) => (
-            <div key={`${item.type}-${item.data.id}`} className="flex gap-3">
-              {/* Timeline line */}
-              <div className="flex flex-col items-center">
-                <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                  item.type === 'deal' ? 'bg-brand-50 text-brand-600' :
-                  item.type === 'quote' ? 'bg-violet-50 text-violet-600' :
-                  item.type === 'call_log' ? 'bg-orange-50 text-orange-600' :
-                  item.type === 'email' ? ((item.data as EmailMessage).direction === 'inbound' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600') :
-                  item.type === 'whatsapp' ? 'bg-green-50 text-green-600' :
-                  ACTIVITY_COLORS[(item.data as ActivityRow).type] || 'bg-surface-100 text-surface-500')}>
-                  {item.type === 'deal' && <TrendingUp className="w-4 h-4" />}
-                  {item.type === 'quote' && <FileText className="w-4 h-4" />}
-                  {item.type === 'call_log' && <Phone className="w-4 h-4" />}
-                  {item.type === 'whatsapp' && <MessageCircle className="w-4 h-4" />}
-                  {item.type === 'email' && ((item.data as EmailMessage).direction === 'inbound' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />)}
-                  {item.type === 'activity' && (() => {
-                    const Icon = ACTIVITY_ICONS[(item.data as ActivityRow).type] || CheckSquare
-                    return <Icon className="w-4 h-4" />
-                  })()}
-                </div>
-                {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-surface-100 my-1" />}
-              </div>
-
-              {/* Content */}
-              <div className="card p-4 flex-1 mb-1">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-surface-800">
-                      {item.type === 'deal' && `${template.dealLabel.singular}: ${(item.data as DealRow).title}`}
-                      {item.type === 'quote' && `Quote: ${(item.data as QuoteRow).title}`}
-                      {item.type === 'activity' && (item.data as ActivityRow).title}
-                      {item.type === 'email' && (item.data as EmailMessage).subject}
-                      {item.type === 'whatsapp' && `WhatsApp: ${((item.data as WhatsAppMessage).body || '').slice(0, 60)}`}
-                      {item.type === 'call_log' && `Call (${Math.floor((item.data as CallLog).duration_seconds / 60)}m ${(item.data as CallLog).duration_seconds % 60}s)`}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-surface-400">{new Date(item.date).toLocaleDateString()} · {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      {item.type === 'deal' && (
-                        <>
-                          {(item.data as DealRow).value && <span className="text-xs font-semibold text-surface-700">{formatCurrency((item.data as DealRow).value!)}</span>}
-                          <span className={cn('badge text-[9px]',
-                            (item.data as DealRow).status === 'won' ? 'badge-green' :
-                            (item.data as DealRow).status === 'lost' ? 'badge-red' : 'badge-blue')}>
-                            {(item.data as DealRow).status}
-                          </span>
-                        </>
-                      )}
-                      {item.type === 'quote' && (
-                        <>
-                          <span className="text-xs font-semibold text-surface-700">{formatCurrency((item.data as QuoteRow).total)}</span>
-                          <span className={cn('badge text-[9px]',
-                            (item.data as QuoteRow).status === 'accepted' ? 'badge-green' :
-                            (item.data as QuoteRow).status === 'rejected' ? 'badge-red' :
-                            (item.data as QuoteRow).status === 'sent' ? 'badge-blue' : 'badge-gray')}>
-                            {(item.data as QuoteRow).status}
-                          </span>
-                        </>
-                      )}
-                      {item.type === 'activity' && (
-                        <span className={cn('badge text-[9px]', (item.data as ActivityRow).done ? 'badge-green' : 'badge-gray')}>
-                          {(item.data as ActivityRow).done ? 'Done' : (item.data as ActivityRow).type}
-                        </span>
-                      )}
-                      {item.type === 'email' && (
-                        <>
-                          <span className="text-xs text-surface-500">
-                            {(item.data as EmailMessage).direction === 'inbound'
-                              ? `From: ${(item.data as EmailMessage).from_name || (item.data as EmailMessage).from_address}`
-                              : `To: ${(item.data as EmailMessage).to_addresses?.[0]?.name || (item.data as EmailMessage).to_addresses?.[0]?.email || ''}`}
-                          </span>
-                          <span className={cn('badge text-[9px]',
-                            (item.data as EmailMessage).direction === 'inbound' ? 'badge-blue' : 'badge-green')}>
-                            {(item.data as EmailMessage).direction === 'inbound' ? 'Received' : 'Sent'}
-                          </span>
-                        </>
-                      )}
-                      {item.type === 'call_log' && (
-                        <>
-                          {(item.data as CallLog).sentiment && (
-                            <span className={cn('badge text-[9px]',
-                              (item.data as CallLog).sentiment === 'positive' ? 'badge-green' :
-                              (item.data as CallLog).sentiment === 'negative' ? 'badge-red' : 'badge-gray')}>
-                              {(item.data as CallLog).sentiment}
-                            </span>
-                          )}
-                          {(item.data as CallLog).key_topics?.slice(0, 2).map((t, i) => (
-                            <span key={i} className="badge badge-blue text-[9px]">{t}</span>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {item.type === 'activity' && (
-                    <button onClick={() => toggleActivity(item.data.id, (item.data as ActivityRow).done)}
-                      className={cn('w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
-                        (item.data as ActivityRow).done ? 'bg-emerald-500 border-emerald-500' : 'border-surface-300 hover:border-brand-400')}>
-                      {(item.data as ActivityRow).done && <CheckCircle2 className="w-3 h-3 text-white" />}
-                    </button>
-                  )}
-                </div>
-                {item.type === 'activity' && (item.data as ActivityRow).notes && (
-                  <p className="text-xs text-surface-500 mt-2">{(item.data as ActivityRow).notes}</p>
-                )}
-                {item.type === 'email' && (item.data as EmailMessage).snippet && (
-                  <p className="text-xs text-surface-500 mt-2 line-clamp-2">{(item.data as EmailMessage).snippet}</p>
-                )}
-                {item.type === 'call_log' && (item.data as CallLog).summary && (
-                  <div className="mt-2">
-                    <p className="text-xs text-surface-500">{(item.data as CallLog).summary}</p>
-                    {(item.data as CallLog).next_actions?.length > 0 && (
-                      <div className="mt-1.5 space-y-0.5">
-                        {(item.data as CallLog).next_actions.map((a, i) => (
-                          <p key={i} className="text-[10px] text-brand-600 font-medium">→ {a}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                  )
+                })}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* ====== DEALS TAB ====== */}
-      {tab === 'deals' && (
-        <div>
-          <button onClick={() => setShowNewDeal(true)} className="btn-primary btn-sm mb-4">
-            <Plus className="w-3.5 h-3.5" /> New {template.dealLabel.singular}
-          </button>
-          {deals.length === 0 ? (
-            <div className="text-center py-12 card p-6">
-              <TrendingUp className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium">No {template.dealLabel.plural.toLowerCase()} yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {deals.map(deal => (
-                <div key={deal.id} className="card p-4 flex items-center justify-between hover:shadow-card-hover transition-all cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    {deal.pipeline_stages && (
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: deal.pipeline_stages.color }} />
-                    )}
-                    <div>
-                      <p className="text-sm font-semibold text-surface-800">{deal.title}</p>
-                      <p className="text-xs text-surface-400">{deal.pipeline_stages?.name} · {new Date(deal.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {deal.value && <span className="text-sm font-bold text-surface-900">{formatCurrency(deal.value)}</span>}
-                    <span className={cn('badge text-[10px]',
-                      deal.status === 'won' ? 'badge-green' : deal.status === 'lost' ? 'badge-red' : 'badge-blue')}>
-                      {deal.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
           )}
-        </div>
-      )}
 
-      {/* ====== QUOTES TAB ====== */}
-      {tab === 'quotes' && (
-        <div>
-          <button onClick={() => router.push(`/quotes?contact=${id}`)} className="btn-primary btn-sm mb-4">
-            <Plus className="w-3.5 h-3.5" /> New Quote
-          </button>
-          {quotes.length === 0 ? (
-            <div className="text-center py-12 card p-6">
-              <FileText className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium">No quotes yet</p>
+          {/* Deals Section (compact) */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide">
+                <Kanban className="w-3.5 h-3.5 inline mr-1" />
+                {template.dealLabel.plural} ({deals.length})
+              </h3>
+              <button onClick={() => router.push('/pipeline')} className="text-[10px] text-brand-600 hover:underline font-medium">View all</button>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {quotes.map(quote => (
-                <div key={quote.id} onClick={() => router.push(`/quotes?edit=${quote.id}`)}
-                  className="card p-4 flex items-center justify-between hover:shadow-card-hover transition-all cursor-pointer">
-                  <div>
-                    <p className="text-sm font-semibold text-surface-800">{quote.title}</p>
-                    <p className="text-xs text-surface-400">{quote.quote_number} · {new Date(quote.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-surface-900">{formatCurrency(quote.total)}</span>
-                    <span className={cn('badge text-[10px]',
-                      quote.status === 'accepted' ? 'badge-green' : quote.status === 'rejected' ? 'badge-red' :
-                      quote.status === 'sent' ? 'badge-blue' : 'badge-gray')}>
-                      {quote.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ====== ACTIVITIES TAB ====== */}
-      {tab === 'activities' && (
-        <div>
-          <button onClick={() => setShowNewActivity(true)} className="btn-primary btn-sm mb-4">
-            <Plus className="w-3.5 h-3.5" /> New Activity
-          </button>
-          {activities.length === 0 ? (
-            <div className="text-center py-12 card p-6">
-              <CheckSquare className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium">No activities yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {activities.map(act => {
-                const Icon = ACTIVITY_ICONS[act.type] || CheckSquare
-                return (
-                  <div key={act.id} className="card p-4 flex items-center gap-3">
-                    <button onClick={() => toggleActivity(act.id, act.done)}
-                      className={cn('w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                        act.done ? 'bg-emerald-500 border-emerald-500' : 'border-surface-300 hover:border-brand-400')}>
-                      {act.done && <CheckCircle2 className="w-3 h-3 text-white" />}
-                    </button>
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', ACTIVITY_COLORS[act.type])}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn('text-sm font-medium', act.done ? 'line-through text-surface-400' : 'text-surface-800')}>{act.title}</p>
-                      {act.notes && <p className="text-xs text-surface-400 truncate">{act.notes}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {act.due_date && (
-                        <span className={cn('text-xs font-medium',
-                          !act.done && new Date(act.due_date) < new Date() ? 'text-red-500' : 'text-surface-400')}>
-                          {new Date(act.due_date).toLocaleDateString()}
-                        </span>
+            {deals.length === 0 ? (
+              <p className="text-sm text-surface-400 py-4 text-center">No {template.dealLabel.plural.toLowerCase()} yet</p>
+            ) : (
+              <div className="space-y-1.5">
+                {deals.map(deal => (
+                  <div key={deal.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-surface-50 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/pipeline?deal=${deal.id}`)}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {deal.pipeline_stages && (
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: deal.pipeline_stages.color }} />
                       )}
-                      <span className={cn('badge text-[9px]', act.done ? 'badge-green' : 'badge-gray')}>{act.type}</span>
+                      <p className="text-sm font-medium text-surface-800 truncate">{deal.title}</p>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ====== WHATSAPP TAB ====== */}
-      {tab === 'whatsapp' && (
-        <div className="card overflow-hidden" style={{ maxHeight: '70vh' }}>
-          {waMessages.length === 0 ? (
-            <div className="text-center py-12 px-6">
-              <MessageCircle className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium">No WhatsApp messages</p>
-              <p className="text-xs text-surface-400 mt-1">Connect WhatsApp in Integrations to auto-capture conversations</p>
-            </div>
-          ) : (
-            <>
-              {/* Chat messages */}
-              <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(70vh - 72px)' }}>
-                {waMessages.map(msg => (
-                  <div key={msg.id} className={cn('flex', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}>
-                    <div className={cn('max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm',
-                      msg.direction === 'outbound'
-                        ? 'bg-[#DCF8C6] rounded-tr-sm'
-                        : 'bg-white border border-surface-100 rounded-tl-sm')}>
-                      <p className="text-sm text-surface-800 whitespace-pre-wrap">{msg.body || `[${msg.message_type}]`}</p>
-                      <div className="flex items-center justify-end gap-1.5 mt-1">
-                        <span className="text-[10px] text-surface-400">
-                          {new Date(msg.received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {msg.direction === 'outbound' && (
-                          <span className={cn('text-[10px]',
-                            msg.status === 'read' ? 'text-blue-500' :
-                            msg.status === 'delivered' ? 'text-surface-400' : 'text-surface-300')}>
-                            {msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : msg.status === 'failed' ? '!' : '✓'}
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      {deal.value != null && <span className="text-xs font-semibold text-surface-700">{formatCurrency(deal.value)}</span>}
+                      <span className={cn('badge text-[9px]',
+                        deal.status === 'won' ? 'badge-green' : deal.status === 'lost' ? 'badge-red' : 'badge-blue')}>
+                        {deal.status}
+                      </span>
+                      <span className="text-[10px] text-surface-400">{timeAgo(deal.created_at)}</span>
                     </div>
                   </div>
                 ))}
               </div>
+            )}
+          </div>
 
-              {/* Send message */}
-              {contact?.phone && (
-                <div className="p-3 border-t border-surface-100 bg-surface-50 flex gap-2">
-                  <input
-                    type="text"
-                    className="input flex-1"
-                    placeholder="Type a message..."
-                    value={waSendText}
-                    onChange={e => setWaSendText(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey && waSendText.trim()) {
-                        e.preventDefault()
-                        handleWaSend()
-                      }
-                    }}
-                  />
-                  <button onClick={handleWaSend} disabled={waSending || !waSendText.trim()}
-                    className="btn-primary btn-sm px-4" style={{ backgroundColor: '#25D366' }}>
-                    {waSending
-                      ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      : <Send className="w-4 h-4" />}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ====== EMAILS TAB ====== */}
-      {tab === 'emails' && (
-        <div>
-          {emails.length === 0 ? (
-            <div className="text-center py-12 card p-6">
-              <Mail className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium">No emails synced</p>
-              <p className="text-xs text-surface-400 mt-1">Connect Gmail or Outlook in Integrations to auto-sync emails</p>
+          {/* Quotes Section (compact) */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide">
+                <FileText className="w-3.5 h-3.5 inline mr-1" />
+                Quotes ({quotes.length})
+              </h3>
+              <button onClick={() => router.push('/quotes')} className="text-[10px] text-brand-600 hover:underline font-medium">View all</button>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {emails.map(email => (
-                <div key={email.id} className="card p-4">
-                  <div className="flex items-start gap-3">
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-                      email.direction === 'inbound' ? 'bg-blue-50' : 'bg-emerald-50')}>
-                      {email.direction === 'inbound'
-                        ? <ArrowDownLeft className="w-4 h-4 text-blue-600" />
-                        : <ArrowUpRight className="w-4 h-4 text-emerald-600" />}
+            {quotes.length === 0 ? (
+              <p className="text-sm text-surface-400 py-4 text-center">No quotes yet</p>
+            ) : (
+              <div className="space-y-1.5">
+                {quotes.map(quote => (
+                  <div key={quote.id} onClick={() => router.push(`/quotes?edit=${quote.id}`)}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-surface-50 transition-colors cursor-pointer">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-surface-800 truncate">{quote.title}</p>
+                      <p className="text-[10px] text-surface-400">{quote.quote_number} · {new Date(quote.created_at).toLocaleDateString()}</p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-surface-800 truncate">{email.subject}</p>
-                        <span className={cn('badge text-[9px] flex-shrink-0',
-                          email.direction === 'inbound' ? 'badge-blue' : 'badge-green')}>
-                          {email.direction === 'inbound' ? 'Received' : 'Sent'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-surface-500 mt-0.5">
-                        {email.direction === 'inbound'
-                          ? `From: ${email.from_name || email.from_address}`
-                          : `To: ${email.to_addresses?.[0]?.name || email.to_addresses?.[0]?.email || ''}`}
-                        {' · '}{new Date(email.received_at).toLocaleDateString()} {new Date(email.received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                      {email.snippet && (
-                        <p className="text-xs text-surface-400 mt-1.5 line-clamp-2">{email.snippet}</p>
-                      )}
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <span className="text-xs font-semibold text-surface-700">{formatCurrency(quote.total)}</span>
+                      <span className={cn('badge text-[9px]',
+                        quote.status === 'accepted' ? 'badge-green' : quote.status === 'rejected' ? 'badge-red' :
+                        quote.status === 'sent' ? 'badge-blue' : 'badge-gray')}>
+                        {quote.status}
+                      </span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Company Hierarchy */}
+          {contact.type === 'company' && companyPeople.length > 0 && (
+            <div className="card p-4">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">
+                <Users className="w-3.5 h-3.5 inline mr-1" /> People at {contact.name} ({companyPeople.length})
+              </h3>
+              <div className="space-y-2">
+                {companyPeople.map(p => (
+                  <div key={p.id} onClick={() => router.push(`/contacts/${p.id}`)}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-50 cursor-pointer transition-colors">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${AVATAR_COLORS[p.name.charCodeAt(0) % AVATAR_COLORS.length]}`}>
+                      {getInitials(p.name)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-surface-800 truncate">{p.name}</p>
+                      {p.job_title && <p className="text-[10px] text-surface-400">{p.job_title}</p>}
+                    </div>
+                    {p.email && <p className="text-[10px] text-brand-600 ml-auto truncate">{p.email}</p>}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+          {contact.type === 'person' && contact.company_name && (
+            <div className="card p-4">
+              <p className="text-xs text-surface-500">
+                Works at{' '}
+                <button onClick={() => router.push(`/contacts?company=${encodeURIComponent(contact.company_name!)}`)}
+                  className="text-brand-600 font-semibold hover:underline">
+                  {contact.company_name}
+                </button>
+              </p>
+            </div>
+          )}
+
         </div>
-      )}
+        {/* END LEFT COLUMN */}
+
+        {/* ====== RIGHT COLUMN (40%) - Sticky Interaction Hub ====== */}
+        <div className="w-full lg:w-[40%]">
+          <div className="lg:sticky lg:top-4 space-y-4">
+
+            {/* Notes Chat Feed */}
+            <div className="card overflow-hidden flex flex-col" style={{ maxHeight: '50vh' }}>
+              <div className="px-4 py-3 border-b border-surface-100 bg-surface-50 flex-shrink-0">
+                <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wide">
+                  <FileText className="w-3.5 h-3.5 inline mr-1" /> Notes ({noteActivities.length})
+                </h3>
+              </div>
+
+              {/* Chat messages area */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[120px]">
+                {noteActivities.length === 0 && (
+                  <p className="text-sm text-surface-400 text-center py-8">No notes yet. Start the conversation.</p>
+                )}
+                {noteActivities.map(note => {
+                  const authorName = note.user_id ? (profileMap[note.user_id] || currentUserName) : currentUserName
+                  return (
+                    <div key={note.id} className="flex items-start gap-2">
+                      <div className="w-6 h-6 rounded-full bg-surface-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <User className="w-3 h-3 text-surface-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="bg-surface-100 rounded-2xl rounded-tl-sm px-3 py-2">
+                          <p className="text-sm text-surface-800 whitespace-pre-wrap">{note.title}</p>
+                          {note.notes && <p className="text-xs text-surface-500 mt-1">{note.notes}</p>}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 px-1">
+                          <span className="text-[10px] text-surface-400 font-medium">{authorName}</span>
+                          <span className="text-[10px] text-surface-300">{timeAgo(note.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div ref={notesEndRef} />
+              </div>
+
+              {/* Note input */}
+              <div className="p-3 border-t border-surface-100 bg-surface-50 flex gap-2 flex-shrink-0">
+                <input
+                  type="text"
+                  className="input flex-1"
+                  placeholder="Add a note..."
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey && noteText.trim()) {
+                      e.preventDefault()
+                      sendNote()
+                    }
+                  }}
+                />
+                <button onClick={sendNote} disabled={noteSending || !noteText.trim()}
+                  className="btn-primary btn-sm px-3">
+                  {noteSending
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <Send className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* WhatsApp Chat (collapsible) */}
+            <div className="card overflow-hidden">
+              <button
+                onClick={() => setWaExpanded(!waExpanded)}
+                className="w-full px-4 py-3 border-b border-surface-100 bg-surface-50 flex items-center justify-between hover:bg-surface-100 transition-colors">
+                <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wide">
+                  <MessageCircle className="w-3.5 h-3.5 inline mr-1 text-green-600" /> WhatsApp ({waMessages.length} messages)
+                </h3>
+                {waExpanded ? <ChevronUp className="w-4 h-4 text-surface-400" /> : <ChevronDown className="w-4 h-4 text-surface-400" />}
+              </button>
+
+              {waExpanded && (
+                <>
+                  {waMessages.length === 0 ? (
+                    <div className="text-center py-8 px-4">
+                      <MessageCircle className="w-8 h-8 text-surface-300 mx-auto mb-2" />
+                      <p className="text-sm text-surface-500">No WhatsApp messages</p>
+                      {contact.phone && (
+                        <button onClick={() => waInputRef.current?.focus()}
+                          className="btn-primary btn-sm mt-3" style={{ backgroundColor: '#25D366' }}>
+                          <Send className="w-3.5 h-3.5" /> Start conversation
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-4 space-y-2.5 overflow-y-auto" style={{ maxHeight: '40vh' }}>
+                        {hasMoreWa && (
+                          <button
+                            onClick={() => setWaVisibleCount(prev => prev + 30)}
+                            className="text-xs text-brand-600 hover:underline font-medium w-full text-center py-1">
+                            Load more messages
+                          </button>
+                        )}
+                        {visibleWaMessages.map(msg => (
+                          <div key={msg.id} className={cn('flex', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}>
+                            <div className={cn('max-w-[80%] rounded-2xl px-3.5 py-2 shadow-sm',
+                              msg.direction === 'outbound'
+                                ? 'bg-[#DCF8C6] rounded-tr-sm'
+                                : 'bg-white border border-surface-100 rounded-tl-sm')}>
+                              <p className="text-sm text-surface-800 whitespace-pre-wrap">{msg.body || `[${msg.message_type}]`}</p>
+                              <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                                <span className="text-[10px] text-surface-400">
+                                  {new Date(msg.received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {msg.direction === 'outbound' && (
+                                  <span className={cn('text-[10px]',
+                                    msg.status === 'read' ? 'text-blue-500' :
+                                    msg.status === 'delivered' ? 'text-surface-400' : 'text-surface-300')}>
+                                    {msg.status === 'read' ? '\u2713\u2713' : msg.status === 'delivered' ? '\u2713\u2713' : msg.status === 'failed' ? '!' : '\u2713'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={waEndRef} />
+                      </div>
+
+                      {/* Send WA message */}
+                      {contact.phone && (
+                        <div className="p-3 border-t border-surface-100 bg-surface-50 flex gap-2">
+                          <input
+                            ref={waInputRef}
+                            type="text"
+                            className="input flex-1"
+                            placeholder="Type a message..."
+                            value={waSendText}
+                            onChange={e => setWaSendText(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && !e.shiftKey && waSendText.trim()) {
+                                e.preventDefault()
+                                handleWaSend()
+                              }
+                            }}
+                          />
+                          <button onClick={handleWaSend} disabled={waSending || !waSendText.trim()}
+                            className="btn-primary btn-sm px-3" style={{ backgroundColor: '#25D366' }}>
+                            {waSending
+                              ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              : <Send className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Email History (collapsible, compact) */}
+            <div className="card overflow-hidden">
+              <button
+                onClick={() => setEmailExpanded(!emailExpanded)}
+                className="w-full px-4 py-3 border-b border-surface-100 bg-surface-50 flex items-center justify-between hover:bg-surface-100 transition-colors">
+                <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wide">
+                  <Mail className="w-3.5 h-3.5 inline mr-1 text-blue-600" /> Emails ({emails.length})
+                </h3>
+                {emailExpanded ? <ChevronUp className="w-4 h-4 text-surface-400" /> : <ChevronDown className="w-4 h-4 text-surface-400" />}
+              </button>
+
+              {emailExpanded && (
+                <div className="max-h-[40vh] overflow-y-auto">
+                  {emails.length === 0 ? (
+                    <div className="text-center py-6 px-4">
+                      <Mail className="w-8 h-8 text-surface-300 mx-auto mb-2" />
+                      <p className="text-sm text-surface-500">No emails synced</p>
+                      <p className="text-[10px] text-surface-400 mt-1">Connect Gmail or Outlook in Integrations</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-surface-100">
+                      {emails.map(email => (
+                        <div key={email.id} className="px-4 py-3 hover:bg-surface-50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className={cn('w-5 h-5 rounded flex items-center justify-center flex-shrink-0',
+                              email.direction === 'inbound' ? 'bg-blue-50' : 'bg-emerald-50')}>
+                              {email.direction === 'inbound'
+                                ? <ArrowDownLeft className="w-3 h-3 text-blue-600" />
+                                : <ArrowUpRight className="w-3 h-3 text-emerald-600" />}
+                            </div>
+                            <p className="text-sm font-medium text-surface-800 truncate flex-1">{email.subject}</p>
+                            <span className="text-[10px] text-surface-400 flex-shrink-0">{timeAgo(email.received_at)}</span>
+                          </div>
+                          {email.snippet && (
+                            <p className="text-[11px] text-surface-400 mt-1 line-clamp-1 pl-7">{email.snippet}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+        {/* END RIGHT COLUMN */}
+
+      </div>
+      {/* END TWO-COLUMN LAYOUT */}
 
       {/* ====== NEW ACTIVITY MODAL ====== */}
       {showNewActivity && (
