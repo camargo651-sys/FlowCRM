@@ -266,6 +266,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.extensions': 'Extensiones',
     'nav.import': 'Importar',
     'nav.custom_reports': 'Reportes Custom',
+    'nav.bi': 'Business Intelligence',
 
     // Tickets
     'tickets.title': 'Tickets de Servicio',
@@ -374,6 +375,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.extensions': 'Extensions',
     'nav.import': 'Import',
     'nav.custom_reports': 'Custom Reports',
+    'nav.bi': 'BI Dashboard',
     'section.sales': 'Sales',
     'section.operations': 'Operations',
     'section.finance': 'Finance',
@@ -883,6 +885,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.extensions': 'Extensões',
     'nav.import': 'Importar',
     'nav.custom_reports': 'Relatórios Custom',
+    'nav.bi': 'BI Dashboard',
 
     // Tickets
     'tickets.title': 'Tickets de Serviço',
@@ -1195,6 +1198,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.extensions': 'Extensions',
     'nav.import': 'Importer',
     'nav.custom_reports': 'Rapports Perso.',
+    'nav.bi': 'Tableau de bord BI',
 
     // Tickets
     'tickets.title': 'Tickets de service',
@@ -1507,6 +1511,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.extensions': 'Erweiterungen',
     'nav.import': 'Importieren',
     'nav.custom_reports': 'Eigene Berichte',
+    'nav.bi': 'BI-Dashboard',
 
     // Tickets
     'tickets.title': 'Service-Tickets',

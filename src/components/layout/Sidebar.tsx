@@ -86,7 +86,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     '/invoices': 'invoicing', '/pos': 'pos', '/store-orders': 'ecommerce',
     '/inventory': 'inventory', '/purchasing': 'purchasing', '/manufacturing': 'manufacturing',
     '/accounting': 'accounting', '/expenses': 'expenses', '/reports': 'reports',
-    '/hr': 'hr', '/tasks': 'crm', '/analytics': 'reports',
+    '/hr': 'hr', '/tasks': 'crm', '/analytics': 'reports', '/bi': 'reports',
     '/roles': 'settings', '/team': 'team', '/integrations': 'settings',
     '/automations': 'automations', '/api-docs': 'settings', '/audit-log': 'settings',
     '/settings': 'settings', '/settings/company': 'settings',
@@ -139,7 +139,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       { href: '/hr', icon: Briefcase, label: t('nav.hr') },
       { href: '/tasks', icon: CheckSquare, label: t('nav.tasks') },
       { href: '/calendar', icon: CalendarDays, label: t('nav.calendar') },
-      { href: '/analytics', icon: BarChart2, label: t('nav.analytics') },
+      { href: '/bi', icon: BarChart2, label: t('nav.analytics') },
     ]},
     { key: 'config', label: t('section.config'), items: [
       { href: '/settings', icon: Settings, label: t('nav.general') },

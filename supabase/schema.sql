@@ -1773,4 +1773,7 @@ ALTER TABLE activities ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES auth
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS custom_domain text;
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS branding_config jsonb DEFAULT '{}';
 
+-- MIGRATION: BI Dashboards
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS bi_dashboards jsonb DEFAULT '[]';
+
 -- Done! Your Tracktio database is ready.
