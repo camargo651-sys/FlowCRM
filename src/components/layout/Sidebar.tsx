@@ -266,7 +266,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
                   : 'text-surface-400 hover:bg-surface-700 hover:text-white'
               )}
             >
-              <span className="text-base leading-none">{'\u{2699}\u{FE0F}'}</span>
+              <ModuleIcon icon="settings" className="w-5 h-5" />
               <span className="absolute left-full ml-2 px-2 py-1 bg-surface-800 text-white text-[11px] font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
                 Settings
               </span>
@@ -279,7 +279,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
             title="Add Module"
             className="w-10 h-10 rounded-xl flex items-center justify-center text-surface-500 hover:bg-surface-700 hover:text-white transition-all duration-150 relative group"
           >
-            <Plus className="w-4 h-4" />
+            <TracktioIcons.Add className="w-5 h-5" />
             <span className="absolute left-full ml-2 px-2 py-1 bg-surface-800 text-white text-[11px] font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
               Add Module
             </span>
