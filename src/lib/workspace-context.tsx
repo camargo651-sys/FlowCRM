@@ -12,6 +12,7 @@ interface WorkspaceConfig {
   logoUrl: string
   template: IndustryTemplate
   customFields: { entity: string; label: string; key: string; type: string; options?: string[] }[]
+  enabledModules: Record<string, boolean>
   loading: boolean
 }
 
@@ -19,13 +20,13 @@ const defaultTemplate = getTemplate('generic')
 
 const WorkspaceContext = createContext<WorkspaceConfig>({
   id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#6172f3',
-  logoUrl: '', template: defaultTemplate, customFields: [], loading: true,
+  logoUrl: '', template: defaultTemplate, customFields: [], enabledModules: {}, loading: true,
 })
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<WorkspaceConfig>({
     id: '', name: '', industry: 'generic', plan: 'free', primaryColor: '#6172f3',
-    logoUrl: '', template: defaultTemplate, customFields: [], loading: true,
+    logoUrl: '', template: defaultTemplate, customFields: [], enabledModules: {}, loading: true,
   })
 
   useEffect(() => {
@@ -44,13 +45,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       let ws: any = null
       if (activeWsId) {
         const { data } = await supabase.from('workspaces')
-          .select('id, name, industry, plan, primary_color, logo_url, terminology')
+          .select('id, name, industry, plan, primary_color, logo_url, terminology, enabled_modules')
           .eq('id', activeWsId).eq('owner_id', user.id).limit(1)
         ws = data?.[0] || null
       }
       if (!ws) {
         const { data } = await supabase.from('workspaces')
-          .select('id, name, industry, plan, primary_color, logo_url, terminology')
+          .select('id, name, industry, plan, primary_color, logo_url, terminology, enabled_modules')
           .eq('owner_id', user.id).order('created_at').limit(1)
         ws = data?.[0] || null
         if (ws && typeof window !== 'undefined') {
@@ -72,6 +73,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         .eq('workspace_id', ws.id)
         .order('order_index')
 
+      // Parse enabled_modules from workspace
+      const rawModules = ws.enabled_modules as Record<string, boolean> | null
+      const enabledModules: Record<string, boolean> = rawModules && typeof rawModules === 'object' ? rawModules : {}
+
       setConfig({
         id: ws.id,
         name: ws.name,
@@ -81,6 +86,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         logoUrl: ws.logo_url || '',
         template,
         customFields: fields || [],
+        enabledModules,
         loading: false,
       })
     }
