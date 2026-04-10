@@ -28,6 +28,7 @@ export interface ModuleDef {
   icon: string
   label: string
   always?: boolean
+  directLink?: string // If set, clicking navigates here instead of opening sub-nav
   items: ModuleItem[]
   /** Maps to workspace.enabled_modules keys that make this module visible */
   enableKeys?: string[]
@@ -36,7 +37,8 @@ export interface ModuleDef {
 export const MODULES: ModuleDef[] = [
   {
     key: 'home', icon: 'home', label: 'Home', always: true,
-    items: [{ href: '/dashboard', label: 'Dashboard' }],
+    directLink: '/dashboard', // No sub-nav, direct navigation
+    items: [],
   },
   {
     key: 'sales', icon: 'sales', label: 'Sales',
@@ -47,10 +49,15 @@ export const MODULES: ModuleDef[] = [
       { href: '/quotes', label: 'Quotes' },
       { href: '/leads', label: 'Leads' },
       { href: '/campaigns', label: 'Campaigns' },
-      { href: '/whatsapp-campaigns', label: 'WA Campaigns' },
-      { href: '/whatsapp', label: 'WA Inbox' },
+    ],
+  },
+  {
+    key: 'whatsapp', icon: 'whatsapp', label: 'WhatsApp',
+    enableKeys: ['crm'],
+    items: [
+      { href: '/whatsapp', label: 'Inbox' },
+      { href: '/whatsapp-campaigns', label: 'Campaigns' },
       { href: '/sequences', label: 'Sequences' },
-      { href: '/contracts', label: 'Contracts' },
     ],
   },
   {
@@ -62,6 +69,7 @@ export const MODULES: ModuleDef[] = [
       { href: '/expenses', label: 'Expenses' },
       { href: '/reports', label: 'Reports' },
       { href: '/reports/custom', label: 'Custom Reports' },
+      { href: '/bi', label: 'BI Dashboard' },
     ],
   },
   {
@@ -82,7 +90,6 @@ export const MODULES: ModuleDef[] = [
       { href: '/hr', label: 'HR' },
       { href: '/tasks', label: 'Tasks' },
       { href: '/calendar', label: 'Calendar' },
-      { href: '/bi', label: 'Analytics' },
     ],
   },
   {
@@ -90,6 +97,8 @@ export const MODULES: ModuleDef[] = [
     enableKeys: ['crm'],
     items: [
       { href: '/tickets', label: 'Tickets' },
+      { href: '/contracts', label: 'Contracts' },
+      { href: '/audit-log', label: 'Audit Log' },
     ],
   },
   {
@@ -109,7 +118,6 @@ export const MODULES: ModuleDef[] = [
       { href: '/templates-marketplace', label: 'Marketplace' },
       { href: '/import', label: 'Import' },
       { href: '/api-docs', label: 'API Docs' },
-      { href: '/audit-log', label: 'Audit Log' },
     ],
   },
 ]
@@ -120,6 +128,7 @@ export const MODULES: ModuleDef[] = [
 const ICON_MAP: Record<string, (props: { className?: string }) => React.ReactNode> = {
   home: (p) => <TracktioIcons.Home {...p} />,
   sales: (p) => <TracktioIcons.Sales {...p} />,
+  whatsapp: (p) => <TracktioIcons.WhatsApp {...p} />,
   finance: (p) => <TracktioIcons.Finance {...p} />,
   operations: (p) => <TracktioIcons.Operations {...p} />,
   people: (p) => <TracktioIcons.People {...p} />,
@@ -136,6 +145,9 @@ function ModuleIcon({ icon, className }: { icon: string; className?: string }) {
 /** Find which module owns the current pathname */
 function findActiveModule(pathname: string): string {
   for (const mod of MODULES) {
+    if (mod.directLink && (pathname === mod.directLink || pathname.startsWith(mod.directLink + '/'))) {
+      return mod.key
+    }
     if (mod.items.some(i => pathname === i.href || pathname.startsWith(i.href + '/'))) {
       return mod.key
     }
@@ -228,7 +240,10 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
             return (
               <button
                 key={mod.key}
-                onClick={() => handleSelectModule(mod.key)}
+                onClick={() => {
+                  if (mod.directLink) { router.push(mod.directLink) }
+                  handleSelectModule(mod.key)
+                }}
                 title={mod.label}
                 className={cn(
                   'w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all duration-150 relative group',
@@ -305,7 +320,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         {/* Module title + workspace switcher */}
         <div className="px-3 py-4 flex-shrink-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">{activeModuleDef.icon}</span>
+            <ModuleIcon icon={activeModuleDef.icon} className="w-4 h-4 text-brand-600" />
             <p className="font-bold text-surface-900 text-sm truncate leading-tight">{activeModuleDef.label}</p>
           </div>
           <WorkspaceSwitcher currentName={displayName} currentColor={primaryColor || '#0891B2'} />
