@@ -643,7 +643,7 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId }:
           )}
 
           {activeTab === 'whatsapp' && (
-            <div className="flex flex-col" style={{ height: 380 }}>
+            <div className="flex flex-col h-[60vh] sm:h-[380px]">
               {loadingMsgs ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-green-200 border-t-green-600 rounded-full animate-spin" />

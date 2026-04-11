@@ -636,7 +636,7 @@ function WidgetConfigModal({
           {isNew && (
             <div>
               <label className="label mb-2">Widget Type</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {WIDGET_TYPE_META.map(meta => (
                   <button key={meta.type} onClick={() => setType(meta.type)}
                     className={cn('flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-center',
@@ -656,7 +656,7 @@ function WidgetConfigModal({
           </div>
 
           {/* Size */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">Width (columns)</label>
               <select className="input" value={colSpan} onChange={e => setColSpan(Number(e.target.value))}>
@@ -678,7 +678,7 @@ function WidgetConfigModal({
           {/* Type-specific config */}
           {(type === 'kpi' || type === 'bar' || type === 'line' || type === 'pie' || type === 'table' || type === 'gauge') && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Entity</label>
                   <select className="input" value={entity}
@@ -717,7 +717,7 @@ function WidgetConfigModal({
               )}
 
               {type === 'table' && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Sort By</label>
                     <select className="input" value={config.sortBy || 'created_at'} onChange={e => updateConfig({ sortBy: e.target.value })}>
@@ -846,8 +846,11 @@ function WidgetCard({
 
   return (
     <div
-      className={cn('card overflow-hidden group', heightMap[widget.rowSpan] || 'h-52')}
-      style={{ gridColumn: `span ${widget.colSpan}` }}
+      className={cn('card overflow-hidden group', heightMap[widget.rowSpan] || 'h-52',
+        widget.colSpan >= 2 ? 'col-span-1 sm:col-span-2' : '',
+        widget.colSpan >= 3 ? 'lg:col-span-3' : '',
+        widget.colSpan >= 4 ? 'lg:col-span-4' : '',
+      )}
     >
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-50">
         <div className="flex items-center gap-2 min-w-0">
@@ -1156,7 +1159,7 @@ export default function BIDashboardPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-4 auto-rows-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-auto">
           {activeDashboard.widgets.map(w => (
             <WidgetCard
               key={w.id}

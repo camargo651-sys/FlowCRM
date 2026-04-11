@@ -257,7 +257,7 @@ export default async function DashboardPage() {
           )}
 
           {/* Conversion & Performance KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <div className="card p-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🎯</div>

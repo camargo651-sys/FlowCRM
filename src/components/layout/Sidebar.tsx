@@ -217,7 +217,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
   return (
     <aside className="h-screen flex flex-shrink-0 sticky top-0">
       {/* ─── Left Icon Rail ─── */}
-      <div className="w-[60px] h-full bg-surface-900 flex flex-col items-center py-3 flex-shrink-0">
+      <div className="hidden md:flex w-[60px] h-full bg-surface-900 flex-col items-center py-3 flex-shrink-0">
         {/* Workspace logo */}
         <div className="mb-4">
           <div
@@ -316,7 +316,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
       </div>
 
       {/* ─── Sub-navigation Panel ─── */}
-      <div className="w-[180px] h-full bg-white dark:bg-surface-50 border-r border-surface-100/80 flex flex-col">
+      <div className="hidden lg:flex w-[180px] h-full bg-white dark:bg-surface-50 border-r border-surface-100/80 flex-col">
         {/* Module title + workspace switcher */}
         <div className="px-3 py-4 flex-shrink-0">
           <div className="flex items-center gap-2 mb-1">

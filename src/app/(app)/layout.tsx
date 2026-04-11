@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen overflow-hidden bg-surface-50">
       <MobileNav>{sidebar}</MobileNav>
       <main className="flex-1 overflow-y-auto min-w-0">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 lg:py-8 pt-14 lg:pt-8">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 lg:py-8 pt-14 md:pt-6 lg:pt-8 pb-20 md:pb-6">
           <Breadcrumbs />
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>

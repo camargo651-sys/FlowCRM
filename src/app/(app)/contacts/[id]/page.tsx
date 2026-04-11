@@ -413,6 +413,15 @@ export default function ContactDetailPage() {
         <ArrowLeft className="w-4 h-4" /> Back to {template.contactLabel.plural}
       </button>
 
+      {/* Mobile floating button to jump to interaction hub */}
+      <button
+        onClick={() => document.getElementById('interaction-hub')?.scrollIntoView({ behavior: 'smooth' })}
+        className="lg:hidden fixed bottom-24 right-4 z-40 bg-brand-600 text-white rounded-2xl px-4 py-2.5 shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
+      >
+        <MessageCircle className="w-4 h-4" />
+        <span className="text-sm font-medium">Notes</span>
+      </button>
+
       {/* ====== TWO-COLUMN LAYOUT ====== */}
       <div className="flex flex-col lg:flex-row gap-6">
 
@@ -484,7 +493,7 @@ export default function ContactDetailPage() {
 
           {/* Stats / KPIs bar */}
           <div className="card p-4">
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div className="text-center">
                 <p className="text-lg font-bold text-surface-900">{totalDeals}</p>
                 <p className="text-[10px] text-surface-400 font-semibold uppercase">{template.dealLabel.plural}</p>
@@ -676,7 +685,7 @@ export default function ContactDetailPage() {
         {/* END LEFT COLUMN */}
 
         {/* ====== RIGHT COLUMN (40%) - Sticky Interaction Hub ====== */}
-        <div className="w-full lg:w-[40%]">
+        <div id="interaction-hub" className="w-full lg:w-[40%]">
           <div className="lg:sticky lg:top-4 space-y-4">
 
             {/* Notes Chat Feed */}
@@ -932,7 +941,7 @@ export default function ContactDetailPage() {
                 <label className="label">Title *</label>
                 <input className="input" value={dealTitle} onChange={e => setDealTitle(e.target.value)} placeholder={`${template.dealLabel.singular} title`} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Value</label>
                   <input className="input" type="number" value={dealValue} onChange={e => setDealValue(e.target.value)} placeholder="0" />
@@ -966,7 +975,7 @@ export default function ContactDetailPage() {
                 <label className="label">Name</label>
                 <input className="input" value={editData.name || ''} onChange={e => setEditData(v => ({ ...v, name: e.target.value }))} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Email</label>
                   <input className="input" type="email" value={editData.email || ''} onChange={e => setEditData(v => ({ ...v, email: e.target.value }))} />
@@ -976,7 +985,7 @@ export default function ContactDetailPage() {
                   <input className="input" type="tel" value={editData.phone || ''} onChange={e => setEditData(v => ({ ...v, phone: e.target.value }))} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Company</label>
                   <input className="input" value={editData.company_name || ''} onChange={e => setEditData(v => ({ ...v, company_name: e.target.value }))} />

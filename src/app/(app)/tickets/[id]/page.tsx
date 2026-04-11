@@ -304,6 +304,15 @@ export default function TicketDetailPage() {
         <ArrowLeft className="w-4 h-4" /> Back to Tickets
       </button>
 
+      {/* Mobile floating button to jump to interaction hub */}
+      <button
+        onClick={() => document.getElementById('interaction-hub')?.scrollIntoView({ behavior: 'smooth' })}
+        className="lg:hidden fixed bottom-24 right-4 z-40 bg-brand-600 text-white rounded-2xl px-4 py-2.5 shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
+      >
+        <MessageCircle className="w-4 h-4" />
+        <span className="text-sm font-medium">Chat</span>
+      </button>
+
       {/* ====== TWO-COLUMN LAYOUT ====== */}
       <div className="flex flex-col lg:flex-row gap-6">
 
@@ -533,7 +542,7 @@ export default function TicketDetailPage() {
         {/* END LEFT COLUMN */}
 
         {/* ====== RIGHT COLUMN (40%) - Sticky Interaction Hub ====== */}
-        <div className="w-full lg:w-[40%]">
+        <div id="interaction-hub" className="w-full lg:w-[40%]">
           <div className="lg:sticky lg:top-4 space-y-4">
 
             {/* Internal Notes Feed (chat-style) */}

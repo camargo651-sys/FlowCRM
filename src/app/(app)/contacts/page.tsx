@@ -78,7 +78,7 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
             <input className="input" required value={name} onChange={e => setName(e.target.value)} placeholder={type === 'person' ? 'Jane Smith' : 'Acme Corp'} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">Email</label>
               <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" />
@@ -94,7 +94,7 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
           </div>
 
           {type === 'person' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="label">Company</label>
                 <div className="relative"><Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" />

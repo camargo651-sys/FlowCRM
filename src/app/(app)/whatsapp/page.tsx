@@ -121,7 +121,7 @@ function MediaMessageCard({ msg }: { msg: Message }) {
 
   if (type === 'image') {
     return (
-      <div className="rounded-lg bg-surface-100 border border-surface-200 p-3 min-w-[180px]">
+      <div className="rounded-lg bg-surface-100 border border-surface-200 p-3 min-w-[120px] sm:min-w-[180px]">
         <div className="flex items-center justify-center h-28 bg-surface-200 rounded-md mb-1">
           <Image className="w-8 h-8 text-surface-400" />
         </div>
@@ -132,7 +132,7 @@ function MediaMessageCard({ msg }: { msg: Message }) {
 
   if (type === 'audio' || type === 'voice') {
     return (
-      <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center gap-3 min-w-[200px]">
+      <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center gap-3 min-w-[120px] sm:min-w-[200px]">
         <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
           <Mic className="w-5 h-5 text-green-600" />
         </div>
@@ -146,7 +146,7 @@ function MediaMessageCard({ msg }: { msg: Message }) {
 
   if (type === 'document') {
     return (
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 flex items-center gap-3 min-w-[180px]">
+      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 flex items-center gap-3 min-w-[120px] sm:min-w-[180px]">
         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
           <FileText className="w-5 h-5 text-blue-600" />
         </div>
@@ -160,7 +160,7 @@ function MediaMessageCard({ msg }: { msg: Message }) {
 
   if (type === 'location') {
     return (
-      <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 flex items-center gap-2 min-w-[160px]">
+      <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 flex items-center gap-2 min-w-[120px] sm:min-w-[160px]">
         <MapPin className="w-5 h-5 text-orange-500 flex-shrink-0" />
         <div>
           <p className="text-xs font-medium text-orange-800">Location shared</p>
@@ -172,7 +172,7 @@ function MediaMessageCard({ msg }: { msg: Message }) {
 
   if (type === 'video') {
     return (
-      <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 min-w-[180px]">
+      <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 min-w-[120px] sm:min-w-[180px]">
         <div className="flex items-center justify-center h-28 bg-purple-100 rounded-md mb-1">
           <span className="text-2xl">&#9654;</span>
         </div>

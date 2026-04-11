@@ -237,7 +237,8 @@
   }
   .modal-panel {
     @apply bg-white rounded-2xl shadow-modal w-full animate-slide-up
-           max-h-[85vh] flex flex-col overflow-hidden;
+           max-h-[85vh] flex flex-col overflow-hidden
+           max-w-[calc(100vw-16px)] sm:max-w-none;
   }
   .modal-header {
     @apply flex items-center justify-between px-6 py-4 border-b border-surface-100
@@ -317,13 +318,21 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  /* Mobile touch targets & prevent iOS zoom on focus */
+  @media (max-width: 640px) {
+    .input, select, textarea {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+
   /* Safe area for mobile bottom tab bar */
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   /* Mobile: add bottom padding to main content so it doesn't hide behind tab bar */
-  @media (max-width: 1023px) {
+  @media (max-width: 767px) {
     main { padding-bottom: 5rem !important; }
   }
 

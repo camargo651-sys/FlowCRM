@@ -21,7 +21,7 @@ export default function Breadcrumbs() {
   if (parts.length <= 1) return null
 
   return (
-    <nav className="flex items-center gap-1.5 text-xs text-surface-400 mb-5">
+    <nav className="hidden sm:flex items-center gap-1.5 text-xs text-surface-400 mb-5">
       <Link href="/dashboard" className="hover:text-surface-600 transition-colors p-0.5">
         <Home className="w-3.5 h-3.5" />
       </Link>
