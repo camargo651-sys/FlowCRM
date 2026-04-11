@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { MODULES, type ModuleDef } from './Sidebar'
 import TracktioIcons from '@/components/icons/TracktioIcons'
+import { useI18n } from '@/lib/i18n/context'
 import Link from 'next/link'
 
 const ICON_MAP: Record<string, (p: { className?: string }) => React.ReactNode> = {
@@ -39,6 +40,7 @@ export default function MobileNav({ children }: { children: React.ReactNode }) {
   const [moduleDrawer, setModuleDrawer] = useState<ModuleDef | null>(null)
   const pathname = usePathname()
   const router = useRouter()
+  const { t } = useI18n()
   const activeModule = findActiveModule(pathname)
 
   const isTabActive = (key: string) => activeModule === key
@@ -81,7 +83,7 @@ export default function MobileNav({ children }: { children: React.ReactNode }) {
                 className={cn('flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-colors min-w-[60px]',
                   active ? 'text-brand-600' : 'text-surface-400')}>
                 {Renderer && Renderer({ className: cn('w-5 h-5', active && 'text-brand-600') })}
-                <span className="text-[10px] font-medium">{mod.label}</span>
+                <span className="text-[10px] font-medium">{t(mod.label)}</span>
               </button>
             )
           })}
@@ -106,7 +108,7 @@ export default function MobileNav({ children }: { children: React.ReactNode }) {
             <div className="flex items-center justify-between px-5 pt-3 pb-2">
               <div className="flex items-center gap-2">
                 {ICON_MAP[moduleDrawer.icon]?.({ className: 'w-5 h-5 text-brand-600' })}
-                <h3 className="font-bold text-surface-900">{moduleDrawer.label}</h3>
+                <h3 className="font-bold text-surface-900">{t(moduleDrawer.label)}</h3>
               </div>
               <button onClick={() => setModuleDrawer(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100">
                 <X className="w-4 h-4 text-surface-500" />
@@ -119,7 +121,7 @@ export default function MobileNav({ children }: { children: React.ReactNode }) {
                     pathname === item.href || pathname.startsWith(item.href + '/')
                       ? 'bg-brand-50 text-brand-700'
                       : 'text-surface-700 hover:bg-surface-50')}>
-                  {item.label}
+                  {t(item.label)}
                 </button>
               ))}
             </div>
@@ -151,7 +153,7 @@ export default function MobileNav({ children }: { children: React.ReactNode }) {
                       active ? 'bg-brand-50 text-brand-600' : 'bg-surface-50 text-surface-500')}>
                       {Renderer ? Renderer({ className: 'w-6 h-6' }) : <span className="text-xl">{mod.icon}</span>}
                     </div>
-                    <span className={cn('text-[11px] font-medium', active ? 'text-brand-600' : 'text-surface-600')}>{mod.label}</span>
+                    <span className={cn('text-[11px] font-medium', active ? 'text-brand-600' : 'text-surface-600')}>{t(mod.label)}</span>
                   </button>
                 )
               })}

@@ -318,12 +318,31 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Mobile touch targets & prevent iOS zoom on focus */
+  /* Mobile: touch targets, readability, contrast */
   @media (max-width: 640px) {
     .input, select, textarea {
       min-height: 44px;
       font-size: 16px;
     }
+
+    /* Increase text contrast on mobile for readability */
+    .text-surface-500 { color: #475569 !important; }
+    .text-surface-400 { color: #64748b !important; }
+    .text-surface-300 { color: #94a3b8 !important; }
+
+    /* Larger text on mobile for key elements */
+    .page-title { font-size: 1.25rem !important; }
+    .page-subtitle { font-size: 0.8125rem !important; }
+
+    /* Cards: slightly less shadow, more space */
+    .card { padding: 1rem; }
+    .stat-card { padding: 0.875rem; }
+
+    /* Badges: larger on mobile for readability */
+    .badge { font-size: 11px !important; padding: 2px 8px !important; }
+
+    /* Reduce visual noise: simpler borders */
+    .card { border-color: #e2e8f0; }
   }
 
   /* Safe area for mobile bottom tab bar */

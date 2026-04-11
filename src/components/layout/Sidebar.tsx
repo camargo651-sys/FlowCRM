@@ -34,90 +34,92 @@ export interface ModuleDef {
   enableKeys?: string[]
 }
 
+/** Labels stored as i18n keys — resolved at render time via t() */
 export const MODULES: ModuleDef[] = [
   {
-    key: 'home', icon: 'home', label: 'Home', always: true,
-    directLink: '/dashboard', // No sub-nav, direct navigation
+    key: 'home', icon: 'home', label: 'nav.dashboard', always: true,
+    directLink: '/dashboard',
     items: [],
   },
   {
-    key: 'sales', icon: 'sales', label: 'Sales',
+    key: 'sales', icon: 'sales', label: 'section.sales',
     enableKeys: ['crm'],
     items: [
-      { href: '/pipeline', label: 'Pipeline' },
-      { href: '/contacts', label: 'Contacts' },
-      { href: '/quotes', label: 'Quotes' },
-      { href: '/leads', label: 'Leads' },
-      { href: '/campaigns', label: 'Campaigns' },
+      { href: '/pipeline', label: 'nav.pipeline' },
+      { href: '/contacts', label: 'nav.contacts' },
+      { href: '/quotes', label: 'nav.quotes' },
+      { href: '/leads', label: 'nav.leads' },
+      { href: '/campaigns', label: 'nav.campaigns' },
     ],
   },
   {
     key: 'whatsapp', icon: 'whatsapp', label: 'WhatsApp',
     enableKeys: ['crm'],
     items: [
-      { href: '/whatsapp', label: 'Inbox' },
-      { href: '/whatsapp-campaigns', label: 'Campaigns' },
-      { href: '/sequences', label: 'Sequences' },
+      { href: '/whatsapp', label: 'nav.wa_inbox' },
+      { href: '/whatsapp-campaigns', label: 'nav.wa_campaigns' },
+      { href: '/sequences', label: 'nav.sequences' },
     ],
   },
   {
-    key: 'finance', icon: 'finance', label: 'Finance',
+    key: 'finance', icon: 'finance', label: 'section.finance',
     enableKeys: ['invoicing', 'accounting', 'expenses'],
     items: [
-      { href: '/invoices', label: 'Invoices' },
-      { href: '/accounting', label: 'Accounting' },
-      { href: '/expenses', label: 'Expenses' },
-      { href: '/reports', label: 'Reports' },
-      { href: '/reports/custom', label: 'Custom Reports' },
-      { href: '/bi', label: 'BI Dashboard' },
+      { href: '/invoices', label: 'nav.invoices' },
+      { href: '/accounting', label: 'nav.accounting' },
+      { href: '/expenses', label: 'nav.expenses' },
+      { href: '/reports', label: 'nav.reports' },
+      { href: '/reports/custom', label: 'nav.custom_reports' },
+      { href: '/bi', label: 'nav.bi' },
     ],
   },
   {
-    key: 'operations', icon: 'operations', label: 'Operations',
+    key: 'operations', icon: 'operations', label: 'section.operations',
     enableKeys: ['inventory', 'purchasing', 'manufacturing', 'pos', 'ecommerce'],
     items: [
-      { href: '/inventory', label: 'Inventory' },
-      { href: '/purchasing', label: 'Purchasing' },
-      { href: '/manufacturing', label: 'Manufacturing' },
-      { href: '/pos', label: 'POS' },
-      { href: '/store-orders', label: 'E-commerce' },
+      { href: '/inventory', label: 'nav.inventory' },
+      { href: '/purchasing', label: 'nav.purchasing' },
+      { href: '/manufacturing', label: 'nav.manufacturing' },
+      { href: '/pos', label: 'nav.pos' },
+      { href: '/store-orders', label: 'nav.ecommerce' },
     ],
   },
   {
-    key: 'people', icon: 'people', label: 'People',
+    key: 'people', icon: 'people', label: 'section.people',
     enableKeys: ['hr'],
     items: [
-      { href: '/hr', label: 'HR' },
-      { href: '/tasks', label: 'Tasks' },
-      { href: '/calendar', label: 'Calendar' },
+      { href: '/hr', label: 'nav.hr' },
+      { href: '/tasks', label: 'nav.tasks' },
+      { href: '/calendar', label: 'nav.calendar' },
     ],
   },
   {
-    key: 'support', icon: 'support', label: 'Support',
+    key: 'support', icon: 'support', label: 'nav.tickets',
     enableKeys: ['crm'],
     items: [
-      { href: '/tickets', label: 'Tickets' },
-      { href: '/contracts', label: 'Contracts' },
-      { href: '/audit-log', label: 'Audit Log' },
+      { href: '/tickets', label: 'nav.tickets' },
+      { href: '/contracts', label: 'nav.contracts' },
+      { href: '/audit-log', label: 'nav.audit_log' },
     ],
   },
   {
-    key: 'settings', icon: 'settings', label: 'Settings', always: true,
+    key: 'settings', icon: 'settings', label: 'nav.settings',
+    always: true,
     items: [
-      { href: '/settings', label: 'General' },
-      { href: '/settings/company', label: 'Company' },
-      { href: '/settings/modules', label: 'Modules' },
-      { href: '/settings/form-builder', label: 'Form Builder' },
-      { href: '/settings/templates', label: 'Templates' },
-      { href: '/settings/widget', label: 'Web Widget' },
-      { href: '/roles', label: 'Roles' },
-      { href: '/team', label: 'Team' },
-      { href: '/integrations', label: 'Integrations' },
-      { href: '/automations', label: 'Automations' },
-      { href: '/billing', label: 'Billing' },
-      { href: '/templates-marketplace', label: 'Marketplace' },
-      { href: '/import', label: 'Import' },
-      { href: '/api-docs', label: 'API Docs' },
+      { href: '/settings', label: 'nav.general' },
+      { href: '/settings/company', label: 'nav.company' },
+      { href: '/settings/modules', label: 'nav.modules' },
+      { href: '/settings/form-builder', label: 'nav.form_builder' },
+      { href: '/settings/templates', label: 'nav.templates' },
+      { href: '/settings/widget', label: 'nav.widget' },
+      { href: '/roles', label: 'nav.roles' },
+      { href: '/team', label: 'nav.team' },
+      { href: '/integrations', label: 'nav.integrations' },
+      { href: '/automations', label: 'nav.automations' },
+      { href: '/billing', label: 'nav.billing' },
+      { href: '/templates-marketplace', label: 'nav.marketplace' },
+      { href: '/import', label: 'nav.import' },
+      { href: '/api-docs', label: 'nav.api_docs' },
     ],
   },
 ]
@@ -244,7 +246,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
                   if (mod.directLink) { router.push(mod.directLink) }
                   handleSelectModule(mod.key)
                 }}
-                title={mod.label}
+                title={t(mod.label)}
                 className={cn(
                   'w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all duration-150 relative group',
                   isSelected
@@ -255,7 +257,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
                 <ModuleIcon icon={mod.icon} className="w-5 h-5" />
                 {/* Tooltip */}
                 <span className="absolute left-full ml-2 px-2 py-1 bg-surface-800 text-white text-[11px] font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
-                  {mod.label}
+                  {t(mod.label)}
                 </span>
               </button>
             )
@@ -321,7 +323,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         <div className="px-3 py-4 flex-shrink-0">
           <div className="flex items-center gap-2 mb-1">
             <ModuleIcon icon={activeModuleDef.icon} className="w-4 h-4 text-brand-600" />
-            <p className="font-bold text-surface-900 text-sm truncate leading-tight">{activeModuleDef.label}</p>
+            <p className="font-bold text-surface-900 text-sm truncate leading-tight">{t(activeModuleDef.label)}</p>
           </div>
           <WorkspaceSwitcher currentName={displayName} currentColor={primaryColor || '#0891B2'} />
         </div>
@@ -361,7 +363,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
                   {isActive(href) && !locked && (
                     <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-brand-600" />
                   )}
-                  <span className="truncate flex-1">{label}</span>
+                  <span className="truncate flex-1">{t(label)}</span>
                   {locked && (
                     <svg className="w-3 h-3 text-surface-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
