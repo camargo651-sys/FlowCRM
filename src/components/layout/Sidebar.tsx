@@ -215,9 +215,9 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
   }
 
   return (
-    <aside className="h-screen flex flex-shrink-0 sticky top-0">
+    <aside className="hidden md:flex h-screen flex-shrink-0 sticky top-0">
       {/* ─── Left Icon Rail ─── */}
-      <div className="hidden md:flex w-[60px] h-full bg-surface-900 flex-col items-center py-3 flex-shrink-0">
+      <div className="w-[60px] h-full bg-surface-900 flex flex-col items-center py-3 flex-shrink-0">
         {/* Workspace logo */}
         <div className="mb-4">
           <div

@@ -1,117 +1,160 @@
 'use client'
 import { useState } from 'react'
-import { Menu, Plus, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { MODULES } from './Sidebar'
+import { MODULES, type ModuleDef } from './Sidebar'
 import TracktioIcons from '@/components/icons/TracktioIcons'
+import Link from 'next/link'
 
-const MOBILE_TABS = [
-  { moduleKey: 'home', label: 'Home', href: '/dashboard' },
-  { moduleKey: 'sales', label: 'Sales', href: '/pipeline' },
-  { moduleKey: 'whatsapp', label: 'WhatsApp', href: '/whatsapp' },
-  { moduleKey: 'finance', label: 'Finance', href: '/invoices' },
-  { moduleKey: '__more__', label: 'More', href: '' },
-]
-
-const MORE_MODULES = MODULES.filter(m => !['home', 'sales', 'whatsapp', 'finance'].includes(m.key))
-
-const TAB_ICONS: Record<string, (p: { className?: string }) => React.ReactNode> = {
+const ICON_MAP: Record<string, (p: { className?: string }) => React.ReactNode> = {
   home: (p) => <TracktioIcons.Home {...p} />,
   sales: (p) => <TracktioIcons.Sales {...p} />,
   whatsapp: (p) => <TracktioIcons.WhatsApp {...p} />,
   finance: (p) => <TracktioIcons.Finance {...p} />,
+  operations: (p) => <TracktioIcons.Operations {...p} />,
+  people: (p) => <TracktioIcons.People {...p} />,
+  support: (p) => <TracktioIcons.Support {...p} />,
+  settings: (p) => <TracktioIcons.Settings {...p} />,
+}
+
+// Bottom tab bar shows these 4 + More
+const TAB_KEYS = ['home', 'sales', 'whatsapp', 'finance']
+
+function getModuleHref(mod: ModuleDef): string {
+  if (mod.directLink) return mod.directLink
+  return mod.items[0]?.href || '/dashboard'
+}
+
+function findActiveModule(pathname: string): string {
+  for (const mod of MODULES) {
+    if (mod.directLink && (pathname === mod.directLink || pathname.startsWith(mod.directLink + '/'))) return mod.key
+    if (mod.items.some(i => pathname === i.href || pathname.startsWith(i.href + '/'))) return mod.key
+  }
+  return 'home'
 }
 
 export default function MobileNav({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [moduleDrawer, setModuleDrawer] = useState<ModuleDef | null>(null)
   const pathname = usePathname()
   const router = useRouter()
+  const activeModule = findActiveModule(pathname)
 
-  const isActive = (href: string) => {
-    if (!href) return false
-    return pathname === href || pathname.startsWith(href + '/')
+  const isTabActive = (key: string) => activeModule === key
+
+  const handleTab = (key: string) => {
+    setMoreOpen(false)
+    setModuleDrawer(null)
+    if (key === '__more__') { setMoreOpen(true); return }
+    const mod = MODULES.find(m => m.key === key)
+    if (!mod) return
+    // If module has sub-items, show drawer. If directLink, navigate.
+    if (mod.directLink) { router.push(mod.directLink); return }
+    if (mod.items.length <= 1) { router.push(getModuleHref(mod)); return }
+    setModuleDrawer(mod)
   }
 
-  const handleTab = (tab: typeof MOBILE_TABS[0]) => {
-    if (tab.moduleKey === '__more__') { setMoreOpen(true); return }
-    router.push(tab.href)
+  const handleModuleItem = (href: string) => {
+    router.push(href)
+    setModuleDrawer(null)
     setMoreOpen(false)
   }
 
   return (
     <>
-      {/* Desktop sidebar - always visible */}
-      <div className="hidden lg:block">
+      {/* Desktop sidebar — only visible on md+ */}
+      <div className="hidden md:block">
         {children}
       </div>
 
-      {/* Mobile: hamburger for full sidebar */}
-      <button onClick={() => setSidebarOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 bg-white/90 backdrop-blur-sm border border-surface-200 rounded-xl flex items-center justify-center shadow-card">
-        <Menu className="w-5 h-5 text-surface-600" />
-      </button>
+      {/* ─── Mobile Bottom Tab Bar ─── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-surface-100" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex items-center justify-around px-1 py-1">
+          {TAB_KEYS.map(key => {
+            const mod = MODULES.find(m => m.key === key)
+            if (!mod) return null
+            const active = isTabActive(key)
+            const Renderer = ICON_MAP[key]
+            return (
+              <button key={key} onClick={() => handleTab(key)}
+                className={cn('flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-colors min-w-[60px]',
+                  active ? 'text-brand-600' : 'text-surface-400')}>
+                {Renderer && Renderer({ className: cn('w-5 h-5', active && 'text-brand-600') })}
+                <span className="text-[10px] font-medium">{mod.label}</span>
+              </button>
+            )
+          })}
+          {/* More button */}
+          <button onClick={() => handleTab('__more__')}
+            className={cn('flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-colors min-w-[60px]',
+              moreOpen ? 'text-brand-600' : 'text-surface-400')}>
+            <TracktioIcons.Add className="w-5 h-5" />
+            <span className="text-[10px] font-medium">More</span>
+          </button>
+        </div>
+      </div>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 animate-fade-in">
-          <div className="absolute inset-0 bg-surface-900/40 backdrop-blur-[2px]" onClick={() => setSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 h-full w-[240px] animate-slide-in-right shadow-modal" onClick={() => setSidebarOpen(false)}>
-            {children}
+      {/* ─── Module Sub-items Drawer ─── */}
+      {moduleDrawer && (
+        <div className="md:hidden fixed inset-0 z-50 animate-fade-in" onClick={() => setModuleDrawer(null)}>
+          <div className="absolute inset-0 bg-surface-900/40 backdrop-blur-[2px]" />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-modal animate-slide-up"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-surface-200 rounded-full mx-auto mt-3" />
+            <div className="flex items-center justify-between px-5 pt-3 pb-2">
+              <div className="flex items-center gap-2">
+                {ICON_MAP[moduleDrawer.icon]?.({ className: 'w-5 h-5 text-brand-600' })}
+                <h3 className="font-bold text-surface-900">{moduleDrawer.label}</h3>
+              </div>
+              <button onClick={() => setModuleDrawer(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100">
+                <X className="w-4 h-4 text-surface-500" />
+              </button>
+            </div>
+            <div className="px-4 pb-6 space-y-1">
+              {moduleDrawer.items.map(item => (
+                <button key={item.href} onClick={() => handleModuleItem(item.href)}
+                  className={cn('w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors',
+                    pathname === item.href || pathname.startsWith(item.href + '/')
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-surface-700 hover:bg-surface-50')}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Mobile bottom tab bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-surface-100 safe-area-bottom">
-        <div className="flex items-center justify-around px-2 py-1.5">
-          {MOBILE_TABS.map(tab => {
-            const active = isActive(tab.href)
-            const isMore = tab.moduleKey === '__more__'
-            const IconRenderer = TAB_ICONS[tab.moduleKey]
-            return (
-              <button key={tab.moduleKey} onClick={() => handleTab(tab)}
-                className={cn('flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-colors min-w-[56px]',
-                  active ? 'text-brand-600' : 'text-surface-400')}>
-                {isMore ? (
-                  <>
-                    <span className="text-lg leading-none">{'\u2026'}</span>
-                    <span className={cn('text-[10px] font-medium')}>{tab.label}</span>
-                  </>
-                ) : IconRenderer ? (
-                  <>
-                    {IconRenderer({ className: 'w-5 h-5' })}
-                    <span className={cn('text-[10px] font-medium', active && 'text-brand-600')}>{tab.label}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-lg leading-none">?</span>
-                    <span className={cn('text-[10px] font-medium', active && 'text-brand-600')}>{tab.label}</span>
-                  </>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* More sheet */}
+      {/* ─── More Sheet ─── */}
       {moreOpen && (
         <div className="md:hidden fixed inset-0 z-50 animate-fade-in" onClick={() => setMoreOpen(false)}>
           <div className="absolute inset-0 bg-surface-900/40 backdrop-blur-[2px]" />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-modal animate-slide-up safe-area-bottom" onClick={e => e.stopPropagation()}>
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-modal animate-slide-up"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-surface-200 rounded-full mx-auto mt-3 mb-4" />
-            <div className="px-4 pb-6 grid grid-cols-4 gap-4">
-              {MORE_MODULES.map(mod => (
-                <button key={mod.key} onClick={() => { if (mod.directLink) router.push(mod.directLink); else if (mod.items[0]) router.push(mod.items[0].href); setMoreOpen(false) }}
-                  className="flex flex-col items-center gap-1.5 py-2">
-                  <div className="w-12 h-12 bg-surface-50 rounded-2xl flex items-center justify-center">
-                    <span className="text-xl">{mod.icon}</span>
-                  </div>
-                  <span className="text-[11px] text-surface-600 font-medium">{mod.label}</span>
-                </button>
-              ))}
+            <div className="px-4 pb-6 grid grid-cols-4 gap-3">
+              {MODULES.filter(m => m.key !== 'home').map(mod => {
+                const Renderer = ICON_MAP[mod.icon]
+                const active = isTabActive(mod.key)
+                return (
+                  <button key={mod.key} onClick={() => {
+                    setMoreOpen(false)
+                    if (mod.directLink) { router.push(mod.directLink); return }
+                    if (mod.items.length <= 1) { router.push(getModuleHref(mod)); return }
+                    setModuleDrawer(mod)
+                  }}
+                    className="flex flex-col items-center gap-1.5 py-2">
+                    <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-colors',
+                      active ? 'bg-brand-50 text-brand-600' : 'bg-surface-50 text-surface-500')}>
+                      {Renderer ? Renderer({ className: 'w-6 h-6' }) : <span className="text-xl">{mod.icon}</span>}
+                    </div>
+                    <span className={cn('text-[11px] font-medium', active ? 'text-brand-600' : 'text-surface-600')}>{mod.label}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
