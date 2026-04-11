@@ -5,6 +5,7 @@ import { Shield, Plus, X, Save, Trash2, CheckCircle2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ALL_MODULES, ALL_ACTIONS, ROLE_TEMPLATES } from '@/lib/rbac/permissions'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 interface CustomRole {
   id: string; name: string; description: string; color: string;
@@ -12,6 +13,7 @@ interface CustomRole {
 }
 
 export default function RolesPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [roles, setRoles] = useState<CustomRole[]>([])
   const [loading, setLoading] = useState(true)
@@ -119,10 +121,10 @@ export default function RolesPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">Roles & Permissions</h1><p className="text-sm text-surface-500 mt-0.5">{roles.length} roles configured</p></div>
+        <div><h1 className="page-title">{t('pages.roles')}</h1><p className="text-sm text-surface-500 mt-0.5">{roles.length} roles configured</p></div>
         <div className="flex gap-2">
           {roles.length === 0 && <button onClick={seedDefaultRoles} className="btn-secondary btn-sm"><Copy className="w-3.5 h-3.5" /> Load Defaults</button>}
-          <button onClick={() => { setEditing(null); setName(''); setDescription(''); setPermissions({}); setShowNew(true) }} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Role</button>
+          <button onClick={() => { setEditing(null); setName(''); setDescription(''); setPermissions({}); setShowNew(true) }} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> {t('action.new')} Role</button>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Mail, Clock, X, Trash2, CheckCircle2 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Member {
   id: string
@@ -29,6 +30,7 @@ interface Invitation {
 }
 
 export default function TeamPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [members, setMembers] = useState<Member[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
@@ -107,7 +109,7 @@ export default function TeamPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Team</h1>
+          <h1 className="page-title">{t('pages.team')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{members.length} member{members.length !== 1 ? 's' : ''}</p>
         </div>
         <button onClick={() => setShowInvite(true)} className="btn-primary btn-sm">

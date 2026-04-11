@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Save, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 const MODULES = [
   { key: 'crm', label: 'CRM / Sales', desc: 'Pipeline, contacts, deals, quotes', icon: '🔀', default: true },
@@ -20,6 +21,7 @@ const MODULES = [
 ]
 
 export default function ModulesPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [enabled, setEnabled] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
@@ -77,14 +79,14 @@ export default function ModulesPage() {
     <div className="animate-fade-in max-w-3xl">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Modules</h1>
+          <h1 className="page-title">{t('pages.modules')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{enabledCount} of {MODULES.length} modules enabled</p>
         </div>
         <div className="flex gap-2">
           <button onClick={enableAll} className="btn-secondary btn-sm">Enable All</button>
           <button onClick={saveModules} disabled={saving} className="btn-primary btn-sm">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saved ? 'Saved!' : 'Save'}
+            {saved ? 'Saved!' : t('action.save')}
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Send, MessageCircle, Users, Filter, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 const TEMPLATES = [
   { name: 'Custom', message: '' },
@@ -15,6 +16,7 @@ const TEMPLATES = [
 ]
 
 export default function WhatsAppCampaignsPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [contacts, setContacts] = useState<{ id: string; name: string; phone: string; score_label: string; tags: string[] }[]>([])
   const [message, setMessage] = useState('')
@@ -88,7 +90,7 @@ export default function WhatsAppCampaignsPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">WhatsApp Campaigns</h1>
+          <h1 className="page-title">{t('pages.wa_campaigns')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{contacts.length} contacts with phone number</p>
         </div>
       </div>
@@ -171,7 +173,7 @@ export default function WhatsAppCampaignsPage() {
 
             <button onClick={sendCampaign} disabled={sending || !message.trim() || filteredContacts.length === 0}
               className="btn-primary w-full py-3">
-              {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><MessageCircle className="w-4 h-4" /> Send WhatsApp Campaign</>}
+              {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><MessageCircle className="w-4 h-4" /> {t('action.send')} WhatsApp</>}
             </button>
           </div>
         </div>

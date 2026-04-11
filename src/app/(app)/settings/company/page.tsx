@@ -6,12 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Building2, Save, CheckCircle2, Globe, DollarSign, FileText, Key, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 const CURRENCIES = ['USD','EUR','GBP','COP','MXN','BRL','ARS','CLP','PEN','CAD','AUD','JPY','CNY','INR']
 const TIMEZONES = ['America/Bogota','America/Mexico_City','America/Lima','America/Buenos_Aires','America/Sao_Paulo','America/New_York','America/Chicago','America/Los_Angeles','Europe/London','Europe/Madrid','Europe/Berlin','Asia/Tokyo','Asia/Shanghai']
 const DATE_FORMATS = ['MM/DD/YYYY','DD/MM/YYYY','YYYY-MM-DD','DD.MM.YYYY']
 
 export default function CompanySettingsPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -121,7 +123,7 @@ export default function CompanySettingsPage() {
   return (
     <div className="animate-fade-in max-w-4xl">
       <div className="page-header">
-        <div><h1 className="page-title">Company Settings</h1><p className="text-sm text-surface-500 mt-0.5">Configure your business details</p></div>
+        <div><h1 className="page-title">{t('pages.company')}</h1><p className="text-sm text-surface-500 mt-0.5">Configure your business details</p></div>
       </div>
 
       <div className="segmented-control mb-8">

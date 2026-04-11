@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ShoppingBag, Search, Truck, CheckCircle2, XCircle, Clock, Package } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 const STATUS_FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered']
 const STATUS_STYLES: Record<string, string> = {
@@ -14,6 +15,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default function StoreOrdersPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [orders, setOrders] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,7 +69,7 @@ export default function StoreOrdersPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Online Store</h1>
+          <h1 className="page-title">{t('pages.store')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{orders.length} orders · {formatCurrency(totalRevenue)} revenue</p>
         </div>
         <div className="flex items-center gap-3">

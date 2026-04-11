@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Send, Users, Mail, Filter, Eye, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 const TEMPLATES = [
   { name: 'Blank', subject: '', body: '' },
@@ -36,6 +37,7 @@ const TEMPLATES = [
 ]
 
 export default function CampaignsPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [contactCount, setContactCount] = useState(0)
   const [subject, setSubject] = useState('')
@@ -92,7 +94,7 @@ export default function CampaignsPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Email Campaigns</h1>
+          <h1 className="page-title">{t('pages.campaigns')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{contactCount} contacts with email</p>
         </div>
       </div>
@@ -201,7 +203,7 @@ export default function CampaignsPage() {
               {sending ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <><Mail className="w-4 h-4" /> Send Campaign</>
+                <><Mail className="w-4 h-4" /> {t('action.send')} Campaign</>
               )}
             </button>
 

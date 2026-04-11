@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, GripVertical, Save, X, Type, Hash, Calendar, ToggleLeft, List, Link2, DollarSign, Eye, EyeOff, ChevronDown, Mail, Phone, Building2, Briefcase, Globe, MapPin, Tag, StickyNote, User, Calculator, Variable, BarChart3, Clock, Filter, Zap, TrendingUp, MessageSquare, FileText, Activity, ShoppingBag, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 import {
   FormulaConfig,
   SOURCE_NUMERIC_FIELDS,
@@ -593,6 +594,7 @@ function VariablePickerModal({
 // ─── Main page ───────────────────────────────────────────────────
 
 export default function FormBuilderPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [fields, setFields] = useState<FieldDef[]>([])
   const [loading, setLoading] = useState(true)
@@ -722,7 +724,7 @@ export default function FormBuilderPage() {
     <div className="animate-fade-in max-w-7xl">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Form Builder</h1>
+          <h1 className="page-title">{t('pages.form_builder')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">Customize the fields on your entity forms</p>
         </div>
         <div className="flex items-center gap-2">

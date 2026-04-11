@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import type { Activity } from '@/types'
 import type { DbRow } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 const TYPES = ['call','email','meeting','note','task'] as const
 const TYPE_COLORS: Record<string, string> = {
@@ -123,6 +124,7 @@ function NewTaskModal({ onClose, onSave, workspaceId, members }: { onClose: () =
 }
 
 export default function TasksPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [tasks, setTasks] = useState<Activity[]>([])
   const [members, setMembers] = useState<DbRow[]>([])
@@ -262,7 +264,7 @@ export default function TasksPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Tasks</h1>
+          <h1 className="page-title">{t('pages.tasks')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{tasks.filter(t => !t.done).length} pending{overdue > 0 ? ` · ${overdue} overdue` : ''}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -270,7 +272,7 @@ export default function TasksPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input className="input pl-9 w-48 text-xs" placeholder="Search tasks..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Task</button>
+          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> {t('action.new')} {t('pages.tasks')}</button>
         </div>
       </div>
 

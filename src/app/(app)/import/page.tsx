@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Upload, CheckCircle2, Loader2, Package, Users, TrendingUp, Sparkles, Brain, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 // ============================================================
 // Types
@@ -135,6 +136,7 @@ async function parseLarkBase(text: string): Promise<DetectedTable[]> {
 // Component
 // ============================================================
 export default function ImportPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [tables, setTables] = useState<DetectedTable[]>([])
   const [fileName, setFileName] = useState('')
@@ -365,7 +367,7 @@ export default function ImportPage() {
     <div className="animate-fade-in max-w-3xl mx-auto">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Smart Import</h1>
+          <h1 className="page-title">{t('pages.import')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">AI-powered — import everything from one file</p>
         </div>
       </div>

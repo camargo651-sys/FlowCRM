@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 // ---------------------------------------------------------------------------
 // Sanitize
@@ -667,6 +668,7 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
 // Component
 // ---------------------------------------------------------------------------
 export default function TemplatesPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [templates, setTemplates] = useState<DbRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -824,7 +826,7 @@ export default function TemplatesPage() {
     <div className="animate-fade-in max-w-6xl">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Document Templates</h1>
+          <h1 className="page-title">{t('pages.templates')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{templates.length} templates</p>
         </div>
         <div className="flex gap-2">
