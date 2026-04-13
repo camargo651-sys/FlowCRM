@@ -7,6 +7,13 @@ import { cn, formatDate } from '@/lib/utils'
 import {
   type InterDeptRequest, type IDRStatus, loadRequests, saveRequests, updateRequest,
 } from '@/lib/inter-dept-requests/store'
+import MentionTextarea from '@/components/shared/MentionTextarea'
+import MentionText from '@/components/shared/MentionText'
+import { extractMentionIds } from '@/lib/mentions/parse'
+import { notifyMentions } from '@/lib/notifications/notify-change'
+
+// TODO: wire real team list + workspaceId once this page has auth context.
+const MENTION_USERS: { id: string; name: string }[] = []
 
 const STATUS_META: Record<IDRStatus, { label: string; className: string }> = {
   draft:     { label: 'Borrador',    className: 'bg-surface-100 text-surface-700' },
@@ -53,10 +60,11 @@ export default function InterDeptRequestDetailPage() {
     const all = loadRequests()
     const idx = all.findIndex(r => r.id === req.id)
     if (idx === -1) return
+    const raw = comment.trim()
     const newNote = {
       id: 'c_' + Math.random().toString(36).slice(2, 10),
       author: 'Yo',
-      text: comment.trim(),
+      text: raw,
       created_at: new Date().toISOString(),
     }
     all[idx] = {
@@ -65,6 +73,20 @@ export default function InterDeptRequestDetailPage() {
       updated_at: new Date().toISOString(),
     }
     saveRequests(all)
+    const mentionIds = extractMentionIds(raw)
+    if (mentionIds.length > 0) {
+      // TODO: supply real workspaceId/authorId once this page has auth context
+      notifyMentions({
+        mentionedUserIds: mentionIds,
+        entity: `solicitud ${req.number}`,
+        entityTitle: req.title,
+        authorId: null,
+        authorName: 'Yo',
+        excerpt: raw.replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1').slice(0, 140),
+        actionUrl: `/inter-dept-requests/${req.id}`,
+        workspaceId: '',
+      })
+    }
     setComment('')
     refresh()
   }
@@ -161,7 +183,9 @@ export default function InterDeptRequestDetailPage() {
                   <span className="text-xs font-semibold text-surface-800">{c.author}</span>
                   <span className="text-[10px] text-surface-400">{formatDate(c.created_at)}</span>
                 </div>
-                <div className="bg-surface-50 rounded-xl px-3 py-2 text-sm text-surface-700 whitespace-pre-wrap">{c.text}</div>
+                <div className="bg-surface-50 rounded-xl px-3 py-2 text-sm text-surface-700 whitespace-pre-wrap">
+                  <MentionText text={c.text} />
+                </div>
               </div>
             </div>
           ))}
@@ -169,13 +193,22 @@ export default function InterDeptRequestDetailPage() {
 
         {/* Composer */}
         <div className="flex gap-2 border-t border-surface-100 pt-3">
-          <input
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') postComment() }}
-            placeholder="Escribe un comentario..."
-            className="input flex-1"
-          />
+          <div className="flex-1">
+            <MentionTextarea
+              value={comment}
+              onChange={setComment}
+              users={MENTION_USERS}
+              placeholder="Escribe un comentario... (usa @ para mencionar)"
+              rows={1}
+              className="input w-full resize-none"
+              onKeyDownExtra={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  postComment()
+                }
+              }}
+            />
+          </div>
           <button onClick={postComment} disabled={!comment.trim()} className="btn-primary inline-flex items-center gap-1">
             <Send className="w-3.5 h-3.5" /> Enviar
           </button>

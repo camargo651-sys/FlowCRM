@@ -254,6 +254,10 @@ export default function InvoiceDetailPage() {
       status: newStatus,
     }).eq('id', invoice.id)
 
+    // TODO(notify-change): invoices table currently lacks an owner_id column on
+    // the local InvoiceDetail interface. Once owner_id is surfaced, call
+    // notifyRecordChange({ entity: 'invoice', ownerId: invoice.owner_id, ... }).
+
     setPaymentSaving(false)
     setShowPaymentModal(false)
     setPaymentForm({ amount: 0, method: 'transfer', date: new Date().toISOString().split('T')[0] })

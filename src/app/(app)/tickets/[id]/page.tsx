@@ -11,6 +11,10 @@ import {
 import { cn, formatDate } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import EmailComposer from '@/components/shared/EmailComposer'
+import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-change'
+import { extractMentionIds } from '@/lib/mentions/parse'
+import MentionTextarea from '@/components/shared/MentionTextarea'
+import MentionText from '@/components/shared/MentionText'
 
 // --- Types ---
 
@@ -196,6 +200,20 @@ export default function TicketDetailPage() {
 
   // --- Actions ---
 
+  const notifyTicketChange = (t: TicketDetail) => {
+    if (!t.assigned_to || t.assigned_to === currentUserId) return
+    notifyRecordChange({
+      entity: 'ticket',
+      entityId: t.id,
+      entityTitle: t.subject,
+      ownerId: t.assigned_to,
+      editorId: currentUserId,
+      editorName: currentUserName,
+      actionUrl: `/tickets/${t.id}`,
+      workspaceId: t.workspace_id,
+    })
+  }
+
   const updateStatus = async (status: string) => {
     if (!ticket) return
     await supabase.from('tickets').update({
@@ -203,35 +221,67 @@ export default function TicketDetailPage() {
       ...(status === 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
     }).eq('id', ticket.id)
     setTicket(prev => prev ? { ...prev, status, ...(status === 'resolved' ? { resolved_at: new Date().toISOString() } : {}) } : null)
+    notifyTicketChange(ticket)
   }
 
   const assignTicket = async (userId: string) => {
     if (!ticket) return
     await supabase.from('tickets').update({ assigned_to: userId || null }).eq('id', ticket.id)
     setTicket(prev => prev ? { ...prev, assigned_to: userId || undefined } : null)
+    // Notify the new assignee (if not self) that they were assigned
+    if (userId && userId !== currentUserId) {
+      notifyRecordChange({
+        entity: 'ticket',
+        entityId: ticket.id,
+        entityTitle: ticket.subject,
+        ownerId: userId,
+        editorId: currentUserId,
+        editorName: currentUserName,
+        actionUrl: `/tickets/${ticket.id}`,
+        workspaceId: ticket.workspace_id,
+      })
+    }
   }
 
   const escalateTicket = async () => {
     if (!ticket) return
     await supabase.from('tickets').update({ priority: 'urgent' }).eq('id', ticket.id)
     setTicket(prev => prev ? { ...prev, priority: 'urgent' } : null)
+    notifyTicketChange(ticket)
   }
 
   const sendNote = async () => {
     if (!noteText.trim() || !ticket) return
     setNoteSending(true)
+    const raw = noteText.trim()
     const { data } = await supabase.from('activities').insert([{
       workspace_id: ticket.workspace_id,
       contact_id: ticket.contact_id || null,
       type: 'note',
-      title: noteText.trim(),
+      title: raw,
       notes: null,
       done: false,
     }]).select().single()
     if (data) setActivities(prev => [data, ...prev])
+    const mentionIds = extractMentionIds(raw)
+    if (mentionIds.length > 0) {
+      notifyMentions({
+        mentionedUserIds: mentionIds,
+        entity: `ticket ${ticket.ticket_number}`,
+        entityTitle: ticket.subject,
+        authorId: currentUserId,
+        authorName: currentUserName,
+        excerpt: raw.replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1').slice(0, 140),
+        actionUrl: `/tickets/${ticket.id}`,
+        workspaceId: ticket.workspace_id,
+      })
+    }
     setNoteText('')
     setNoteSending(false)
   }
+
+  // Mention-capable users from loaded members
+  const mentionUsers = members.map(m => ({ id: m.id, name: m.full_name || m.email || 'Unknown' }))
 
   const createTask = async () => {
     if (!taskTitle.trim() || !ticket) return
@@ -567,7 +617,9 @@ export default function TicketDetailPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="bg-amber-100/60 rounded-2xl rounded-tl-sm px-3 py-2">
-                          <p className="text-sm text-surface-800 whitespace-pre-wrap">{note.title}</p>
+                          <p className="text-sm text-surface-800 whitespace-pre-wrap">
+                            <MentionText text={note.title} />
+                          </p>
                           {note.notes && <p className="text-xs text-surface-500 mt-1">{note.notes}</p>}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 px-1">
@@ -582,19 +634,22 @@ export default function TicketDetailPage() {
               </div>
 
               <div className="p-3 border-t border-amber-200 bg-amber-50 flex gap-2 flex-shrink-0">
-                <input
-                  type="text"
-                  className="input flex-1"
-                  placeholder="Add an internal note..."
-                  value={noteText}
-                  onChange={e => setNoteText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey && noteText.trim()) {
-                      e.preventDefault()
-                      sendNote()
-                    }
-                  }}
-                />
+                <div className="flex-1">
+                  <MentionTextarea
+                    value={noteText}
+                    onChange={setNoteText}
+                    users={mentionUsers}
+                    placeholder="Add an internal note... (usa @ para mencionar)"
+                    rows={1}
+                    className="input w-full resize-none"
+                    onKeyDownExtra={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && noteText.trim()) {
+                        e.preventDefault()
+                        sendNote()
+                      }
+                    }}
+                  />
+                </div>
                 <button onClick={sendNote} disabled={noteSending || !noteText.trim()}
                   className="btn-primary btn-sm px-3">
                   {noteSending

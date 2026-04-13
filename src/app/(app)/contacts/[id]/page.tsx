@@ -14,6 +14,10 @@ import { formatCurrency, getInitials, cn, formatDate } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import EmailComposer from '@/components/shared/EmailComposer'
 import { computeFormulaField, FormulaConfig, describeFormula } from '@/lib/formula-engine'
+import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-change'
+import { extractMentionIds } from '@/lib/mentions/parse'
+import MentionTextarea from '@/components/shared/MentionTextarea'
+import MentionText from '@/components/shared/MentionText'
 
 interface ContactDetail {
   id: string; workspace_id: string; type: string; name: string;
@@ -267,6 +271,18 @@ export default function ContactDetailPage() {
     setContact(prev => prev ? { ...prev, ...editData } : null)
     setEditing(false)
     setSaving(false)
+    if (contact?.owner_id && contact.owner_id !== currentUserId) {
+      notifyRecordChange({
+        entity: 'contact',
+        entityId: contact.id,
+        entityTitle: editData.name || contact.name,
+        ownerId: contact.owner_id,
+        editorId: currentUserId,
+        editorName: currentUserName,
+        actionUrl: `/contacts/${contact.id}`,
+        workspaceId: contact.workspace_id,
+      })
+    }
   }
 
   const createActivity = async () => {
@@ -299,18 +315,35 @@ export default function ContactDetailPage() {
   const sendNote = async () => {
     if (!noteText.trim() || !contact) return
     setNoteSending(true)
+    const raw = noteText.trim()
     const { data } = await supabase.from('activities').insert([{
       workspace_id: contact.workspace_id,
       contact_id: id,
       type: 'note',
-      title: noteText.trim(),
+      title: raw,
       notes: null,
       done: false,
     }]).select().single()
     if (data) setActivities(prev => [data, ...prev])
+    const mentionIds = extractMentionIds(raw)
+    if (mentionIds.length > 0) {
+      notifyMentions({
+        mentionedUserIds: mentionIds,
+        entity: `contacto ${contact.name}`,
+        entityTitle: contact.name,
+        authorId: currentUserId,
+        authorName: currentUserName,
+        excerpt: raw.replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1').slice(0, 140),
+        actionUrl: `/contacts/${contact.id}`,
+        workspaceId: contact.workspace_id,
+      })
+    }
     setNoteText('')
     setNoteSending(false)
   }
+
+  // Mention-capable users list (team members from profileMap)
+  const mentionUsers = Object.entries(profileMap).map(([uid, name]) => ({ id: uid, name }))
 
   // Log a call activity quickly
   const logCall = async () => {
@@ -710,7 +743,9 @@ export default function ContactDetailPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="bg-surface-100 rounded-2xl rounded-tl-sm px-3 py-2">
-                          <p className="text-sm text-surface-800 whitespace-pre-wrap">{note.title}</p>
+                          <p className="text-sm text-surface-800 whitespace-pre-wrap">
+                            <MentionText text={note.title} />
+                          </p>
                           {note.notes && <p className="text-xs text-surface-500 mt-1">{note.notes}</p>}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 px-1">
@@ -726,19 +761,22 @@ export default function ContactDetailPage() {
 
               {/* Note input */}
               <div className="p-3 border-t border-surface-100 bg-surface-50 flex gap-2 flex-shrink-0">
-                <input
-                  type="text"
-                  className="input flex-1"
-                  placeholder="Add a note..."
-                  value={noteText}
-                  onChange={e => setNoteText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey && noteText.trim()) {
-                      e.preventDefault()
-                      sendNote()
-                    }
-                  }}
-                />
+                <div className="flex-1">
+                  <MentionTextarea
+                    value={noteText}
+                    onChange={setNoteText}
+                    users={mentionUsers}
+                    placeholder="Add a note... (usa @ para mencionar)"
+                    rows={1}
+                    className="input w-full resize-none"
+                    onKeyDownExtra={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && noteText.trim()) {
+                        e.preventDefault()
+                        sendNote()
+                      }
+                    }}
+                  />
+                </div>
                 <button onClick={sendNote} disabled={noteSending || !noteText.trim()}
                   className="btn-primary btn-sm px-3">
                   {noteSending

@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/context'
 import type { Deal, PipelineStage, Contact, DbRow, Profile } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { validateTransition } from '@/lib/pipeline/stage-conditions'
+import { notifyRecordChange } from '@/lib/notifications/notify-change'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -279,11 +280,13 @@ interface ActivityItem {
   due_date?: string
 }
 
-function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId }: {
+function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, currentUserId, currentUserName }: {
   deal: DealWithContact; onClose: () => void;
   onUpdateDeal: (dealId: string, updates: Partial<Deal>) => void;
   teamMembers: Pick<Profile, 'id' | 'full_name'>[];
   workspaceId: string;
+  currentUserId: string | null;
+  currentUserName: string;
 }) {
   const supabase = createClient()
   const [messages, setMessages] = useState<WaMessage[]>([])
@@ -355,6 +358,18 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId }:
   const saveField = async (field: string, value: unknown) => {
     await supabase.from('deals').update({ [field]: value }).eq('id', deal.id)
     onUpdateDeal(deal.id, { [field]: value })
+    if (deal.owner_id && deal.owner_id !== currentUserId) {
+      notifyRecordChange({
+        entity: 'deal',
+        entityId: deal.id,
+        entityTitle: deal.title,
+        ownerId: deal.owner_id,
+        editorId: currentUserId,
+        editorName: currentUserName,
+        actionUrl: `/pipeline?deal=${deal.id}`,
+        workspaceId,
+      })
+    }
   }
 
   const handleSaveNotes = async () => {
@@ -847,6 +862,8 @@ export default function PipelinePage() {
   const [contacts, setContacts] = useState<Pick<Contact, 'id' | 'name' | 'email'>[]>([])
   const [teamMembers, setTeamMembers] = useState<Pick<Profile, 'id' | 'full_name'>[]>([])
   const [workspaceId, setWorkspaceId] = useState<string>('')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string>('Alguien')
   const [showNewDeal, setShowNewDeal] = useState(false)
   const [selectedDeal, setSelectedDeal] = useState<DealWithContact | null>(null)
   const [search, setSearch] = useState('')
@@ -868,6 +885,7 @@ export default function PipelinePage() {
   const loadData = useCallback(async (pipelineId?: string) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    setCurrentUserId(user.id)
 
     const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
@@ -897,7 +915,10 @@ export default function PipelinePage() {
     const stages: PipelineStage[] = stagesRes.data || []
     const deals: DealWithContact[] = dealsRes.data || []
     setContacts(contactsRes.data || [])
-    setTeamMembers((profilesRes.data || []) as Pick<Profile, 'id' | 'full_name'>[])
+    const tm = (profilesRes.data || []) as Pick<Profile, 'id' | 'full_name'>[]
+    setTeamMembers(tm)
+    const me = tm.find(t => t.id === user.id)
+    if (me?.full_name) setCurrentUserName(me.full_name)
     const wonDeals: { id: string; value: number }[] = wonThisMonthRes.data || []
     setWonThisMonthValue(wonDeals.reduce((s, d) => s + (d.value || 0), 0))
 
@@ -1005,6 +1026,19 @@ export default function PipelinePage() {
       stage_id: newStageId,
       ...(targetStage.is_won ? { status: 'won' } : {}),
     }).eq('id', dealId)
+
+    if (deal.owner_id && deal.owner_id !== currentUserId) {
+      notifyRecordChange({
+        entity: 'deal',
+        entityId: dealId,
+        entityTitle: deal.title,
+        ownerId: deal.owner_id,
+        editorId: currentUserId,
+        editorName: currentUserName,
+        actionUrl: `/pipeline?deal=${dealId}`,
+        workspaceId,
+      })
+    }
 
     setColumns(prev => {
       return prev.map(col => ({
@@ -1359,6 +1393,8 @@ export default function PipelinePage() {
           onUpdateDeal={handleUpdateDeal}
           teamMembers={teamMembers}
           workspaceId={workspaceId}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
         />
       )}
 
