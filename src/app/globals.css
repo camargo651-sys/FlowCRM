@@ -46,6 +46,15 @@
   .dark .deal-card { background: #1a1f3a; border-color: #262d4a; }
   .dark .deal-card:hover { border-color: #374068; }
 
+  /* Catch-all overrides for pages using raw Tailwind utilities without dark: variants.
+     Note: explicit `dark:bg-*` utilities use selector `.dark .dark\:bg-*` which has
+     equal specificity but wins by source-order since Tailwind utilities are emitted later. */
+  .dark .bg-white { background-color: #1a1f3a; }
+  .dark .text-surface-900 { color: #f1f5f9; }
+  .dark .text-surface-800 { color: #e2e8f0; }
+  .dark .border-surface-100 { border-color: #262d4a; }
+  .dark .border-surface-200 { border-color: #374068; }
+
   body {
     @apply bg-surface-50 text-surface-900;
   }
