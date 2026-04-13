@@ -16,8 +16,6 @@ export interface InterDeptRequest {
   comments?: { id: string; author: string; text: string; created_at: string }[]
 }
 
-const STORAGE_KEY = 'tracktio_inter_dept_requests'
-
 export const DEPARTMENTS = [
   'Ventas', 'Marketing', 'Operaciones', 'Finanzas', 'RRHH',
   'TI', 'Legal', 'Compras', 'Producción', 'Logística', 'Soporte',
@@ -39,27 +37,99 @@ export const PRIORITY_META: Record<IDRPriority, { label: string; className: stri
   urgent: { label: 'Urgente', className: 'bg-rose-50 text-rose-700' },
 }
 
-export function loadRequests(): InterDeptRequest[] {
-  if (typeof window === 'undefined') return []
+// ─── Async API-backed helpers ──────────────────────────────
+export async function loadRequests(): Promise<InterDeptRequest[]> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    return JSON.parse(raw) as InterDeptRequest[]
+    const res = await fetch('/api/inter-dept-requests', { cache: 'no-store' })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.requests || []) as InterDeptRequest[]
   } catch {
     return []
   }
 }
 
-export function saveRequests(list: InterDeptRequest[]) {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+export interface CreateRequestInput {
+  title: string
+  description?: string
+  from_dept: string
+  to_dept: string
+  priority: IDRPriority
+  requested_by?: string
+  status?: IDRStatus
 }
 
-export function updateRequest(id: string, patch: Partial<InterDeptRequest>) {
-  const list = loadRequests()
-  const idx = list.findIndex(r => r.id === id)
-  if (idx === -1) return null
-  list[idx] = { ...list[idx], ...patch, updated_at: new Date().toISOString() }
-  saveRequests(list)
-  return list[idx]
+export async function createRequest(input: CreateRequestInput): Promise<InterDeptRequest | null> {
+  try {
+    const res = await fetch('/api/inter-dept-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.request as InterDeptRequest
+  } catch {
+    return null
+  }
+}
+
+export async function updateRequest(id: string, patch: Partial<InterDeptRequest>): Promise<InterDeptRequest | null> {
+  try {
+    const res = await fetch(`/api/inter-dept-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.request as InterDeptRequest
+  } catch {
+    return null
+  }
+}
+
+export async function loadRequest(id: string): Promise<{ request: InterDeptRequest | null; workspaceId: string; userId: string }> {
+  try {
+    const res = await fetch(`/api/inter-dept-requests/${id}`, { cache: 'no-store' })
+    if (!res.ok) return { request: null, workspaceId: '', userId: '' }
+    const data = await res.json()
+    return {
+      request: data.request as InterDeptRequest,
+      workspaceId: data.workspace_id || '',
+      userId: data.user_id || '',
+    }
+  } catch {
+    return { request: null, workspaceId: '', userId: '' }
+  }
+}
+
+export async function addComment(requestId: string, text: string): Promise<{
+  comment: { id: string; author: string; text: string; created_at: string } | null
+  workspaceId: string
+  userId: string
+  authorName: string
+}> {
+  try {
+    const res = await fetch(`/api/inter-dept-requests/${requestId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    if (!res.ok) return { comment: null, workspaceId: '', userId: '', authorName: '' }
+    const data = await res.json()
+    return {
+      comment: data.comment,
+      workspaceId: data.workspace_id || '',
+      userId: data.user_id || '',
+      authorName: data.author_name || '',
+    }
+  } catch {
+    return { comment: null, workspaceId: '', userId: '', authorName: '' }
+  }
+}
+
+// Deprecated: no-op kept for backwards compat with any caller still using saveRequests.
+export function saveRequests(_list: InterDeptRequest[]) {
+  // Intentionally empty — persistence is handled via the API helpers above.
 }

@@ -1,19 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Send, User, Calendar, ArrowRightLeft, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import {
-  type InterDeptRequest, type IDRStatus, loadRequests, saveRequests, updateRequest,
+  type InterDeptRequest, type IDRStatus, loadRequest, updateRequest, addComment,
 } from '@/lib/inter-dept-requests/store'
 import MentionTextarea from '@/components/shared/MentionTextarea'
 import MentionText from '@/components/shared/MentionText'
 import { extractMentionIds } from '@/lib/mentions/parse'
 import { notifyMentions } from '@/lib/notifications/notify-change'
-
-// TODO: wire real team list + workspaceId once this page has auth context.
-const MENTION_USERS: { id: string; name: string }[] = []
+import { useTeam } from '@/lib/hooks/use-team'
 
 const STATUS_META: Record<IDRStatus, { label: string; className: string }> = {
   draft:     { label: 'Borrador',    className: 'bg-surface-100 text-surface-700' },
@@ -33,62 +31,56 @@ const PRIORITY_META: Record<string, { label: string; className: string }> = {
 
 export default function InterDeptRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const router = useRouter()
   const [req, setReq] = useState<InterDeptRequest | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [comment, setComment] = useState('')
+  const [workspaceId, setWorkspaceId] = useState('')
+  const [userId, setUserId] = useState('')
+  const { users: mentionUsers } = useTeam()
 
   useEffect(() => {
-    const all = loadRequests()
-    setReq(all.find(r => r.id === id) ?? null)
-    setLoaded(true)
+    let cancelled = false
+    ;(async () => {
+      const { request, workspaceId: ws, userId: uid } = await loadRequest(id as string)
+      if (cancelled) return
+      setReq(request)
+      setWorkspaceId(ws)
+      setUserId(uid)
+      setLoaded(true)
+    })()
+    return () => { cancelled = true }
   }, [id])
 
-  function refresh() {
-    const all = loadRequests()
-    setReq(all.find(r => r.id === id) ?? null)
-  }
-
-  function changeStatus(status: IDRStatus) {
+  async function changeStatus(status: IDRStatus) {
     if (!req) return
-    updateRequest(req.id, { status })
-    refresh()
+    const updated = await updateRequest(req.id, { status })
+    if (updated) setReq(prev => prev ? { ...prev, ...updated } : prev)
   }
 
-  function postComment() {
+  async function postComment() {
     if (!req || !comment.trim()) return
-    const all = loadRequests()
-    const idx = all.findIndex(r => r.id === req.id)
-    if (idx === -1) return
     const raw = comment.trim()
-    const newNote = {
-      id: 'c_' + Math.random().toString(36).slice(2, 10),
-      author: 'Yo',
-      text: raw,
-      created_at: new Date().toISOString(),
-    }
-    all[idx] = {
-      ...all[idx],
-      comments: [...(all[idx].comments ?? []), newNote],
+    const { comment: newNote, authorName } = await addComment(req.id, raw)
+    if (!newNote) return
+    setReq(prev => prev ? {
+      ...prev,
+      comments: [...(prev.comments ?? []), newNote],
       updated_at: new Date().toISOString(),
-    }
-    saveRequests(all)
+    } : prev)
     const mentionIds = extractMentionIds(raw)
-    if (mentionIds.length > 0) {
-      // TODO: supply real workspaceId/authorId once this page has auth context
+    if (mentionIds.length > 0 && workspaceId) {
       notifyMentions({
         mentionedUserIds: mentionIds,
         entity: `solicitud ${req.number}`,
         entityTitle: req.title,
-        authorId: null,
-        authorName: 'Yo',
+        authorId: userId || null,
+        authorName: authorName || 'Yo',
         excerpt: raw.replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1').slice(0, 140),
         actionUrl: `/inter-dept-requests/${req.id}`,
-        workspaceId: '',
+        workspaceId,
       })
     }
     setComment('')
-    refresh()
   }
 
   if (loaded && !req) {
@@ -197,7 +189,7 @@ export default function InterDeptRequestDetailPage() {
             <MentionTextarea
               value={comment}
               onChange={setComment}
-              users={MENTION_USERS}
+              users={mentionUsers}
               placeholder="Escribe un comentario... (usa @ para mencionar)"
               rows={1}
               className="input w-full resize-none"

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Bell, X, Check, ExternalLink, AlertTriangle, Eye, MessageCircle, Phone, Star, Zap } from 'lucide-react'
+import { Bell, X, Check, ExternalLink, AlertTriangle, Eye, MessageCircle, Phone, Star, Zap, Edit3, AtSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -26,6 +26,8 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
   task_overdue: AlertTriangle,
   deal_won: Star,
   automation_fired: Zap,
+  record_updated: Edit3,
+  mention: AtSign,
   system: Bell,
 }
 

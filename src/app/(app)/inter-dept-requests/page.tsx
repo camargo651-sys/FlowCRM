@@ -12,7 +12,8 @@ import {
   STATUS_META,
   PRIORITY_META,
   loadRequests,
-  saveRequests,
+  createRequest,
+  updateRequest,
 } from '@/lib/inter-dept-requests/store'
 
 // ─── Badge helpers ─────────────────────────────────────────
@@ -47,8 +48,15 @@ export default function InterDeptRequestsPage() {
   })
 
   useEffect(() => {
-    setItems(loadRequests())
-    setLoaded(true)
+    let cancelled = false
+    ;(async () => {
+      const list = await loadRequests()
+      if (!cancelled) {
+        setItems(list)
+        setLoaded(true)
+      }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   const stats = useMemo(() => {
@@ -73,27 +81,18 @@ export default function InterDeptRequestsPage() {
     }).sort((a, b) => b.number - a.number)
   }, [items, fStatus, fFrom, fTo, fPrio, search])
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!form.title.trim()) return
-    const now = new Date().toISOString()
-    const nextNumber = (items[0]?.number ?? 0) + 1
-    const newItem: InterDeptRequest = {
-      id: 'idr_' + Math.random().toString(36).slice(2, 10),
-      number: Math.max(1, ...items.map(i => i.number), 0) + 1 || nextNumber,
+    const created = await createRequest({
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       from_dept: form.from_dept,
       to_dept: form.to_dept,
       priority: form.priority,
-      status: 'submitted',
       requested_by: form.requested_by.trim() || 'Yo',
-      created_at: now,
-      updated_at: now,
-      comments: [],
-    }
-    const next = [newItem, ...items]
-    setItems(next)
-    saveRequests(next)
+      status: 'submitted',
+    })
+    if (created) setItems(prev => [created, ...prev])
     setShowModal(false)
     setForm({
       title: '', description: '',
@@ -102,10 +101,11 @@ export default function InterDeptRequestsPage() {
     })
   }
 
-  function changeStatus(id: string, status: IDRStatus) {
-    const next = items.map(i => i.id === id ? { ...i, status, updated_at: new Date().toISOString() } : i)
-    setItems(next)
-    saveRequests(next)
+  async function changeStatus(id: string, status: IDRStatus) {
+    const updated = await updateRequest(id, { status })
+    if (updated) {
+      setItems(prev => prev.map(i => i.id === id ? { ...i, ...updated } : i))
+    }
   }
 
   return (
