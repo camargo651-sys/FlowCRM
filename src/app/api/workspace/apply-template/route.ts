@@ -138,7 +138,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { templateKey } = await request.json()
+  const { templateKey, initial_module } = await request.json() as { templateKey?: string; initial_module?: string | null }
   if (!templateKey) return NextResponse.json({ error: 'Missing templateKey' }, { status: 400 })
 
   const template = getTemplate(templateKey)
@@ -146,12 +146,17 @@ export async function POST(request: Request) {
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
   // 1. Update workspace terminology and industry
+  // Respect `initial_module` from signup: ensure it's enabled alongside crm (always required).
+  const enabledModulesUpdate: Record<string, boolean> | undefined = initial_module
+    ? { crm: true, [initial_module]: true }
+    : undefined
   await supabase.from('workspaces').update({
     industry: template.name,
     terminology: {
       deal: template.dealLabel,
       contact: template.contactLabel,
     },
+    ...(enabledModulesUpdate ? { enabled_modules: enabledModulesUpdate } : {}),
   }).eq('id', ws.id)
 
   // 2. Create default pipeline with template stages

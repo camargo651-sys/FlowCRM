@@ -6,7 +6,7 @@ type Invoice = { id: string; invoice_number: string; issue_date: string; total: 
 type Quote = { id: string; title: string; quote_number: string; total: number; valid_until?: string; status: string; view_token?: string }
 type Contract = { id: string; title: string; contract_number: string; start_date?: string; end_date?: string; value: number; status: string; file_url?: string }
 type Deal = { id: string; title: string; value: number; status: string; probability?: number; expected_close_date?: string; pipeline_stages?: { name: string; color: string } | null }
-type DocItem = { id: string; name: string; url?: string; created_at?: string }
+type DocItem = { id: string; name: string; url?: string; type?: string; created_at?: string }
 
 type PortalData = {
   company: { name: string; primary_color?: string; logo_url?: string; email?: string; phone?: string; whatsapp?: string } | null
@@ -56,7 +56,6 @@ export default function PortalPage() {
   const [tab, setTab] = useState<'invoices' | 'quotes' | 'deals' | 'contracts' | 'documents'>('invoices')
 
   useEffect(() => {
-    // TODO: when backing DB schema is final, extend /api/portal to also return `documents`.
     fetch(`/api/portal?token=${token}`)
       .then(async (r) => {
         if (!r.ok) throw new Error('not_found')
@@ -310,7 +309,10 @@ export default function PortalPage() {
                   <li key={doc.id} className="flex items-center justify-between py-3">
                     <div>
                       <div className="font-semibold">{doc.name}</div>
-                      <div className="text-xs text-surface-500">{doc.created_at || ''}</div>
+                      <div className="text-xs text-surface-500">
+                        {doc.type ? <span className="uppercase tracking-wide mr-2">{doc.type}</span> : null}
+                        {doc.created_at || ''}
+                      </div>
                     </div>
                     <a
                       href={doc.url || '#'}

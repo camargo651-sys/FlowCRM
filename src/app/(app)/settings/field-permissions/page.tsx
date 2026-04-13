@@ -6,8 +6,8 @@ import {
   ALL_FIELD_ACCESS,
   ALL_FIELD_ENTITIES,
   DEFAULT_FIELD_PERMISSIONS,
-  loadFieldPermissions,
-  saveFieldPermissions,
+  loadFieldPermissionsAsync,
+  saveFieldPermissionsAsync,
   type FieldAccess,
   type FieldEntity,
   type FieldPermission,
@@ -20,8 +20,10 @@ export default function FieldPermissionsPage() {
   const roles = getAllRoles()
 
   useEffect(() => {
-    setRows(loadFieldPermissions())
-    setLoaded(true)
+    loadFieldPermissionsAsync().then(r => {
+      setRows(r)
+      setLoaded(true)
+    })
   }, [])
 
   const update = (i: number, patch: Partial<FieldPermission>) => {
@@ -37,17 +39,19 @@ export default function FieldPermissionsPage() {
 
   const remove = (i: number) => setRows(rs => rs.filter((_, idx) => idx !== i))
 
-  const save = () => {
+  const save = async () => {
     const clean = rows.filter(r => r.field.trim().length > 0)
-    saveFieldPermissions(clean)
+    const ok = await saveFieldPermissionsAsync(clean)
     setRows(clean)
-    toast.success(`Saved ${clean.length} field permission rule${clean.length === 1 ? '' : 's'}`)
+    if (ok) toast.success(`Saved ${clean.length} field permission rule${clean.length === 1 ? '' : 's'}`)
+    else toast.error('Failed to save field permissions')
   }
 
-  const resetDefaults = () => {
+  const resetDefaults = async () => {
     setRows(DEFAULT_FIELD_PERMISSIONS)
-    saveFieldPermissions(DEFAULT_FIELD_PERMISSIONS)
-    toast.success('Restored defaults')
+    const ok = await saveFieldPermissionsAsync(DEFAULT_FIELD_PERMISSIONS)
+    if (ok) toast.success('Restored defaults')
+    else toast.error('Failed to restore defaults')
   }
 
   if (!loaded) return <div className="p-6 text-sm text-surface-500">Loading…</div>

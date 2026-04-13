@@ -14,8 +14,16 @@ export const metadata: Metadata = {
     description: 'The modular business platform for teams that sell. 27 modules, one AI-powered platform. Free to start.',
     type: 'website',
     siteName: 'Tracktio',
+    // TODO: replace with dedicated 1200x630 /og-image.png (currently reusing the 512x512 app icon).
+    images: [{ url: '/icon-512.png', width: 512, height: 512, alt: 'Tracktio' }],
   },
-  twitter: { card: 'summary_large_image', title: 'Tracktio — AI-Powered ERP', description: 'Replace 10 tools with one AI-powered platform. 27 modules, ready in 60 seconds. Free to start.' },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Tracktio — AI-Powered ERP',
+    description: 'Replace 10 tools with one AI-powered platform. 27 modules, ready in 60 seconds. Free to start.',
+    // TODO: replace with dedicated 1200x630 /og-image.png
+    images: ['/icon-512.png'],
+  },
   robots: { index: true, follow: true },
 }
 

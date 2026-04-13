@@ -35,13 +35,13 @@ export default function NotificationSetup() {
   if (!show) return null
 
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 shadow-sm animate-fade-in">
+    <div className="mb-4 flex items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 shadow-sm animate-fade-in dark:border-brand-500/30 dark:bg-brand-500/10">
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white flex-shrink-0">
         <Bell className="h-4 w-4" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-surface-900">Activar notificaciones</p>
-        <p className="text-[11px] text-surface-500">
+        <p className="text-xs font-semibold text-surface-900 dark:text-surface-50">Activar notificaciones</p>
+        <p className="text-[11px] text-surface-500 dark:text-surface-400">
           Recibe alertas de recordatorios, tickets urgentes y mas.
         </p>
       </div>
@@ -55,7 +55,7 @@ export default function NotificationSetup() {
       <button
         onClick={dismiss}
         aria-label="Dismiss"
-        className="flex h-7 w-7 items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 flex-shrink-0"
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800 dark:hover:text-surface-200 flex-shrink-0"
       >
         <X className="h-3.5 w-3.5" />
       </button>

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Zap, Palette, Globe, CheckCircle2, ArrowRight, ArrowLeft, Upload, Sparkles, Building2 } from 'lucide-react'
 import { LOCALES, type Locale } from '@/lib/i18n/translations'
@@ -35,6 +35,22 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
     manufacturing: false, accounting: false, hr: false, expenses: false,
     ecommerce: false, pos: false, automations: true,
   })
+  const [initialModule, setInitialModule] = useState<string | null>(null)
+
+  // Read initial_module from signup metadata and pre-select it
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.auth.getUser()
+      const mod = data.user?.user_metadata?.initial_module as string | undefined
+      if (!cancelled && mod) {
+        setInitialModule(mod)
+        setEnabledModules(prev => ({ ...prev, [mod]: true }))
+      }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const MODULES_LIST = [
     { key: 'crm', label: 'CRM / Sales', icon: '🔀', locked: true },
@@ -128,7 +144,7 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
       await fetch('/api/workspace/apply-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateKey: industryKey || 'generic' }),
+        body: JSON.stringify({ templateKey: industryKey || 'generic', initial_module: initialModule }),
       })
     } catch {}
 
@@ -166,6 +182,12 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
           </div>
           <h1 className="text-2xl font-bold">{t('onboarding.welcome')}</h1>
           <p className="text-white/70 text-sm mt-1">{t('onboarding.subtitle')}</p>
+          {initialModule && (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur border border-white/20 text-xs font-semibold">
+              <Sparkles className="w-3 h-3" />
+              <span>Starting with: {initialModule}</span>
+            </div>
+          )}
         </div>
 
         {/* Step indicator */}
@@ -243,16 +265,19 @@ export default function OnboardingWizard({ workspaceId, workspaceName, onComplet
               <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto">
                 {MODULES_LIST.map(mod => {
                   const isOn = enabledModules[mod.key] || false
+                  const isInitial = initialModule === mod.key
                   return (
                     <button key={mod.key} onClick={() => !mod.locked && setEnabledModules(prev => ({ ...prev, [mod.key]: !prev[mod.key] }))}
                       disabled={mod.locked}
                       className={cn('p-3 rounded-xl text-left transition-all border-2',
                         isOn ? 'border-brand-500 bg-brand-50/30' : 'border-surface-100 hover:border-surface-200',
+                        isInitial && 'ring-2 ring-emerald-400 ring-offset-1',
                         mod.locked && 'opacity-60')}>
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{mod.icon}</span>
                         <span className="text-xs font-semibold text-surface-800">{mod.label}</span>
                         {mod.locked && <span className="text-[8px] px-1 py-0.5 bg-surface-200 rounded-full text-surface-500">Required</span>}
+                        {isInitial && <span className="text-[8px] px-1 py-0.5 bg-emerald-100 rounded-full text-emerald-700 font-bold">PICKED</span>}
                       </div>
                     </button>
                   )

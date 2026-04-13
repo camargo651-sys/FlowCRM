@@ -2,7 +2,8 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle, Route } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle, Route, FormInput, FileText, Shield, Lock, Sliders, UserCog, Building2, CreditCard, Plug } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { LOCALES } from '@/lib/i18n/translations'
@@ -464,6 +465,57 @@ export default function SettingsPage() {
           <h1 className="page-title">{t('settings.title')}</h1>
           <p className="page-subtitle">{t('settings.subtitle')}</p>
         </div>
+      </div>
+
+      {/* Settings hub: links to all sub-module settings, grouped by category */}
+      <div className="mb-8 space-y-5">
+        {[
+          {
+            category: 'Personalización',
+            items: [
+              { href: '/settings/form-builder', icon: FormInput, label: 'Form Builder', desc: 'Build public intake forms' },
+              { href: '/settings/templates', icon: FileText, label: 'Templates', desc: 'Email & document templates' },
+              { href: '/settings/stage-conditions', icon: Sliders, label: 'Stage Conditions', desc: 'Required fields per stage' },
+            ],
+          },
+          {
+            category: 'Permisos',
+            items: [
+              { href: '/roles', icon: Shield, label: 'Roles', desc: 'Roles and permissions' },
+              { href: '/settings/field-permissions', icon: Lock, label: 'Field Permissions', desc: 'Field-level access control' },
+              { href: '/team', icon: UserCog, label: 'Team', desc: 'Invite and manage members' },
+            ],
+          },
+          {
+            category: 'Cuenta',
+            items: [
+              { href: '/billing', icon: CreditCard, label: 'Billing', desc: 'Subscription and invoices' },
+            ],
+          },
+          {
+            category: 'Integraciones',
+            items: [
+              { href: '/integrations', icon: Plug, label: 'Integrations', desc: 'Connected apps and APIs' },
+            ],
+          },
+        ].map(group => (
+          <div key={group.category}>
+            <p className="text-[11px] font-bold text-surface-500 uppercase tracking-wider mb-2">{group.category}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {group.items.map(({ href, icon: Icon, label, desc }) => (
+                <Link key={href} href={href} className="card p-4 hover:border-brand-300 hover:shadow-sm transition-all flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-brand-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-surface-900">{label}</p>
+                    <p className="text-xs text-surface-500 mt-0.5 line-clamp-1">{desc}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}

@@ -66,7 +66,7 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
           <div className="flex gap-2 p-1 bg-surface-100 rounded-xl">
             {(['person', 'company'] as const).map(t => (
               <button key={t} type="button" onClick={() => setType(t)}
-                className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-sm font-medium transition-all', type === t ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700')}>
+                className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-sm font-medium transition-all', type === t ? 'bg-white dark:bg-surface-700 shadow-sm text-surface-900 dark:text-surface-50' : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-200')}>
                 {t === 'person' ? <User className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
                 {t === 'person' ? 'Person' : 'Company'}
               </button>
@@ -426,7 +426,7 @@ export default function ContactsPage() {
             <ChevronDown className="w-3 h-3" />
           </button>
           {showTagFilter && (
-            <div className="absolute z-20 mt-1 bg-white border border-surface-200 rounded-xl shadow-lg p-2 min-w-[180px] max-h-60 overflow-y-auto">
+            <div className="absolute z-20 mt-1 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-xl shadow-lg p-2 min-w-[180px] max-h-60 overflow-y-auto">
               {allTags.length === 0 ? (
                 <p className="text-xs text-surface-400 p-2">No tags found</p>
               ) : (
@@ -504,12 +504,12 @@ export default function ContactsPage() {
               <div key={label} className={cn('rounded-xl border border-surface-200 border-t-4 p-3 min-h-[200px]', colorMap[label])}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold capitalize text-surface-700">{label}</h3>
-                  <span className="text-[10px] font-semibold bg-white px-2 py-0.5 rounded-full text-surface-500 shadow-sm">{items.length}</span>
+                  <span className="text-[10px] font-semibold bg-white dark:bg-surface-800 px-2 py-0.5 rounded-full text-surface-500 dark:text-surface-300 shadow-sm">{items.length}</span>
                 </div>
                 <div className="space-y-2">
                   {items.map(contact => (
                     <div key={contact.id} onClick={() => router.push(`/contacts/${contact.id}`)}
-                      className="bg-white rounded-lg p-3 shadow-sm hover:shadow-card-hover cursor-pointer transition-all border border-surface-100">
+                      className="bg-white dark:bg-surface-800 rounded-lg p-3 shadow-sm hover:shadow-card-hover cursor-pointer transition-all border border-surface-100 dark:border-surface-700">
                       <div className="flex items-center gap-2 mb-1">
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0 ${avatarColor(contact.name)}`}>
                           {getInitials(contact.name)}

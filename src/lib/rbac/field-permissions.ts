@@ -68,9 +68,8 @@ export const DEFAULT_FIELD_PERMISSIONS: FieldPermission[] = [
 const STORAGE_KEY = 'tracktio_field_permissions'
 
 /**
- * Load the effective permission set — merges defaults with any
- * admin-configured overrides stored in localStorage (stub persistence).
- * Server-side always returns defaults.
+ * Sync loader — returns the last cached set (localStorage) or defaults.
+ * Used by synchronous call sites (`getFieldAccess`, `filterFields`).
  */
 export function loadFieldPermissions(): FieldPermission[] {
   if (typeof window === 'undefined') return DEFAULT_FIELD_PERMISSIONS
@@ -85,9 +84,43 @@ export function loadFieldPermissions(): FieldPermission[] {
   }
 }
 
+/**
+ * Async loader — fetches current permissions from the API and caches
+ * them in localStorage so the sync loader stays fresh.
+ */
+export async function loadFieldPermissionsAsync(): Promise<FieldPermission[]> {
+  if (typeof window === 'undefined') return DEFAULT_FIELD_PERMISSIONS
+  try {
+    const res = await fetch('/api/field-permissions', { cache: 'no-store' })
+    if (!res.ok) return loadFieldPermissions()
+    const data = await res.json()
+    const perms = Array.isArray(data?.permissions) ? (data.permissions as FieldPermission[]) : []
+    const effective = perms.length > 0 ? perms : DEFAULT_FIELD_PERMISSIONS
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(effective)) } catch {}
+    return effective
+  } catch {
+    return loadFieldPermissions()
+  }
+}
+
 export function saveFieldPermissions(perms: FieldPermission[]): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(perms))
+}
+
+export async function saveFieldPermissionsAsync(perms: FieldPermission[]): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  saveFieldPermissions(perms)
+  try {
+    const res = await fetch('/api/field-permissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ permissions: perms }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 /**

@@ -10,6 +10,7 @@ import {
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { toast } from 'sonner'
+import { notifyRecordChange } from '@/lib/notifications/notify-change'
 
 interface InvoiceDetail {
   id: string; workspace_id: string; invoice_number: string; type: string; status: string
@@ -17,6 +18,7 @@ interface InvoiceDetail {
   issue_date: string; due_date: string | null; currency: string; created_at: string
   subtotal?: number; tax_amount?: number; tax_rate?: number; discount?: number; notes?: string
   quote_id?: string | null
+  owner_id?: string | null
   contacts?: { id: string; name: string; email?: string; phone?: string } | null
 }
 
@@ -126,10 +128,12 @@ export default function InvoiceDetailPage() {
   // Profile map for note authors
   const [profileMap, setProfileMap] = useState<Record<string, string>>({})
   const [currentUserName, setCurrentUserName] = useState('You')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    setCurrentUserId(user.id)
 
     // Load invoice with contact and items
     const [invRes, itemsRes] = await Promise.all([
@@ -254,9 +258,18 @@ export default function InvoiceDetailPage() {
       status: newStatus,
     }).eq('id', invoice.id)
 
-    // TODO(notify-change): invoices table currently lacks an owner_id column on
-    // the local InvoiceDetail interface. Once owner_id is surfaced, call
-    // notifyRecordChange({ entity: 'invoice', ownerId: invoice.owner_id, ... }).
+    if (invoice.owner_id && currentUserId && invoice.owner_id !== currentUserId) {
+      notifyRecordChange({
+        entity: 'invoice',
+        entityId: invoice.id,
+        entityTitle: invoice.invoice_number,
+        ownerId: invoice.owner_id,
+        editorId: currentUserId,
+        editorName: currentUserName,
+        actionUrl: `/invoices/${invoice.id}`,
+        workspaceId: invoice.workspace_id,
+      })
+    }
 
     setPaymentSaving(false)
     setShowPaymentModal(false)

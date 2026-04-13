@@ -190,7 +190,7 @@ export default function CalendarPage() {
       {/* New event modal */}
       {showNew && (
         <div className="modal-overlay">
-          <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-sm animate-slide-up">
+          <div className="bg-white dark:bg-surface-900 rounded-2xl shadow-card-hover w-full max-w-sm animate-slide-up">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
               <h2 className="font-semibold text-surface-900">New Event</h2>
               <button onClick={() => setShowNew(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>

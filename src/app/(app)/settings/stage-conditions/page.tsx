@@ -4,8 +4,8 @@ import { toast } from 'sonner'
 import { Plus, Trash2, Save } from 'lucide-react'
 import {
   DEFAULT_STAGE_CONDITIONS,
-  loadStageConditions,
-  saveStageConditions,
+  loadStageConditionsAsync,
+  saveStageConditionsAsync,
   type StageCondition,
 } from '@/lib/pipeline/stage-conditions'
 
@@ -15,7 +15,7 @@ export default function StageConditionsSettingsPage() {
   const [conditions, setConditions] = useState<StageCondition[]>([])
 
   useEffect(() => {
-    setConditions(loadStageConditions())
+    loadStageConditionsAsync().then(setConditions)
   }, [])
 
   const update = (idx: number, patch: Partial<StageCondition>) => {
@@ -37,9 +37,10 @@ export default function StageConditionsSettingsPage() {
     setConditions(DEFAULT_STAGE_CONDITIONS)
   }
 
-  const save = () => {
-    saveStageConditions(conditions)
-    toast.success('Stage conditions saved')
+  const save = async () => {
+    const ok = await saveStageConditionsAsync(conditions)
+    if (ok) toast.success('Stage conditions saved')
+    else toast.error('Failed to save stage conditions')
   }
 
   const toggleField = (idx: number, field: string) => {

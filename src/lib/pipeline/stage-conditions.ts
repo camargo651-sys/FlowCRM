@@ -50,6 +50,11 @@ export const DEFAULT_STAGE_CONDITIONS: StageCondition[] = [
 
 const STORAGE_KEY = 'tracktio_stage_conditions'
 
+/**
+ * Sync loader — returns the last cached set (localStorage) or defaults.
+ * Used by synchronous call sites (e.g. `validateTransition` default arg).
+ * Prefer `loadStageConditionsAsync` where possible.
+ */
 export function loadStageConditions(): StageCondition[] {
   if (typeof window === 'undefined') return DEFAULT_STAGE_CONDITIONS
   try {
@@ -63,9 +68,44 @@ export function loadStageConditions(): StageCondition[] {
   }
 }
 
+/**
+ * Async loader — hits the API and caches the result in localStorage so
+ * the sync fallback stays fresh. Falls back to the sync loader on error.
+ */
+export async function loadStageConditionsAsync(): Promise<StageCondition[]> {
+  if (typeof window === 'undefined') return DEFAULT_STAGE_CONDITIONS
+  try {
+    const res = await fetch('/api/stage-conditions', { cache: 'no-store' })
+    if (!res.ok) return loadStageConditions()
+    const data = await res.json()
+    const conds = Array.isArray(data?.conditions) ? (data.conditions as StageCondition[]) : []
+    const effective = conds.length > 0 ? conds : DEFAULT_STAGE_CONDITIONS
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(effective)) } catch {}
+    return effective
+  } catch {
+    return loadStageConditions()
+  }
+}
+
 export function saveStageConditions(conditions: StageCondition[]): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(conditions))
+}
+
+export async function saveStageConditionsAsync(conditions: StageCondition[]): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  // Keep localStorage in sync as a cache / offline fallback.
+  saveStageConditions(conditions)
+  try {
+    const res = await fetch('/api/stage-conditions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conditions }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 function norm(s: string | undefined | null): string {

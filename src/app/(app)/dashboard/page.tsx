@@ -221,15 +221,15 @@ export default async function DashboardPage() {
 
       {/* Personalized greeting */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-surface-900">{getGreeting(firstName)}</h1>
+        <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">{getGreeting(firstName)}</h1>
         {data.alerts.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
             {data.alerts.map((alert, i) => (
               <Link key={i} href={alert.href}
                 className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-                  alert.type === 'warning' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' :
-                  alert.type === 'success' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' :
-                  'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                  alert.type === 'warning' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20' :
+                  alert.type === 'success' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20' :
+                  'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20'
                 }`}>
                 {alert.type === 'warning' ? '⚠️' : alert.type === 'success' ? '✅' : 'ℹ️'} {alert.text}
               </Link>
@@ -245,9 +245,9 @@ export default async function DashboardPage() {
             {data.industryKPIs.slice(0, 6).map((kpi) => (
               <div key={kpi.key || kpi.label} className="card p-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-surface-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">{kpi.icon || '📊'}</div>
+                  <div className="w-9 h-9 bg-surface-50 dark:bg-surface-800 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">{kpi.icon || '📊'}</div>
                   <div className="min-w-0">
-                    <p className="text-lg font-bold text-surface-900 leading-tight">{kpi.value}</p>
+                    <p className="text-lg font-bold text-surface-900 dark:text-surface-50 leading-tight">{kpi.value}</p>
                     <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">{kpi.label}</p>
                   </div>
                 </div>
@@ -260,36 +260,36 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <div className="card p-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🎯</div>
+                <div className="w-9 h-9 bg-blue-50 dark:bg-blue-500/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🎯</div>
                 <div className="min-w-0">
-                  <p className="text-lg font-bold text-surface-900 leading-tight">{data.crm.leadConversionRate}%</p>
+                  <p className="text-lg font-bold text-surface-900 dark:text-surface-50 leading-tight">{data.crm.leadConversionRate}%</p>
                   <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">Lead Conversion</p>
                 </div>
               </div>
             </div>
             <div className="card p-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🏆</div>
+                <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🏆</div>
                 <div className="min-w-0">
-                  <p className="text-lg font-bold text-surface-900 leading-tight">{data.crm.dealWinRate}%</p>
+                  <p className="text-lg font-bold text-surface-900 dark:text-surface-50 leading-tight">{data.crm.dealWinRate}%</p>
                   <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">Win Rate</p>
                 </div>
               </div>
             </div>
             <div className="card p-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-violet-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">💎</div>
+                <div className="w-9 h-9 bg-violet-50 dark:bg-violet-500/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">💎</div>
                 <div className="min-w-0">
-                  <p className="text-lg font-bold text-surface-900 leading-tight">{formatCurrency(data.crm.avgWonDealValue)}</p>
+                  <p className="text-lg font-bold text-surface-900 dark:text-surface-50 leading-tight">{formatCurrency(data.crm.avgWonDealValue)}</p>
                   <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">Avg Deal Value</p>
                 </div>
               </div>
             </div>
             <div className="card p-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">⏱️</div>
+                <div className="w-9 h-9 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">⏱️</div>
                 <div className="min-w-0">
-                  <p className="text-lg font-bold text-surface-900 leading-tight">{data.crm.avgResponseTimeHours > 0 ? `${data.crm.avgResponseTimeHours}h` : '--'}</p>
+                  <p className="text-lg font-bold text-surface-900 dark:text-surface-50 leading-tight">{data.crm.avgResponseTimeHours > 0 ? `${data.crm.avgResponseTimeHours}h` : '--'}</p>
                   <p className="text-[10px] text-surface-500 font-semibold uppercase truncate">Avg Response Time</p>
                 </div>
               </div>
@@ -309,13 +309,13 @@ export default async function DashboardPage() {
         {/* CRM Module — always visible */}
         <Link href="/pipeline" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-surface-900">Sales / CRM</h3>
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">Sales / CRM</h3>
             <span className="text-lg">🔀</span>
           </div>
           <div className="space-y-2.5">
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Pipeline</span>
-              <span className="text-xs font-bold text-surface-900">{formatCurrency(data.crm.pipelineValue)}</span>
+              <span className="text-xs font-bold text-surface-900 dark:text-surface-50">{formatCurrency(data.crm.pipelineValue)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Won this month</span>
@@ -351,7 +351,7 @@ export default async function DashboardPage() {
         {isModuleEnabled('invoicing') && (
         <Link href="/invoices" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-surface-900">Finance</h3>
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">Finance</h3>
             <span className="text-lg">💰</span>
           </div>
           <div className="space-y-2.5">
@@ -385,13 +385,13 @@ export default async function DashboardPage() {
         {isModuleEnabled('inventory') && (
         <Link href="/inventory" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-surface-900">Inventory</h3>
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">Inventory</h3>
             <span className="text-lg">📦</span>
           </div>
           <div className="space-y-2.5">
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Stock value</span>
-              <span className="text-xs font-bold text-surface-900">{formatCurrency(data.inventory.inventoryValue)}</span>
+              <span className="text-xs font-bold text-surface-900 dark:text-surface-50">{formatCurrency(data.inventory.inventoryValue)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Products</span>
@@ -416,7 +416,7 @@ export default async function DashboardPage() {
         {isModuleEnabled('hr') && (
         <Link href="/hr" className="card-interactive p-5 group">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-surface-900">Human Resources</h3>
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">Human Resources</h3>
             <span className="text-lg">👥</span>
           </div>
           <div className="space-y-2.5">
@@ -426,7 +426,7 @@ export default async function DashboardPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Monthly payroll</span>
-              <span className="text-xs font-bold text-surface-900">{formatCurrency(data.hr.monthlyPayroll)}</span>
+              <span className="text-xs font-bold text-surface-900 dark:text-surface-50">{formatCurrency(data.hr.monthlyPayroll)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-xs text-surface-500">Overdue tasks</span>

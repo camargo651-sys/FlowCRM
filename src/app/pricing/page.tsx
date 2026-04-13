@@ -1,5 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PLANS } from '@/lib/pricing/plans'
+
+export const metadata: Metadata = {
+  title: 'Pricing',
+  description: 'Simple, transparent pricing for Tracktio. Start free, scale as you grow. 27 modules included on every paid plan.',
+  openGraph: {
+    title: 'Tracktio Pricing — Start free, scale as you grow',
+    description: 'Simple, transparent pricing. 27 modules included. Free to start, no credit card required.',
+  },
+}
 
 export default function PricingPage() {
   return (

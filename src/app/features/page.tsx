@@ -1,4 +1,14 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Features',
+  description: 'Explore all 27 Tracktio modules: CRM, invoicing, inventory, manufacturing, HR, accounting, POS, e-commerce, and more — all AI-powered.',
+  openGraph: {
+    title: 'Tracktio Features — 27 modules, one AI-powered platform',
+    description: 'CRM, invoicing, inventory, manufacturing, HR, accounting, POS, e-commerce, and more.',
+  },
+}
 
 const MODULES = [
   { category: 'Sales & CRM', desc: 'Manage your entire sales cycle from lead to close.', items: [

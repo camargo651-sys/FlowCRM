@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
+import { trackEvent } from '@/lib/analytics/track'
 import LocaleSwitcher from '@/components/shared/LocaleSwitcher'
 import { ChevronDown } from 'lucide-react'
 
@@ -161,7 +162,7 @@ export default function Home() {
                     <Link
                       key={m.key}
                       href={`/auth/signup?module=${m.key}`}
-                      onClick={() => setTryOpen(false)}
+                      onClick={() => { trackEvent('signup_started', { source: 'module-picker', module: m.key }); setTryOpen(false) }}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-50 transition-colors"
                     >
                       <span className="text-lg">{m.icon}</span>
@@ -174,7 +175,7 @@ export default function Home() {
                 </div>
               )}
             </div>
-            <Link href="/auth/signup" className="hidden sm:inline-block px-5 py-2 bg-surface-900 text-white font-semibold rounded-xl hover:bg-surface-800 transition-all text-sm shadow-sm">
+            <Link href="/auth/signup" onClick={() => trackEvent('signup_started', { source: 'nav' })} className="hidden sm:inline-block px-5 py-2 bg-surface-900 text-white font-semibold rounded-xl hover:bg-surface-800 transition-all text-sm shadow-sm">
               {t('landing.nav.start_free')}
             </Link>
           </div>
@@ -200,7 +201,7 @@ export default function Home() {
             {t('landing.hero.description')}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link href="/auth/signup" className="px-10 py-4 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all text-base shadow-xl shadow-brand-600/25 hover:shadow-brand-600/40 hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">
+            <Link href="/auth/signup" onClick={() => trackEvent('signup_started', { source: 'hero' })} className="px-10 py-4 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all text-base shadow-xl shadow-brand-600/25 hover:shadow-brand-600/40 hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">
               {t('landing.hero.cta_primary')}
             </Link>
             <Link href="/features" className="px-8 py-3.5 bg-white text-surface-700 font-semibold rounded-xl border border-surface-200 hover:border-surface-300 hover:bg-surface-50 transition-all text-sm w-full sm:w-auto text-center">
@@ -235,6 +236,7 @@ export default function Home() {
               <Link
                 key={m.key}
                 href={`/auth/signup?module=${m.key}`}
+                onClick={() => trackEvent('signup_started', { source: 'module-picker', module: m.key })}
                 className="group relative p-6 bg-white rounded-2xl border border-surface-200 hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-200"
               >
                 <div className="flex items-start gap-4">
@@ -506,7 +508,7 @@ export default function Home() {
             Join 500+ businesses that replaced their entire software stack with Tracktio. Free forever on the starter plan.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link href="/auth/signup" className="px-10 py-4 bg-white text-brand-700 font-bold rounded-xl hover:bg-brand-50 transition-all text-base shadow-xl hover:shadow-2xl hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">
+            <Link href="/auth/signup" onClick={() => trackEvent('signup_started', { source: 'footer-cta' })} className="px-10 py-4 bg-white text-brand-700 font-bold rounded-xl hover:bg-brand-50 transition-all text-base shadow-xl hover:shadow-2xl hover:-translate-y-0.5 duration-200 w-full sm:w-auto text-center">
               {t('landing.hero.cta_primary')}
             </Link>
             <Link href="/auth/login?demo=true" className="px-8 py-3.5 text-white font-semibold rounded-xl border border-white/20 hover:bg-white/10 transition-all text-sm w-full sm:w-auto text-center">

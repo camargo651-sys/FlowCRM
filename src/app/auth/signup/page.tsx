@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Zap, Mail, Lock, User, Building2, ArrowRight, Check, X } from 'lucide-react'
 import { slugify } from '@/lib/utils'
+import { trackEvent } from '@/lib/analytics/track'
 import { useI18n } from '@/lib/i18n/context'
 import LocaleSwitcher from '@/components/shared/LocaleSwitcher'
 
@@ -60,7 +61,10 @@ function SignupInner() {
     })
 
     if (signUpError) { setError(signUpError.message); setLoading(false); return }
-    if (data.user) router.push('/dashboard')
+    if (data.user) {
+      trackEvent('signup_completed', { initial_module: selectedModule || 'none' })
+      router.push('/dashboard')
+    }
   }
 
   const selectedMeta = STARTER_MODULES.find(m => m.key === selectedModule)
@@ -155,7 +159,7 @@ function SignupInner() {
 
         {/* Steps 1 & 2 */}
         {step > 0 && (
-          <form onSubmit={step === 1 ? (e) => { e.preventDefault(); setStep(2) } : handleSignup} className="space-y-4">
+          <form onSubmit={step === 1 ? (e) => { e.preventDefault(); trackEvent('signup_step_completed', { step: 1 }); setStep(2) } : (e) => { trackEvent('signup_step_completed', { step: 2 }); return handleSignup(e) }} className="space-y-4">
             {step === 1 ? (
               <>
                 <div>
