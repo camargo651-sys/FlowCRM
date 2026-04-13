@@ -25,6 +25,84 @@ const STARTER_MODULES = [
   { key: 'tickets', icon: '🎫' },
 ] as const
 
+const HOW_IT_WORKS_STEPS = [
+  { step: '01', titleKey: 'landing.how_it_works.s1_title', descKey: 'landing.how_it_works.s1_desc' },
+  { step: '02', titleKey: 'landing.how_it_works.s2_title', descKey: 'landing.how_it_works.s2_desc' },
+  { step: '03', titleKey: 'landing.how_it_works.s3_title', descKey: 'landing.how_it_works.s3_desc' },
+] as const
+
+const WHY_SWITCH_CARDS = [
+  {
+    accent: 'brand',
+    titleKey: 'landing.why_switch.c1_title',
+    descKey: 'landing.why_switch.c1_desc',
+    bullets: ['landing.why_switch.c1_b1', 'landing.why_switch.c1_b2', 'landing.why_switch.c1_b3', 'landing.why_switch.c1_b4'],
+  },
+  {
+    accent: 'violet',
+    titleKey: 'landing.why_switch.c2_title',
+    descKey: 'landing.why_switch.c2_desc',
+    bullets: ['landing.why_switch.c2_b1', 'landing.why_switch.c2_b2', 'landing.why_switch.c2_b3', 'landing.why_switch.c2_b4'],
+  },
+  {
+    accent: 'emerald',
+    titleKey: 'landing.why_switch.c3_title',
+    descKey: 'landing.why_switch.c3_desc',
+    bullets: ['landing.why_switch.c3_b1', 'landing.why_switch.c3_b2', 'landing.why_switch.c3_b3', 'landing.why_switch.c3_b4'],
+  },
+] as const
+
+const ALL_MODULES = [
+  { icon: '📊', key: 'dashboard', tag: 'AI' },
+  { icon: '🔀', key: 'crm_pipeline', tag: '' },
+  { icon: '👥', key: 'contacts', tag: 'AI' },
+  { icon: '🧾', key: 'invoicing', tag: '' },
+  { icon: '📄', key: 'quotes', tag: '' },
+  { icon: '📦', key: 'inventory', tag: '' },
+  { icon: '🏭', key: 'manufacturing', tag: '' },
+  { icon: '🛒', key: 'ecommerce', tag: '' },
+  { icon: '💳', key: 'pos', tag: '' },
+  { icon: '📒', key: 'accounting', tag: '' },
+  { icon: '🚛', key: 'purchasing', tag: '' },
+  { icon: '👔', key: 'hr', tag: '' },
+  { icon: '💬', key: 'whatsapp', tag: '' },
+  { icon: '📧', key: 'email_sync', tag: 'AI' },
+  { icon: '📈', key: 'analytics', tag: '' },
+  { icon: '⚡', key: 'automations', tag: '' },
+  { icon: '💰', key: 'expenses', tag: '' },
+  { icon: '📸', key: 'social_leads', tag: '' },
+  { icon: '📝', key: 'contracts', tag: '' },
+  { icon: '🎫', key: 'tickets', tag: '' },
+  { icon: '📞', key: 'call_tracking', tag: 'AI' },
+  { icon: '💼', key: 'linkedin', tag: '' },
+  { icon: '🔌', key: 'integrations', tag: '' },
+  { icon: '🧱', key: 'form_builder', tag: '' },
+  { icon: '📋', key: 'templates', tag: '' },
+  { icon: '🛡️', key: 'rbac', tag: '' },
+  { icon: '💻', key: 'api', tag: '' },
+] as const
+
+const COMPARISON_ROWS = [
+  { labelKey: 'landing.comparison.r.setup_time', tracktioKey: 'landing.comparison.setup.tracktio', odooKey: 'landing.comparison.setup.odoo', sapKey: 'landing.comparison.setup.sap', zohoKey: 'landing.comparison.setup.zoho' },
+  { labelKey: 'landing.comparison.r.cost', tracktio: '$0', odoo: '$5K-50K', sap: '$50K-500K', zoho: '$2K-10K' },
+  { labelKey: 'landing.comparison.r.specialist', tracktioKey: 'landing.comparison.val.no', odooKey: 'landing.comparison.val.yes', sapKey: 'landing.comparison.val.yes', zohoKey: 'landing.comparison.val.partial' },
+  { labelKey: 'landing.comparison.r.whatsapp', tracktioKey: 'landing.comparison.val.yes', odooKey: 'landing.comparison.val.addon', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.no' },
+  { labelKey: 'landing.comparison.r.ai_scoring', tracktioKey: 'landing.comparison.val.yes', odooKey: 'landing.comparison.val.no', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.partial' },
+  { labelKey: 'landing.comparison.r.email_sync', tracktioKey: 'landing.comparison.val.yes', odooKey: 'landing.comparison.val.addon', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.partial' },
+  { labelKey: 'landing.comparison.r.manufacturing', tracktioKey: 'landing.comparison.val.included', odooKey: 'landing.comparison.val.included', sapKey: 'landing.comparison.val.included', zohoKey: 'landing.comparison.val.no' },
+  { labelKey: 'landing.comparison.r.pos', tracktioKey: 'landing.comparison.val.yes', odooKey: 'landing.comparison.val.addon', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.addon' },
+  { labelKey: 'landing.comparison.r.ecom', tracktioKey: 'landing.comparison.val.included', odooKey: 'landing.comparison.val.included', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.addon' },
+  { labelKey: 'landing.comparison.r.hr', tracktioKey: 'landing.comparison.val.included', odooKey: 'landing.comparison.val.partial', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.partial' },
+  { labelKey: 'landing.comparison.r.proposal', tracktioKey: 'landing.comparison.val.yes', odooKey: 'landing.comparison.val.no', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.no' },
+  { labelKey: 'landing.comparison.r.industry', tracktio: '8+', odooKey: 'landing.comparison.val.limited', sapKey: 'landing.comparison.val.no', zohoKey: 'landing.comparison.val.no' },
+] as const
+
+const TESTIMONIALS = [
+  { quoteKey: 'landing.testimonials.t1_quote', name: 'Maria Rodriguez', roleKey: 'landing.testimonials.t1_role', company: 'SolarTech EMEA' },
+  { quoteKey: 'landing.testimonials.t2_quote', name: 'Carlos Mendez', roleKey: 'landing.testimonials.t2_role', company: 'LogiTrack MX' },
+  { quoteKey: 'landing.testimonials.t3_quote', name: 'Ana Ruiz', roleKey: 'landing.testimonials.t3_role', company: 'Estudio Volta' },
+] as const
+
 export default function Home() {
   const { t } = useI18n()
   const router = useRouter()
@@ -174,6 +252,159 @@ export default function Home() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section className="max-w-5xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">{t('landing.how_it_works.eyebrow')}</p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-surface-900">{t('landing.how_it_works.title')}</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {HOW_IT_WORKS_STEPS.map(item => (
+            <div key={item.step} className="relative">
+              <span className="text-6xl font-black text-surface-100 leading-none">{item.step}</span>
+              <h3 className="text-base font-bold text-surface-900 mt-3 mb-2">{t(item.titleKey)}</h3>
+              <p className="text-sm text-surface-500 leading-relaxed">{t(item.descKey)}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── WHY SWITCH ── */}
+      <section className="bg-surface-950 py-24">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <p className="text-xs font-bold text-brand-400 uppercase tracking-widest mb-3">{t('landing.why_switch.eyebrow')}</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">{t('landing.why_switch.title')}</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {WHY_SWITCH_CARDS.map(card => {
+              const border = card.accent === 'brand' ? 'hover:border-brand-600/40' : card.accent === 'violet' ? 'hover:border-violet-500/40' : 'hover:border-emerald-500/40'
+              const bg = card.accent === 'brand' ? 'bg-brand-600/10' : card.accent === 'violet' ? 'bg-violet-500/10' : 'bg-emerald-500/10'
+              const check = card.accent === 'brand' ? 'text-brand-400' : card.accent === 'violet' ? 'text-violet-400' : 'text-emerald-400'
+              return (
+                <div key={card.titleKey} className={`p-8 rounded-2xl bg-gradient-to-br from-surface-900 to-surface-950 border border-surface-800 transition-colors duration-300 ${border}`}>
+                  <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center mb-5`}>
+                    <span className={`w-2.5 h-2.5 rounded-full ${check.replace('text-', 'bg-')}`} />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2">{t(card.titleKey)}</h3>
+                  <p className="text-sm text-surface-400 leading-relaxed mb-5">{t(card.descKey)}</p>
+                  <ul className="space-y-2.5 text-xs text-surface-300">
+                    {card.bullets.map(b => (
+                      <li key={b} className="flex items-center gap-2"><span className={check}>✓</span> {t(b)}</li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── ALL 27 MODULES GRID ── */}
+      <section className="py-24">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">{t('landing.modules_grid.eyebrow')}</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-surface-900">{t('landing.modules_grid.title')}</h2>
+            <p className="text-surface-500 mt-4 max-w-lg mx-auto">{t('landing.modules_grid.subtitle')}</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {ALL_MODULES.map(m => (
+              <div key={m.key} className="group p-4 bg-white rounded-xl border border-surface-100 hover:border-brand-200 hover:shadow-lg transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-xl">{m.icon}</span>
+                  {m.tag && <span className="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">{m.tag}</span>}
+                </div>
+                <p className="text-sm font-semibold text-surface-800 mt-2.5">{t(`landing.modules_grid.m.${m.key}`)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMPARISON ── */}
+      <section className="bg-surface-50 py-24">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">{t('landing.comparison.eyebrow')}</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-surface-900">{t('landing.comparison.title')}</h2>
+          </div>
+          <div className="overflow-x-auto card p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-surface-200">
+                  <th className="text-left py-4 px-5 text-surface-500 font-semibold text-xs uppercase tracking-wider">{t('landing.comparison.col_feature')}</th>
+                  <th className="text-center py-4 px-5 font-bold text-brand-600 text-xs uppercase tracking-wider bg-brand-50/40">Tracktio</th>
+                  <th className="text-center py-4 px-5 text-surface-400 text-xs uppercase tracking-wider">Odoo</th>
+                  <th className="text-center py-4 px-5 text-surface-400 text-xs uppercase tracking-wider">SAP B1</th>
+                  <th className="text-center py-4 px-5 text-surface-400 text-xs uppercase tracking-wider">Zoho</th>
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                {COMPARISON_ROWS.map((row, i) => {
+                  const r = row as { labelKey: string; tracktio?: string; tracktioKey?: string; odoo?: string; odooKey?: string; sap?: string; sapKey?: string; zoho?: string; zohoKey?: string }
+                  const cell = (literal?: string, key?: string) => (literal ?? (key ? t(key) : ''))
+                  return (
+                    <tr key={i} className="border-b border-surface-100 last:border-0">
+                      <td className="py-3 px-5 font-medium text-surface-700">{t(r.labelKey)}</td>
+                      <td className="py-3 px-5 text-center font-bold text-brand-600 bg-brand-50/40">{cell(r.tracktio, r.tracktioKey)}</td>
+                      <td className="py-3 px-5 text-center text-surface-500">{cell(r.odoo, r.odooKey)}</td>
+                      <td className="py-3 px-5 text-center text-surface-500">{cell(r.sap, r.sapKey)}</td>
+                      <td className="py-3 px-5 text-center text-surface-500">{cell(r.zoho, r.zohoKey)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS ── */}
+      <section className="py-24">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">{t('landing.testimonials.eyebrow')}</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-surface-900">{t('landing.testimonials.title')}</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map(tm => (
+              <div key={tm.name} className="card p-8">
+                <div className="flex gap-1 mb-4">
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <svg key={i} className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                  ))}
+                </div>
+                <p className="text-sm text-surface-600 leading-relaxed mb-6">&ldquo;{t(tm.quoteKey)}&rdquo;</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-xs">
+                    {tm.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-surface-900">{tm.name}</p>
+                    <p className="text-xs text-surface-400">{t(tm.roleKey)}, {tm.company}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CONTACT FORM ── */}
+      <section className="bg-white py-20">
+        <div className="max-w-md mx-auto px-6 text-center">
+          <h2 className="text-2xl font-bold text-surface-900 mb-2">{t('landing.final_cta.contact_title')}</h2>
+          <p className="text-surface-500 text-sm mb-8">{t('landing.final_cta.contact_subtitle')}</p>
+          <form action={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@tracktio.app'}`} method="POST" encType="text/plain" className="space-y-3">
+            <input type="text" name="name" required placeholder={t('landing.final_cta.name_ph')} className="input" />
+            <input type="email" name="email" required placeholder={t('landing.final_cta.email_ph')} className="input" />
+            <textarea name="message" required rows={3} placeholder={t('landing.final_cta.message_ph')} className="input resize-none" />
+            <button type="submit" className="btn-primary w-full py-3">{t('landing.final_cta.submit')}</button>
+          </form>
         </div>
       </section>
 

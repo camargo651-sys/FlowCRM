@@ -12,15 +12,6 @@ interface I18nContextType {
 const LOCALE_STORAGE_KEY = 'tracktio_locale'
 const VALID_LOCALES: Locale[] = ['es', 'en', 'pt', 'fr', 'de']
 
-function readInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'en'
-  try {
-    const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-    if (stored && (VALID_LOCALES as string[]).includes(stored)) return stored as Locale
-  } catch {}
-  return 'en'
-}
-
 const I18nContext = createContext<I18nContextType>({
   locale: 'en',
   setLocale: () => {},
@@ -28,8 +19,18 @@ const I18nContext = createContext<I18nContextType>({
 })
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(readInitialLocale)
+  const [locale, setLocaleState] = useState<Locale>('en')
   const supabase = createClient()
+
+  // Hydrate locale from localStorage AFTER mount to avoid SSR/CSR mismatch.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
+      if (stored && (VALID_LOCALES as string[]).includes(stored)) {
+        setLocaleState(stored as Locale)
+      }
+    } catch {}
+  }, [])
 
   useEffect(() => {
     const loadLocale = async () => {
