@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { ArrowLeft, Send, User, Calendar, ArrowRightLeft, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import {
-  InterDeptRequest, IDRStatus, loadRequests, saveRequests, updateRequest,
-} from '../page'
+  type InterDeptRequest, type IDRStatus, loadRequests, saveRequests, updateRequest,
+} from '@/lib/inter-dept-requests/store'
 
 const STATUS_META: Record<IDRStatus, { label: string; className: string }> = {
   draft:     { label: 'Borrador',    className: 'bg-surface-100 text-surface-700' },
