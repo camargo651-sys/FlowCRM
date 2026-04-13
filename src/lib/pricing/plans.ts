@@ -128,7 +128,7 @@ export const PLANS: Plan[] = [
       storage_mb: 102400,
       api_requests_day: -1,
       users: -1,
-      modules: ['crm', 'invoicing', 'inventory', 'pos', 'automations', 'ecommerce', 'accounting', 'hr', 'expenses', 'manufacturing', 'purchasing', 'reports'],
+      modules: ['*'],
     },
   },
 ]
@@ -144,5 +144,6 @@ export function checkLimit(plan: Plan, resource: keyof Plan['limits'], current: 
 }
 
 export function canAccessModule(plan: Plan, module: string): boolean {
+  if (plan.limits.modules.includes('*')) return true
   return plan.limits.modules.includes(module)
 }
