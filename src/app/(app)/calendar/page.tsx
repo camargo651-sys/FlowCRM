@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, Plus, X, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { scheduleReminder } from '@/lib/notifications/push'
 
 interface CalendarEvent {
   id: string; title: string; type: string; due_date: string; done: boolean; contact_id?: string;
@@ -21,7 +22,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
-  const [form, setForm] = useState({ title: '', type: 'task', due_date: '', due_time: '' })
+  const [form, setForm] = useState({ title: '', type: 'task', due_date: '', due_time: '', reminder_minutes: 0 })
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -69,7 +70,19 @@ export default function CalendarPage() {
       workspace_id: workspaceId, title: form.title, type: form.type,
       due_date: dueDate, done: false,
     })
-    setForm({ title: '', type: 'task', due_date: '', due_time: '' })
+    // Schedule local reminder notification if requested
+    if (form.reminder_minutes > 0 && typeof window !== 'undefined') {
+      const fireAt = new Date(dueDate).getTime() - form.reminder_minutes * 60_000
+      const delay = fireAt - Date.now()
+      if (delay > 0) {
+        scheduleReminder(
+          `Recordatorio: ${form.title}`,
+          `En ${form.reminder_minutes} min (${form.type})`,
+          delay,
+        )
+      }
+    }
+    setForm({ title: '', type: 'task', due_date: '', due_time: '', reminder_minutes: 0 })
     setShowNew(false)
     toast.success('Event created')
     load()
@@ -196,6 +209,17 @@ export default function CalendarPage() {
                         form.type === t ? 'bg-brand-600 text-white' : 'bg-surface-100 text-surface-500')}>{t}</button>
                   ))}
                 </div>
+              </div>
+              <div><label className="label flex items-center gap-1"><Clock className="w-3 h-3" /> Reminder</label>
+                <select className="input" value={form.reminder_minutes}
+                  onChange={e => setForm(f => ({ ...f, reminder_minutes: parseInt(e.target.value) }))}>
+                  <option value={0}>None</option>
+                  <option value={5}>5 min before</option>
+                  <option value={15}>15 min before</option>
+                  <option value={30}>30 min before</option>
+                  <option value={60}>1 hour before</option>
+                  <option value={1440}>1 day before</option>
+                </select>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>

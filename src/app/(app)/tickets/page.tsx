@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Ticket, X, MessageCircle, Clock, AlertTriangle, StickyNote, UserCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { showLocalNotification } from '@/lib/notifications/push'
 
 const STATUS_STYLES: Record<string, string> = {
   open: 'badge-blue', in_progress: 'badge-yellow', waiting: 'badge-gray',
@@ -84,6 +85,9 @@ export default function TicketsPage() {
       category: form.category || null,
       assigned_to: form.assigned_to || null,
     })
+    if (form.priority === 'urgent') {
+      showLocalNotification('Nuevo ticket urgente', { body: form.subject, tag: 'ticket-urgent' })
+    }
     setForm({ subject: '', description: '', priority: 'medium', contact_id: '', category: '', assigned_to: '' })
     setShowNew(false); setSaving(false)
     toast.success('Ticket created')

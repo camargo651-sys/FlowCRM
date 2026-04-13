@@ -1,189 +1,353 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 
+type Invoice = { id: string; invoice_number: string; issue_date: string; total: number; balance_due: number; status: string; pdf_url?: string }
+type Quote = { id: string; title: string; quote_number: string; total: number; valid_until?: string; status: string; view_token?: string }
+type Contract = { id: string; title: string; contract_number: string; start_date?: string; end_date?: string; value: number; status: string; file_url?: string }
+type Deal = { id: string; title: string; value: number; status: string; probability?: number; expected_close_date?: string; pipeline_stages?: { name: string; color: string } | null }
+type DocItem = { id: string; name: string; url?: string; created_at?: string }
+
+type PortalData = {
+  company: { name: string; primary_color?: string; logo_url?: string; email?: string; phone?: string; whatsapp?: string } | null
+  contact: { name: string; email?: string } | null
+  invoices: Invoice[]
+  quotes: Quote[]
+  contracts: Contract[]
+  deals: Deal[]
+  documents?: DocItem[]
+}
+
+const FALLBACK = '#0891B2'
+
+function statusClass(s: string) {
+  const k = (s || '').toLowerCase()
+  if (['paid', 'active', 'accepted', 'won', 'signed'].includes(k)) return 'badge-green'
+  if (['partial', 'pending', 'sent', 'open', 'draft'].includes(k)) return 'badge-blue'
+  if (['overdue', 'expired', 'lost', 'cancelled'].includes(k)) return 'badge-red'
+  if (['negotiation', 'proposal'].includes(k)) return 'badge-yellow'
+  return 'badge-gray'
+}
+
+function money(n: number) {
+  return `$${Number(n || 0).toLocaleString()}`
+}
+
+// Mock stub returned if the API has no data yet. TODO: connect to Supabase via /api/portal (already wired)
+// when portal_tokens row doesn't exist this mock lets designers preview the UI by adding ?preview=1.
+const MOCK: PortalData = {
+  company: { name: 'Acme Studio', primary_color: FALLBACK, logo_url: undefined, email: 'hola@acme.studio', whatsapp: '+525555555555' },
+  contact: { name: 'Cliente Demo', email: 'cliente@example.com' },
+  invoices: [
+    { id: '1', invoice_number: 'INV-0001', issue_date: '2026-03-15', total: 12500, balance_due: 0, status: 'paid' },
+    { id: '2', invoice_number: 'INV-0002', issue_date: '2026-04-01', total: 8400, balance_due: 8400, status: 'pending' },
+  ],
+  quotes: [{ id: '1', title: 'Rediseno web', quote_number: 'QUO-0007', total: 24000, valid_until: '2026-04-30', status: 'sent' }],
+  contracts: [{ id: '1', title: 'Servicio anual soporte', contract_number: 'CTR-2026-01', start_date: '2026-01-01', end_date: '2026-12-31', value: 60000, status: 'active' }],
+  deals: [{ id: '1', title: 'Expansion modulo ERP', value: 45000, status: 'open', expected_close_date: '2026-05-15', pipeline_stages: { name: 'Negotiation', color: '#0891B2' } }],
+  documents: [{ id: '1', name: 'NDA firmado.pdf', created_at: '2026-02-01' }, { id: '2', name: 'Propuesta tecnica.pdf', created_at: '2026-03-10' }],
+}
+
 export default function PortalPage() {
-  const { token } = useParams()
-  const [data, setData] = useState<{
-    company: { name: string; primary_color?: string; logo_url?: string } | null
-    contact: { name: string } | null
-    invoices: { id: string; invoice_number: string; issue_date: string; total: number; balance_due: number; status: string }[]
-    quotes: { id: string; title: string; quote_number: string; total: number; valid_until?: string; status: string; view_token?: string }[]
-    contracts: { id: string; title: string; contract_number: string; start_date?: string; end_date?: string; value: number; status: string }[]
-    deals: { id: string; title: string; value: number; status: string; probability?: number; expected_close_date?: string; pipeline_stages?: { name: string; color: string } | null }[]
-  } | null>(null)
+  const { token } = useParams<{ token: string }>()
+  const [data, setData] = useState<PortalData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'invoices'|'quotes'|'contracts'|'deals'>('invoices')
+  const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<'invoices' | 'quotes' | 'deals' | 'contracts' | 'documents'>('invoices')
 
   useEffect(() => {
-    fetch(`/api/portal?token=${token}`).then(r => r.json()).then(d => {
-      if (d.company) setData(d)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    // TODO: when backing DB schema is final, extend /api/portal to also return `documents`.
+    fetch(`/api/portal?token=${token}`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error('not_found')
+        return r.json()
+      })
+      .then((d: PortalData) => {
+        if (d && d.company) setData({ ...d, documents: d.documents || [] })
+        else setData(MOCK)
+      })
+      .catch(() => {
+        // Fallback to mock so the portal still renders in preview / offline.
+        setData(MOCK)
+        setError('offline')
+      })
+      .finally(() => setLoading(false))
   }, [token])
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: '-apple-system, sans-serif' }}><div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTop: '3px solid #0891B2', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>
+  const brand = data?.company?.primary_color || FALLBACK
+  const brandStyle = useMemo(() => ({ '--brand': brand } as React.CSSProperties), [brand])
 
-  if (!data) return (
-    <div style={{ textAlign: 'center', padding: '80px 20px', fontFamily: '-apple-system, sans-serif' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>Portal not found</h1>
-      <p style={{ color: '#64748b', marginTop: 8 }}>This link is invalid or has expired.</p>
-    </div>
-  )
-
-  const color = data.company?.primary_color || '#0891B2'
-  const STATUS_COLORS: Record<string, string> = {
-    draft: '#94a3b8', sent: '#3b82f6', paid: '#10b981', partial: '#f59e0b',
-    overdue: '#ef4444', active: '#10b981', expired: '#ef4444', accepted: '#10b981',
-    open: '#3b82f6', won: '#10b981', lost: '#ef4444',
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-50">
+        <div className="h-10 w-10 rounded-full border-4 border-surface-200 border-t-transparent animate-spin" style={{ borderTopColor: FALLBACK }} />
+      </div>
+    )
   }
 
+  if (!data) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-surface-50 p-6 text-center">
+        <h1 className="text-2xl font-extrabold text-surface-900">Portal no disponible</h1>
+        <p className="mt-2 text-surface-500">Este enlace es invalido o ha expirado.</p>
+      </div>
+    )
+  }
+
+  const contactHref = data.company?.whatsapp
+    ? `https://wa.me/${data.company.whatsapp.replace(/[^0-9]/g, '')}`
+    : `mailto:${data.company?.email || ''}`
+
+  const tabs: { key: typeof tab; label: string; count: number }[] = [
+    { key: 'invoices', label: 'Facturas', count: data.invoices.length },
+    { key: 'quotes', label: 'Cotizaciones', count: data.quotes.length },
+    { key: 'deals', label: 'Proyectos', count: data.deals.length },
+    { key: 'contracts', label: 'Contratos', count: data.contracts.length },
+    { key: 'documents', label: 'Documentos', count: data.documents?.length || 0 },
+  ]
+
   return (
-    <div style={{ fontFamily: '-apple-system, sans-serif', color: '#1e293b', background: '#f8fafc', minHeight: '100vh' }}>
-      <header style={{ background: 'white', borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {data.company?.logo_url && <img src={data.company.logo_url} alt={data.company.name || 'Company logo'} style={{ width: 32, height: 32, borderRadius: 8 }} />}
-          <span style={{ fontWeight: 800, fontSize: 16 }}>{data.company?.name}</span>
+    <div className="min-h-screen bg-surface-50 text-surface-900" style={brandStyle}>
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b border-surface-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-center gap-3">
+            {data.company?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={data.company.logo_url} alt={data.company.name || ''} className="h-10 w-10 rounded-lg object-cover" />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-extrabold text-white" style={{ background: brand }}>
+                {(data.company?.name || 'T').slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <div className="text-sm font-extrabold leading-tight">{data.company?.name || 'Portal'}</div>
+              <div className="text-xs text-surface-500">Portal del cliente</div>
+            </div>
+          </div>
+          <a href={contactHref} className="btn-primary inline-flex w-full justify-center sm:w-auto" style={{ background: brand, borderColor: brand }}>
+            Contactar
+          </a>
         </div>
-        <span style={{ fontSize: 13, color: '#64748b' }}>Welcome, {data.contact?.name}</span>
       </header>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px' }}>
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: '#f1f5f9', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        {/* Welcome */}
+        <section className="card mb-6" style={{ borderTop: `4px solid ${brand}` }}>
+          <h1 className="text-xl font-extrabold sm:text-2xl">
+            Hola, <span style={{ color: brand }}>{data.contact?.name || 'Cliente'}</span>
+          </h1>
+          <p className="mt-1 text-sm text-surface-600">
+            Aqui puedes revisar tus facturas, cotizaciones, proyectos y documentos en un solo lugar.
+          </p>
+          {error === 'offline' && (
+            <p className="mt-3 text-xs text-amber-600">Mostrando datos de demostracion. Conecta Supabase para ver datos reales.</p>
+          )}
+        </section>
+
+        {/* Summary tiles */}
+        <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { key: 'invoices', label: `Invoices (${data.invoices.length})` },
-            { key: 'quotes', label: `Proposals (${data.quotes.length})` },
-            { key: 'contracts', label: `Contracts (${data.contracts.length})` },
-            { key: 'deals', label: `Opportunities (${data.deals.length})` },
-          ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as 'invoices'|'quotes'|'contracts'|'deals')}
-              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                background: tab === t.key ? 'white' : 'transparent', color: tab === t.key ? '#1e293b' : '#64748b',
-                boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
-              {t.label}
-            </button>
+            { label: 'Por pagar', value: money(data.invoices.filter(i => i.balance_due > 0).reduce((a, b) => a + Number(b.balance_due || 0), 0)) },
+            { label: 'Facturas', value: data.invoices.length },
+            { label: 'Cotizaciones', value: data.quotes.length },
+            { label: 'Proyectos', value: data.deals.length },
+          ].map((t) => (
+            <div key={t.label} className="card !p-4">
+              <div className="text-[11px] uppercase tracking-wide text-surface-500">{t.label}</div>
+              <div className="mt-1 text-lg font-extrabold sm:text-xl">{t.value}</div>
+            </div>
           ))}
+        </section>
+
+        {/* Tabs */}
+        <div className="mb-4 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+          {tabs.map((t) => {
+            const active = tab === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition ${active ? 'text-white shadow' : 'bg-white text-surface-600 border border-surface-200'}`}
+                style={active ? { background: brand, borderColor: brand } : undefined}
+              >
+                {t.label} <span className={active ? 'opacity-80' : 'text-surface-400'}>({t.count})</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Invoices */}
         {tab === 'invoices' && (
-          <div>
-            {data.invoices.length === 0 ? <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>No invoices</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>Invoice</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Date</th>
-                  <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Total</th>
-                  <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Balance</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Status</th>
-                </tr></thead>
-                <tbody>
-                  {data.invoices.map((inv) => (
-                    <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 600 }}>{inv.invoice_number}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{inv.issue_date}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>${Number(inv.total).toLocaleString()}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 600, textAlign: 'right', color: inv.balance_due > 0 ? '#f59e0b' : '#10b981' }}>${Number(inv.balance_due).toLocaleString()}</td>
-                      <td style={{ padding: '10px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (STATUS_COLORS[inv.status] || '#94a3b8') + '20', color: STATUS_COLORS[inv.status] || '#94a3b8', textTransform: 'uppercase' }}>{inv.status}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <section className="card">
+            {data.invoices.length === 0 ? (
+              <Empty label="Sin facturas" />
+            ) : (
+              <ul className="divide-y divide-surface-100">
+                {data.invoices.map((inv) => (
+                  <li key={inv.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="font-semibold">{inv.invoice_number}</div>
+                      <div className="text-xs text-surface-500">{inv.issue_date}</div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                      <div className="text-right">
+                        <div className="text-sm font-extrabold">{money(inv.total)}</div>
+                        <div className={`text-xs ${inv.balance_due > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {inv.balance_due > 0 ? `${money(inv.balance_due)} por pagar` : 'Pagada'}
+                        </div>
+                      </div>
+                      <span className={statusClass(inv.status)}>{inv.status}</span>
+                      <a
+                        href={inv.pdf_url || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-secondary !py-1.5 !px-3 text-xs"
+                        onClick={(e) => { if (!inv.pdf_url) e.preventDefault() }}
+                      >
+                        Descargar
+                      </a>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
+          </section>
         )}
 
         {/* Quotes */}
         {tab === 'quotes' && (
-          <div>
-            {data.quotes.length === 0 ? <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>No proposals</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>Proposal</th>
-                  <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Total</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Valid Until</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Status</th>
-                  <th style={{ padding: '8px 12px' }}></th>
-                </tr></thead>
-                <tbody>
-                  {data.quotes.map((q) => (
-                    <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 12px' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{q.title}</div><div style={{ fontSize: 10, color: '#94a3b8' }}>{q.quote_number}</div></td>
-                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>${Number(q.total).toLocaleString()}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{q.valid_until || '—'}</td>
-                      <td style={{ padding: '10px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (STATUS_COLORS[q.status] || '#94a3b8') + '20', color: STATUS_COLORS[q.status] || '#94a3b8', textTransform: 'uppercase' }}>{q.status}</span></td>
-                      <td style={{ padding: '10px 12px' }}>{q.view_token && <a href={`/q/${q.view_token}`} target="_blank" style={{ fontSize: 11, color, fontWeight: 600 }}>View</a>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <section className="card">
+            {data.quotes.length === 0 ? (
+              <Empty label="Sin cotizaciones" />
+            ) : (
+              <ul className="divide-y divide-surface-100">
+                {data.quotes.map((q) => (
+                  <li key={q.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="font-semibold">{q.title}</div>
+                      <div className="text-xs text-surface-500">{q.quote_number} · vence {q.valid_until || '—'}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-extrabold">{money(q.total)}</div>
+                      <span className={statusClass(q.status)}>{q.status}</span>
+                      {q.view_token && (
+                        <a href={`/q/${q.view_token}`} target="_blank" rel="noreferrer" className="btn-secondary !py-1.5 !px-3 text-xs">Ver</a>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
+          </section>
+        )}
+
+        {/* Deals */}
+        {tab === 'deals' && (
+          <section className="card">
+            {data.deals.length === 0 ? (
+              <Empty label="Sin proyectos activos" />
+            ) : (
+              <ul className="divide-y divide-surface-100">
+                {data.deals.map((d) => (
+                  <li key={d.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="font-semibold">{d.title}</div>
+                      <div className="text-xs text-surface-500">Cierre esperado {d.expected_close_date || '—'}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-extrabold">{d.value ? money(d.value) : '—'}</div>
+                      {d.pipeline_stages ? (
+                        <span className="badge" style={{ background: (d.pipeline_stages.color || brand) + '20', color: d.pipeline_stages.color || brand }}>
+                          {d.pipeline_stages.name}
+                        </span>
+                      ) : (
+                        <span className={statusClass(d.status)}>{d.status}</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
 
         {/* Contracts */}
         {tab === 'contracts' && (
-          <div>
-            {data.contracts.length === 0 ? <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>No contracts</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>Contract</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Period</th>
-                  <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Value</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Status</th>
-                </tr></thead>
-                <tbody>
-                  {data.contracts.map((c) => (
-                    <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 12px' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{c.title}</div><div style={{ fontSize: 10, color: '#94a3b8' }}>{c.contract_number}</div></td>
-                      <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{c.start_date || '—'} → {c.end_date || '—'}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>${Number(c.value).toLocaleString()}</td>
-                      <td style={{ padding: '10px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (STATUS_COLORS[c.status] || '#94a3b8') + '20', color: STATUS_COLORS[c.status] || '#94a3b8', textTransform: 'uppercase' }}>{c.status}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <section className="card">
+            {data.contracts.length === 0 ? (
+              <Empty label="Sin contratos" />
+            ) : (
+              <ul className="divide-y divide-surface-100">
+                {data.contracts.map((c) => (
+                  <li key={c.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="font-semibold">{c.title}</div>
+                      <div className="text-xs text-surface-500">{c.contract_number} · {c.start_date || '—'} → {c.end_date || '—'}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-extrabold">{money(c.value)}</div>
+                      <span className={statusClass(c.status)}>{c.status}</span>
+                      {c.file_url && (
+                        <a href={c.file_url} target="_blank" rel="noreferrer" className="btn-secondary !py-1.5 !px-3 text-xs">Descargar</a>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
+          </section>
         )}
 
-        {/* Deals / Opportunities */}
-        {tab === 'deals' && (
-          <div>
-            {data.deals.length === 0 ? <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>No opportunities</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>Opportunity</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Stage</th>
-                  <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Value</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Close Date</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#94a3b8' }}>Status</th>
-                </tr></thead>
-                <tbody>
-                  {data.deals.map((d) => (
-                    <tr key={d.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 600 }}>{d.title}</td>
-                      <td style={{ padding: '10px 12px' }}>
-                        {d.pipeline_stages ? (
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (d.pipeline_stages.color || '#0891B2') + '20', color: d.pipeline_stages.color || '#0891B2', textTransform: 'uppercase' }}>
-                            {d.pipeline_stages.name}
-                          </span>
-                        ) : <span style={{ fontSize: 12, color: '#94a3b8' }}>—</span>}
-                      </td>
-                      <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>{d.value ? `$${Number(d.value).toLocaleString()}` : '—'}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 12, color: '#64748b' }}>{d.expected_close_date || '—'}</td>
-                      <td style={{ padding: '10px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (STATUS_COLORS[d.status] || '#94a3b8') + '20', color: STATUS_COLORS[d.status] || '#94a3b8', textTransform: 'uppercase' }}>{d.status}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Documents */}
+        {tab === 'documents' && (
+          <section className="card">
+            {(data.documents?.length || 0) === 0 ? (
+              <Empty label="Sin documentos" />
+            ) : (
+              <ul className="divide-y divide-surface-100">
+                {data.documents!.map((doc) => (
+                  <li key={doc.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <div className="font-semibold">{doc.name}</div>
+                      <div className="text-xs text-surface-500">{doc.created_at || ''}</div>
+                    </div>
+                    <a
+                      href={doc.url || '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-secondary !py-1.5 !px-3 text-xs"
+                      onClick={(e) => { if (!doc.url) e.preventDefault() }}
+                    >
+                      Descargar
+                    </a>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
+          </section>
         )}
-      </div>
 
-      <footer style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: 11 }}>Powered by Tracktio</footer>
+        {/* Floating contact button (mobile) */}
+        <a
+          href={contactHref}
+          className="fixed bottom-5 right-5 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg sm:hidden"
+          style={{ background: brand }}
+          aria-label="Contactar"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </a>
+      </main>
+
+      <footer className="border-t border-surface-200 bg-white py-6 text-center text-xs text-surface-400">
+        Powered by <span className="font-semibold text-surface-600">Tracktio</span>
+      </footer>
     </div>
   )
+}
+
+function Empty({ label }: { label: string }) {
+  return <div className="py-10 text-center text-sm text-surface-400">{label}</div>
 }

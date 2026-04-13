@@ -7,6 +7,7 @@ import { ShoppingBag, Search, Truck, CheckCircle2, XCircle, Clock, Package } fro
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { useI18n } from '@/lib/i18n/context'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 const STATUS_FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered']
 const STATUS_STYLES: Record<string, string> = {
@@ -72,7 +73,7 @@ export default function StoreOrdersPage() {
           <h1 className="page-title">{t('pages.store')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{orders.length} orders · {formatCurrency(totalRevenue)} revenue</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
           {storeSlug && storeEnabled && (
             <a href={`/store/${storeSlug}`} target="_blank" className="btn-secondary btn-sm">View Store</a>
           )}
@@ -101,7 +102,7 @@ export default function StoreOrdersPage() {
         </div>
       </div>
 
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-col md:flex-row gap-2 md:gap-3 mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
           <input className="input pl-9 text-xs" placeholder="Search orders..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -120,6 +121,37 @@ export default function StoreOrdersPage() {
           <p className="text-xs text-surface-400 mt-1">{storeEnabled ? 'Share your store link to start receiving orders' : 'Enable your store to start selling online'}</p>
         </div>
       ) : (
+        <>
+        <MobileList>
+          {filtered.map(order => {
+            const currentIdx = STATUS_FLOW.indexOf(order.status)
+            const nextStatus = currentIdx >= 0 && currentIdx < STATUS_FLOW.length - 1 ? STATUS_FLOW[currentIdx + 1] : null
+            return (
+              <MobileListCard
+                key={order.id}
+                title={<span className="font-mono">{order.order_number}</span>}
+                subtitle={`${order.customer_name} · ${order.customer_email}`}
+                badge={<span className={cn('badge text-[10px]', STATUS_STYLES[order.status])}>{order.status}</span>}
+                meta={<>
+                  <span className="font-bold text-surface-700">{formatCurrency(order.total)}</span>
+                  <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                </>}
+              >
+                <div className="flex gap-1 flex-wrap">
+                  {nextStatus && (
+                    <button onClick={() => updateStatus(order.id, nextStatus)}
+                      className="btn-secondary btn-sm text-[10px] capitalize">{nextStatus}</button>
+                  )}
+                  {order.status === 'pending' && (
+                    <button onClick={() => updateStatus(order.id, 'cancelled')}
+                      className="btn-ghost btn-sm text-[10px] text-red-500">Cancel</button>
+                  )}
+                </div>
+              </MobileListCard>
+            )
+          })}
+        </MobileList>
+        <DesktopOnly>
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead><tr className="border-b border-surface-100">
@@ -162,6 +194,8 @@ export default function StoreOrdersPage() {
             </tbody>
           </table>
         </div>
+        </DesktopOnly>
+        </>
       )}
     </div>
   )

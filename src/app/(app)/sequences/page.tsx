@@ -639,7 +639,8 @@ export default function SequencesPage() {
                         ) : enrollments.length === 0 ? (
                           <p className="text-sm text-surface-400 text-center py-6">No enrollments yet</p>
                         ) : (
-                          <div className="space-y-1">
+                          <div className="space-y-1 overflow-x-auto">
+                            <div className="min-w-[560px]">
                             {/* Table header */}
                             <div className="grid grid-cols-[1fr_80px_80px_120px_100px] gap-2 px-3 py-1.5 text-[10px] font-semibold text-surface-400 uppercase tracking-wider">
                               <span>Contact</span>
@@ -716,6 +717,7 @@ export default function SequencesPage() {
                                 </div>
                               )
                             })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -749,7 +751,7 @@ export default function SequencesPage() {
               {!editingId && (
                 <div>
                   <label className="text-sm font-medium text-surface-700 block mb-2">Start from a template</label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {SEQUENCE_TEMPLATES.map(tpl => (
                       <button key={tpl.label}
                         onClick={() => applyTemplate(tpl)}

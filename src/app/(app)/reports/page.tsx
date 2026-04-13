@@ -150,16 +150,16 @@ export default function ReportsPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
+      <div className="page-header flex-col md:flex-row gap-3 md:gap-0">
         <div><h1 className="page-title">{t('reports.title')}</h1><p className="text-sm text-surface-500 mt-0.5">Real-time financial overview</p></div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input type="date" className="input text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} />
           <span className="text-surface-400 text-xs">to</span>
           <input type="date" className="input text-xs" value={endDate} onChange={e => setEndDate(e.target.value)} />
         </div>
       </div>
 
-      <div className="segmented-control mb-8">
+      <div className="segmented-control mb-8 overflow-x-auto">
         {[{ id: 'pnl', label: 'Profit & Loss' }, { id: 'balance', label: 'Balance Sheet' }, { id: 'cashflow', label: 'Cash Flow' }, { id: 'sales', label: 'Sales' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as 'pnl'|'balance'|'cashflow'|'sales')}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
@@ -251,7 +251,7 @@ export default function ReportsPage() {
       {/* Cash Flow */}
       {tab === 'cashflow' && cashflow && (
         <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="card p-4"><p className="text-lg font-bold text-emerald-600">{formatCurrency(cashflow.total_inflow || 0)}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Total Inflow</p></div>
             <div className="card p-4"><p className="text-lg font-bold text-red-600">{formatCurrency(cashflow.total_outflow || 0)}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Total Outflow</p></div>
             <div className={cn('card p-4', cashflow.net_cashflow >= 0 ? 'border-emerald-200' : 'border-red-200')}>

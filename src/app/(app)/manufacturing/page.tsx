@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Factory, X, Play, CheckCircle2, Clock, AlertTriangle, Package, Search, ChevronRight } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 const STATUS_FLOW = ['draft', 'confirmed', 'in_progress', 'quality_check', 'completed'] as const
 const STATUS_LABELS: Record<string, string> = {
@@ -184,7 +185,7 @@ export default function ManufacturingPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('manufacturing.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{workOrders.length} work orders · {boms.length} BOMs</p></div>
-        <div className="flex gap-2">
+        <div className="flex flex-col md:flex-row gap-2">
           <button onClick={() => setShowNewBOM(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> BOM</button>
           <button onClick={() => setShowNewWO(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Work Order</button>
         </div>
@@ -221,7 +222,55 @@ export default function ManufacturingPage() {
         )}
       </div>
 
+      {tab === 'work_orders' && filteredWOs.length > 0 && (
+        <MobileList>
+          {filteredWOs.map(wo => {
+            const progress = getStatusProgress(wo.status)
+            const nextStatus = getNextStatus(wo.status)
+            return (
+              <MobileListCard
+                key={wo.id}
+                title={<span className="font-mono">{wo.wo_number}</span>}
+                subtitle={wo.products?.name || '—'}
+                badge={<span className={cn('badge text-[10px]', STATUS_STYLES[wo.status])}>{wo.status.replace('_', ' ')}</span>}
+                meta={<>
+                  <span>Qty: <b>{wo.quantity}</b></span>
+                  <span className={cn('font-bold capitalize', PRIORITY_STYLES[wo.priority])}>{wo.priority}</span>
+                  <span>{progress}%</span>
+                </>}
+              >
+                <div className="overflow-x-auto -mx-1 px-1 mb-2">
+                  <div className="flex items-center gap-0.5 w-max">
+                    {STATUS_FLOW.map((s, i) => {
+                      const currentIdx = STATUS_FLOW.indexOf(wo.status as typeof STATUS_FLOW[number])
+                      const isActive = i <= currentIdx
+                      const isCurrent = i === currentIdx
+                      return (
+                        <div key={s} className="flex items-center">
+                          <div className={cn('w-2 h-2 rounded-full', isCurrent ? 'bg-brand-500 ring-2 ring-brand-200' : isActive ? 'bg-brand-400' : 'bg-surface-200')} title={STATUS_LABELS[s]} />
+                          {i < STATUS_FLOW.length - 1 && <div className={cn('w-3 h-0.5', isActive && i < currentIdx ? 'bg-brand-400' : 'bg-surface-200')} />}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                {wo.status !== 'completed' && wo.status !== 'cancelled' && nextStatus && (
+                  <button onClick={() => updateWOStatus(wo.id, nextStatus)}
+                    className={cn('btn-sm text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1',
+                      nextStatus === 'completed' ? 'bg-emerald-600 text-white' :
+                      nextStatus === 'in_progress' ? 'bg-amber-600 text-white' :
+                      nextStatus === 'quality_check' ? 'bg-violet-600 text-white' : 'btn-secondary')}>
+                    <ChevronRight className="w-3 h-3" /> {STATUS_LABELS[nextStatus]}
+                  </button>
+                )}
+              </MobileListCard>
+            )
+          })}
+        </MobileList>
+      )}
+
       {tab === 'work_orders' && (
+        <DesktopOnly>
         <div className="card overflow-hidden">
           {filteredWOs.length === 0 ? (
             <div className="text-center py-16"><Factory className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No work orders found</p></div>
@@ -306,6 +355,7 @@ export default function ManufacturingPage() {
             </table>
           )}
         </div>
+        </DesktopOnly>
       )}
 
       {tab === 'boms' && (
@@ -317,7 +367,7 @@ export default function ManufacturingPage() {
             const unitCost = bom.yield_quantity > 0 ? totalCost / bom.yield_quantity : totalCost
             return (
             <div key={bom.id} className="card p-5">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
                 <div>
                   <h3 className="text-sm font-bold text-surface-900">{bom.name}</h3>
                   <p className="text-xs text-surface-500">Produces: {bom.products?.name} ({bom.products?.sku}) · Yield: {bom.yield_quantity}</p>
@@ -330,7 +380,8 @@ export default function ManufacturingPage() {
                 </div>
               </div>
               {(bom.bom_lines || []).length > 0 && (
-                <table className="w-full text-xs">
+                <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full text-xs min-w-[500px]">
                   <thead><tr className="text-surface-400"><th className="text-left py-1">Material</th><th className="text-left py-1">SKU</th><th className="text-right py-1">Qty</th><th className="text-right py-1">Waste %</th><th className="text-right py-1">Stock</th><th className="text-right py-1">Cost</th></tr></thead>
                   <tbody>
                     {bom.bom_lines.map((line: BomLine & { products?: { name: string; cost_price: number; stock_quantity?: number; sku?: string } }) => {
@@ -356,6 +407,7 @@ export default function ManufacturingPage() {
                     <td className="py-1.5 text-right">{formatCurrency(totalCost)}</td>
                   </tr></tfoot>
                 </table>
+                </div>
               )}
             </div>
             )

@@ -8,6 +8,7 @@ import { Plus, Receipt, X, CheckCircle2, XCircle, Clock, Upload, DollarSign, Dow
 import { formatCurrency, cn } from '@/lib/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 const CATEGORIES = ['Travel', 'Meals', 'Office Supplies', 'Software', 'Transportation', 'Lodging', 'Training', 'Marketing', 'Utilities', 'Other']
 
@@ -184,9 +185,9 @@ export default function ExpensesPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
+      <div className="page-header flex-col md:flex-row gap-3 md:gap-0">
         <div><h1 className="page-title">{t('nav.expenses')}</h1><p className="text-sm text-surface-500 mt-0.5">{reports.length} reports</p></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={exportCSV} className="btn-secondary btn-sm"><Download className="w-3.5 h-3.5" /> Export CSV</button>
           <button onClick={() => setShowCategorySummary(!showCategorySummary)} className="btn-secondary btn-sm"><BarChart3 className="w-3.5 h-3.5" /> {showCategorySummary ? 'Hide' : 'Show'} Chart</button>
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Report</button>
@@ -222,7 +223,7 @@ export default function ExpensesPage() {
 
       {/* Category / Status summary chart */}
       {showCategorySummary && statusChartData.length > 0 && (
-        <div className="card p-5 mb-6">
+        <div className="card p-5 mb-6 overflow-x-auto">
           <h3 className="font-semibold text-surface-900 mb-4">Expenses by Status</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={statusChartData} barSize={48}>
@@ -239,7 +240,7 @@ export default function ExpensesPage() {
       )}
 
       {/* Date range filter */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         <Filter className="w-4 h-4 text-surface-400" />
         <input type="date" className="input text-sm w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
         <span className="text-xs text-surface-400">to</span>
@@ -252,7 +253,7 @@ export default function ExpensesPage() {
       {filteredReports.length === 0 ? (
         <div className="card text-center py-16"><Receipt className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No expense reports found</p></div>
       ) : (
-        <div className="card overflow-hidden">
+        <><DesktopOnly><div className="card overflow-hidden">
           <table className="w-full">
             <thead><tr className="border-b border-surface-100">
               <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Report</th>
@@ -282,7 +283,31 @@ export default function ExpensesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </div></DesktopOnly>
+        <MobileList>
+          {filteredReports.map(r => (
+            <MobileListCard
+              key={r.id}
+              title={r.title}
+              subtitle={<span className="font-mono">{r.report_number}</span>}
+              badge={<span className={cn('badge text-[10px]', STATUS_STYLES[r.status])}>{r.status}</span>}
+              meta={<>
+                <span>{r.employees ? `${r.employees.first_name} ${r.employees.last_name}` : '—'}</span>
+                <span>{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span>
+              </>}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-surface-900">{formatCurrency(r.total)}</span>
+                {r.status === 'submitted' && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => updateReportStatus(r.id, 'approved')} className="bg-emerald-600 text-white text-[10px] rounded-lg px-2 py-1"><CheckCircle2 className="w-3 h-3" /></button>
+                    <button onClick={() => updateReportStatus(r.id, 'rejected')} className="bg-red-600 text-white text-[10px] rounded-lg px-2 py-1"><XCircle className="w-3 h-3" /></button>
+                  </div>
+                )}
+              </div>
+            </MobileListCard>
+          ))}
+        </MobileList></>
       )}
 
       {showNew && (

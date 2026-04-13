@@ -1055,14 +1055,14 @@ export default function BIDashboardPage() {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header flex-col md:flex-row gap-3 md:gap-0">
         <div className="flex items-center gap-3 min-w-0">
           <div>
             <h1 className="page-title">{t('nav.bi')}</h1>
             <p className="text-sm text-surface-500 mt-0.5">Custom dashboards with drag-and-drop widgets</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setConfigModal({ open: true, widget: null })} className="btn-primary btn-sm">
             <Plus className="w-3.5 h-3.5" /> Add Widget
           </button>

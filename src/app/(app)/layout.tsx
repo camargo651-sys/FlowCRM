@@ -12,6 +12,7 @@ import InstallPrompt from '@/components/shared/InstallPrompt'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import GoogleAnalytics from '@/components/shared/GoogleAnalytics'
 import FacebookPixel from '@/components/shared/FacebookPixel'
+import NotificationSetup from '@/components/shared/NotificationSetup'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -35,6 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 overflow-y-auto min-w-0">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 lg:py-8 pt-14 md:pt-6 lg:pt-8 pb-20 md:pb-6">
           <Breadcrumbs />
+          <NotificationSetup />
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
       </main>

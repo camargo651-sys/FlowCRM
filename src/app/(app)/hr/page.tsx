@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Users, Building2, Calendar, DollarSign, X, Search, Clock, CheckCircle2, Download, LayoutGrid, List, Gift, UserCheck, UserX, Palmtree } from 'lucide-react'
 import { formatCurrency, cn, getInitials } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 export default function HRPage() {
   const supabase = createClient()
@@ -229,6 +230,23 @@ export default function HRPage() {
             </div>
           ) : (
             /* Table view */
+            <>
+            <MobileList>
+              {filteredEmployees.map(emp => (
+                <MobileListCard
+                  key={emp.id}
+                  title={`${emp.first_name} ${emp.last_name}`}
+                  subtitle={`${emp.employee_number || ''}${emp.position ? ' · ' + emp.position : ''}`}
+                  badge={<span className={cn('badge text-[10px]', emp.status === 'active' ? 'badge-green' : 'badge-gray')}>{emp.status}</span>}
+                  meta={<>
+                    <span>{emp.departments?.name || '—'}</span>
+                    <span>· {formatCurrency(emp.salary)}/{emp.salary_period}</span>
+                    <span>· {getLeaveBalance(emp.id)}d leave</span>
+                  </>}
+                />
+              ))}
+            </MobileList>
+            <DesktopOnly>
             <div className="card overflow-hidden">
               <table className="w-full">
                 <thead><tr className="border-b border-surface-100">
@@ -260,6 +278,8 @@ export default function HRPage() {
                 </tbody>
               </table>
             </div>
+            </DesktopOnly>
+            </>
           )}
         </>
       )}
@@ -313,6 +333,28 @@ export default function HRPage() {
             <h3 className="font-semibold text-surface-900">Payroll Summary</h3>
             <button onClick={exportPayrollCSV} className="btn-secondary btn-sm"><Download className="w-3.5 h-3.5" /> Export CSV</button>
           </div>
+          {activeEmployees.length > 0 && (
+            <MobileList>
+              {activeEmployees.map(emp => {
+                let monthly = emp.salary || 0
+                if (emp.salary_period === 'annual') monthly /= 12
+                if (emp.salary_period === 'weekly') monthly *= 4.33
+                if (emp.salary_period === 'hourly') monthly *= 173.33
+                return (
+                  <MobileListCard
+                    key={emp.id}
+                    title={`${emp.first_name} ${emp.last_name}`}
+                    subtitle={emp.departments?.name || '—'}
+                    meta={<>
+                      <span>{formatCurrency(emp.salary)}/{emp.salary_period}</span>
+                      <span>· Monthly: <strong>{formatCurrency(monthly)}</strong></span>
+                    </>}
+                  />
+                )
+              })}
+            </MobileList>
+          )}
+          <DesktopOnly>
           <div className="card overflow-hidden">
             {activeEmployees.length === 0 ? (
               <div className="text-center py-16"><DollarSign className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No active employees</p></div>
@@ -356,6 +398,7 @@ export default function HRPage() {
               </table>
             )}
           </div>
+          </DesktopOnly>
         </div>
       )}
 

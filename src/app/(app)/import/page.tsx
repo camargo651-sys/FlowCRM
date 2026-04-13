@@ -463,7 +463,7 @@ export default function ImportPage() {
           {/* Duplicate strategy */}
           <div className="card p-4">
             <p className="text-xs font-semibold text-surface-700 mb-2">When duplicates are found:</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {([
                 { key: 'skip' as const, label: 'Skip', desc: 'Keep existing, ignore new' },
                 { key: 'update' as const, label: 'Update', desc: 'Merge new data into existing' },

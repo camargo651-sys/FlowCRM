@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, FileText, Send, DollarSign, CheckCircle2, X, Clock, AlertTriangle, Download, CreditCard, Copy, Repeat, ChevronDown, ChevronRight } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 interface Invoice {
   id: string; invoice_number: string; type: string; status: string
@@ -378,7 +379,7 @@ export default function InvoicesPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
+      <div className="page-header flex-col md:flex-row gap-3 md:gap-0">
         <div>
           <h1 className="page-title">{t('invoices.title')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{invoices.length} total · {formatCurrency(totalOutstanding)} outstanding</p>
@@ -407,7 +408,7 @@ export default function InvoicesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-6 flex-wrap">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
           <input className="input pl-9 text-xs" placeholder="Search invoices..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -430,7 +431,8 @@ export default function InvoicesPage() {
           <button onClick={openNewInvoice} className="btn-primary btn-sm mt-3"><Plus className="w-3.5 h-3.5" /> Create Invoice</button>
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <>
+        <DesktopOnly><div className="card overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-100">
@@ -504,7 +506,30 @@ export default function InvoicesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </div></DesktopOnly>
+        <MobileList>
+          {filtered.map(inv => (
+            <MobileListCard
+              key={inv.id}
+              onClick={() => router.push('/invoices/' + inv.id)}
+              title={<span className="font-mono inline-flex items-center gap-1.5">{hasRecurringParent(inv) && <Repeat className="w-3 h-3 text-brand-500" />}{inv.invoice_number}</span>}
+              subtitle={(inv as { contacts?: { name?: string } }).contacts?.name || '—'}
+              badge={<span className={cn('badge text-[10px]', STATUS_STYLES[inv.status])}>{inv.status}</span>}
+              meta={<>
+                <span>{inv.issue_date}</span>
+                <span className={cn(inv.balance_due > 0 ? 'text-amber-600' : 'text-emerald-600', 'font-semibold')}>Balance: {formatCurrency(inv.balance_due)}</span>
+              </>}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-surface-900">{formatCurrency(inv.total)}</span>
+                {['sent', 'partial', 'overdue'].includes(inv.status) && (
+                  <button onClick={(e) => { e.stopPropagation(); setPaymentModal({ invoice: inv }); setPaymentForm({ amount: inv.balance_due, method: 'transfer', date: new Date().toISOString().split('T')[0] }) }} className="bg-emerald-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><DollarSign className="w-3 h-3" /> Pay</button>
+                )}
+              </div>
+            </MobileListCard>
+          ))}
+        </MobileList>
+        </>
       )}
 
       {/* Payment Modal (#2) */}

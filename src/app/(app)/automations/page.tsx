@@ -449,14 +449,14 @@ export default function AutomationsPage() {
         <div className="space-y-3">
           {automations.map(auto => (
             <div key={auto.id} className={cn('card p-5 transition-all', !auto.enabled && 'opacity-60')}>
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
                   <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
                     {TRIGGER_ICONS[auto.trigger_type] || '⚡'}
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-surface-900">{auto.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1 text-xs text-surface-500">
+                    <div className="flex items-center gap-1.5 mt-1 text-xs text-surface-500 flex-wrap">
                       <span className="px-2 py-0.5 bg-surface-100 rounded-md font-medium">
                         {TRIGGER_LABELS[auto.trigger_type] || auto.trigger_type}
                       </span>

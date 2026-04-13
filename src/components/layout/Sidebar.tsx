@@ -91,6 +91,7 @@ export const MODULES: ModuleDef[] = [
       { href: '/hr', label: 'nav.hr' },
       { href: '/tasks', label: 'nav.tasks' },
       { href: '/calendar', label: 'nav.calendar' },
+      { href: '/inter-dept-requests', label: 'Solicitudes' },
     ],
   },
   {
@@ -113,6 +114,7 @@ export const MODULES: ModuleDef[] = [
       { href: '/settings/templates', label: 'nav.templates' },
       { href: '/settings/widget', label: 'nav.widget' },
       { href: '/roles', label: 'nav.roles' },
+      { href: '/settings/field-permissions', label: 'Field Permissions' },
       { href: '/team', label: 'nav.team' },
       { href: '/integrations', label: 'nav.integrations' },
       { href: '/automations', label: 'nav.automations' },

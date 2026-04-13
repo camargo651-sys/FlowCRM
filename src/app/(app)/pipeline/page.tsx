@@ -9,6 +9,7 @@ import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
 import type { Deal, PipelineStage, Contact, DbRow, Profile } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { validateTransition } from '@/lib/pipeline/stage-conditions'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -958,11 +959,12 @@ export default function PipelinePage() {
   }
 
   const handleMoveDeal = async (dealId: string, newStageId: string) => {
-    // Check stage transition conditions
     const targetStage = columns.find(c => c.id === newStageId)
     const deal = columns.flatMap(c => c.deals).find(d => d.id === dealId)
     if (!deal || !targetStage) return
+    const fromStage = columns.find(c => c.deals.some(d => d.id === dealId))
 
+    // Legacy per-stage required_fields check
     const requiredFields = (targetStage.required_fields as string[]) || []
     if (requiredFields.length > 0) {
       const missing: string[] = []
@@ -974,6 +976,23 @@ export default function PipelinePage() {
         toast.error(`Cannot move to "${targetStage.name}": missing ${missing.join(', ')}`)
         return
       }
+    }
+
+    // Configurable stage transition conditions (workspace rules)
+    const transition = validateTransition(
+      deal as unknown as Record<string, unknown>,
+      fromStage?.name || '',
+      targetStage.name || '',
+    )
+    if (!transition.allowed) {
+      const msg = `Cannot move to "${targetStage.name}": ${transition.reason || 'missing ' + transition.missingFields.join(', ')}`
+      toast.error(msg)
+      if (typeof window !== 'undefined') window.alert(msg)
+      return
+    }
+    if (transition.requireApproval && typeof window !== 'undefined') {
+      const ok = window.confirm(`Move "${deal.title}" to "${targetStage.name}"? This stage requires approval.`)
+      if (!ok) return
     }
 
     // Intercept lost stage: require a reason

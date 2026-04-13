@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, X, BookOpen, TrendingUp, TrendingDown, DollarSign, FileText, Download, Filter, ChevronLeft, Ban } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 
 const ACCOUNT_TYPE_COLORS: Record<string, string> = {
@@ -279,9 +280,9 @@ export default function AccountingPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
+      <div className="page-header flex-col md:flex-row gap-3 md:gap-0">
         <div><h1 className="page-title">{t('accounting.title')}</h1><p className="text-sm text-surface-500 mt-0.5">{accounts.length} accounts · {entries.length} entries</p></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={importChartOfAccounts} disabled={saving} className="btn-secondary btn-sm"><Download className="w-3.5 h-3.5" /> Import CoA</button>
           <button onClick={() => setShowNewAccount(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Account</button>
           <button onClick={() => setShowNewEntry(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Journal Entry</button>
@@ -299,7 +300,7 @@ export default function AccountingPage() {
 
       {tab === 'overview' && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
             <div className="card p-4"><div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center mb-2"><TrendingUp className="w-4 h-4 text-blue-600" /></div><p className="text-lg font-bold">{formatCurrency(totalAssets)}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Assets</p></div>
             <div className="card p-4"><div className="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center mb-2"><TrendingDown className="w-4 h-4 text-red-600" /></div><p className="text-lg font-bold">{formatCurrency(totalLiabilities)}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Liabilities</p></div>
             <div className="card p-4"><div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center mb-2"><DollarSign className="w-4 h-4 text-emerald-600" /></div><p className="text-lg font-bold">{formatCurrency(totalRevenue)}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Revenue</p></div>
@@ -307,7 +308,7 @@ export default function AccountingPage() {
             <div className={cn('card p-4', netIncome >= 0 ? 'border-emerald-200 bg-emerald-50/30' : 'border-red-200 bg-red-50/30')}><div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center mb-2"><span className="text-lg">{netIncome >= 0 ? '📈' : '📉'}</span></div><p className="text-lg font-bold">{formatCurrency(netIncome)}</p><p className="text-[10px] text-surface-500 font-semibold uppercase">Net Income</p></div>
           </div>
           {typeData.some(d => d.value > 0) && (
-            <div className="card p-5">
+            <div className="card p-5 overflow-x-auto">
               <h3 className="font-semibold text-surface-900 mb-4">Account Balances by Type</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={typeData} barSize={48}><CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} /><Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: number) => [formatCurrency(v), 'Balance']} /><Bar dataKey="value" radius={[8,8,0,0]}>{typeData.map((e,i) => <rect key={i} fill={e.color} />)}</Bar></BarChart>
@@ -372,7 +373,8 @@ export default function AccountingPage() {
               </div>
             </div>
           ) : (
-            <div className="card overflow-hidden">
+            <>
+            <DesktopOnly><div className="card overflow-hidden">
               {filteredAccounts.length === 0 ? (
                 <div className="text-center py-16"><BookOpen className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No accounts found</p></div>
               ) : (
@@ -395,7 +397,20 @@ export default function AccountingPage() {
                   </tbody>
                 </table>
               )}
-            </div>
+            </div></DesktopOnly>
+            <MobileList>
+              {filteredAccounts.map(acc => (
+                <MobileListCard
+                  key={acc.id}
+                  onClick={() => loadAccountLines(acc)}
+                  title={<span className="font-mono">{acc.code} — {acc.name}</span>}
+                  badge={<span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full capitalize', ACCOUNT_TYPE_COLORS[acc.type])}>{acc.type}</span>}
+                >
+                  <div className="font-bold text-surface-900">{formatCurrency(acc.balance || 0)}</div>
+                </MobileListCard>
+              ))}
+            </MobileList>
+            </>
           )}
         </>
       )}
@@ -403,9 +418,9 @@ export default function AccountingPage() {
       {tab === 'journal' && (
         <div className="space-y-3">
           {/* Date range filter */}
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <Filter className="w-4 h-4 text-surface-400" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <input type="date" className="input text-sm w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} placeholder="From" />
               <span className="text-xs text-surface-400">to</span>
               <input type="date" className="input text-sm w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="To" />
@@ -428,7 +443,7 @@ export default function AccountingPage() {
                 </div>
                 <span className={cn('badge text-[10px]', entry.status === 'posted' ? 'badge-green' : entry.status === 'voided' ? 'badge-red' : 'badge-gray')}>{entry.status}</span>
               </div>
-              <table className="w-full text-xs">
+              <div className="overflow-x-auto"><table className="w-full text-xs min-w-[480px]">
                 <thead><tr className="text-surface-400"><th className="text-left py-1">Account</th><th className="text-right py-1">Debit</th><th className="text-right py-1">Credit</th></tr></thead>
                 <tbody>
                   {(entry.journal_lines || []).map((line, idx) => (
@@ -444,14 +459,14 @@ export default function AccountingPage() {
                   <td className="py-1.5 text-right">{formatCurrency(entry.total_debit)}</td>
                   <td className="py-1.5 text-right">{formatCurrency(entry.total_credit)}</td>
                 </tr></tfoot>
-              </table>
+              </table></div>
             </div>
           ))}
         </div>
       )}
 
       {tab === 'trial_balance' && (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <div className="p-4 border-b border-surface-100">
             <h3 className="font-semibold text-surface-900">Trial Balance</h3>
             <p className="text-xs text-surface-400">All accounts with debit/credit totals from journal entries</p>

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, FileSignature, X, AlertTriangle, CheckCircle2, Upload, Paperclip } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'badge-gray', active: 'badge-green', expired: 'badge-red', cancelled: 'badge-gray', renewed: 'badge-blue',
@@ -213,7 +214,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Search + Filter */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" /><input className="input pl-9 text-xs" placeholder="Search by title, number, or client..." value={search} onChange={e => setSearch(e.target.value)} /></div>
         <select className="input w-auto text-xs" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
           <option value="all">All Statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="expired">Expired</option><option value="cancelled">Cancelled</option>
@@ -223,6 +224,26 @@ export default function ContractsPage() {
       {filtered.length === 0 ? (
         <div className="card text-center py-16"><FileSignature className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No contracts found</p></div>
       ) : (
+        <>
+        <MobileList>
+          {filtered.map(c => {
+            const canEdit = c.status === 'draft' || c.status === 'active'
+            return (
+              <MobileListCard
+                key={c.id}
+                onClick={canEdit ? () => openEditModal(c) : undefined}
+                title={c.title}
+                subtitle={`${c.contract_number}${c.type ? ' · ' + c.type : ''}${c.contacts?.name ? ' · ' + c.contacts.name : ''}`}
+                badge={<span className={cn('badge text-[10px]', STATUS_STYLES[c.status])}>{c.status}</span>}
+                meta={<>
+                  <span>{formatCurrency(c.value)}</span>
+                  {c.end_date && <span>· ends {c.end_date}</span>}
+                </>}
+              />
+            )
+          })}
+        </MobileList>
+        <DesktopOnly>
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead><tr className="border-b border-surface-100">
@@ -259,6 +280,8 @@ export default function ContractsPage() {
             </tbody>
           </table>
         </div>
+        </DesktopOnly>
+        </>
       )}
 
       {showModal && (

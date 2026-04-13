@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Truck, Package, CheckCircle2, X, Clock, Send, Copy } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'badge-gray', sent: 'badge-blue', confirmed: 'badge-yellow',
@@ -237,7 +238,7 @@ export default function PurchasingPage() {
           <h1 className="page-title">{t('nav.purchasing')}</h1>
           <p className="text-sm text-surface-500 mt-0.5">{orders.length} orders · {suppliers.length} suppliers</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col md:flex-row gap-2">
           <button onClick={() => setShowNewSupplier(true)} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Supplier</button>
           <button onClick={() => setShowNewPO(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Purchase Order</button>
         </div>
@@ -286,7 +287,35 @@ export default function PurchasingPage() {
         )}
       </div>
 
+      {tab === 'orders' && filteredOrders.length > 0 && (
+        <MobileList>
+          {filteredOrders.map(po => (
+            <MobileListCard
+              key={po.id}
+              title={<span className="font-mono">{po.po_number}</span>}
+              subtitle={po.suppliers?.name || '—'}
+              badge={<span className={cn('badge text-[10px]', STATUS_STYLES[po.status])}>{po.status}</span>}
+              meta={<>
+                <span className="font-bold text-surface-700">{formatCurrency(po.total)}</span>
+                {po.expected_date && <span>Exp: {po.expected_date}</span>}
+              </>}
+            >
+              <div className="flex gap-1 flex-wrap">
+                {po.status === 'draft' && <button onClick={() => updatePOStatus(po.id, 'sent')} className="btn-secondary btn-sm text-[10px]"><Send className="w-3 h-3" /> Send</button>}
+                {(po.status === 'sent' || po.status === 'confirmed' || po.status === 'partial') && (
+                  <button onClick={() => openReceive(po)} className="btn-sm bg-emerald-600 text-white text-[10px] rounded-lg px-2 py-1 inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Receive</button>
+                )}
+                {po.status !== 'cancelled' && (
+                  <button onClick={() => duplicatePO(po)} className="btn-ghost btn-sm text-[10px]"><Copy className="w-3 h-3" /> Copy</button>
+                )}
+              </div>
+            </MobileListCard>
+          ))}
+        </MobileList>
+      )}
+
       {tab === 'orders' && (
+        <DesktopOnly>
         <div className="card overflow-hidden">
           {filteredOrders.length === 0 ? (
             <div className="text-center py-16"><Truck className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No purchase orders found</p></div>
@@ -325,9 +354,27 @@ export default function PurchasingPage() {
             </table>
           )}
         </div>
+        </DesktopOnly>
+      )}
+
+      {tab === 'suppliers' && filteredSuppliers.length > 0 && (
+        <MobileList>
+          {filteredSuppliers.map(s => (
+            <MobileListCard
+              key={s.id}
+              title={s.name}
+              subtitle={s.email || '—'}
+              meta={<>
+                {s.phone && <span>{s.phone}</span>}
+                {s.payment_terms && <span>{s.payment_terms}</span>}
+              </>}
+            />
+          ))}
+        </MobileList>
       )}
 
       {tab === 'suppliers' && (
+        <DesktopOnly>
         <div className="card overflow-hidden">
           {filteredSuppliers.length === 0 ? (
             <div className="text-center py-16"><Package className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No suppliers found</p></div>
@@ -352,6 +399,7 @@ export default function PurchasingPage() {
             </table>
           )}
         </div>
+        </DesktopOnly>
       )}
 
       {/* Receive Partial Modal */}

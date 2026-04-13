@@ -198,7 +198,7 @@
 
   /* --- PAGE HEADER --- */
   .page-header {
-    @apply flex items-center justify-between mb-8;
+    @apply flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6 md:mb-8;
   }
   .page-title {
     @apply text-xl font-bold text-surface-900 tracking-tight;
@@ -323,6 +323,26 @@
     .input, select, textarea {
       min-height: 44px;
       font-size: 16px;
+    }
+
+    /* All buttons meet WCAG 44px touch target on mobile */
+    .btn, .btn-primary, .btn-secondary, .btn-ghost, .btn-danger {
+      min-height: 44px;
+    }
+    .btn-sm { min-height: 40px; }
+    .btn-icon { min-width: 40px; min-height: 40px; }
+
+    /* Modals become bottom sheets on mobile */
+    .modal-overlay {
+      align-items: flex-end !important;
+      padding: 0 !important;
+    }
+    .modal-panel {
+      max-width: 100% !important;
+      width: 100% !important;
+      border-radius: 20px 20px 0 0 !important;
+      max-height: 92vh !important;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     /* Increase text contrast on mobile for readability */

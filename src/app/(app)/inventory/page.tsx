@@ -12,6 +12,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { cn, formatCurrency } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
 
 interface Product {
   id: string; sku: string; name: string; description: string;
@@ -181,7 +182,7 @@ export default function InventoryPage() {
             {products.length} product{products.length !== 1 ? 's' : ''} · {formatCurrency(totalValue)} total value
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <a href="/api/export?type=products" className="btn-ghost btn-sm">
             <Download className="w-3.5 h-3.5" /> Export
           </a>
@@ -364,7 +365,30 @@ export default function InventoryPage() {
       })()}
 
       {/* ===== MOVEMENTS TAB ===== */}
+      {tab === 'movements' && movements.length > 0 && (
+        <MobileList>
+          {movements.map(m => {
+            const product = products.find(p => p.id === (m as { product_id?: string }).product_id)
+            return (
+              <MobileListCard
+                key={m.id}
+                title={product?.name || '—'}
+                subtitle={new Date(m.created_at).toLocaleDateString()}
+                badge={<span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', MOVEMENT_COLORS[m.type] || 'text-surface-600 bg-surface-100')}>{m.type}</span>}
+                meta={<>
+                  <span className={m.type === 'sale' ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'}>
+                    {m.type === 'sale' ? '-' : '+'}{m.quantity}
+                  </span>
+                  <span>{m.previous_stock} → {m.new_stock}</span>
+                  {m.notes && <span>{m.notes}</span>}
+                </>}
+              />
+            )
+          })}
+        </MobileList>
+      )}
       {tab === 'movements' && (
+        <DesktopOnly>
         <div className="card overflow-hidden mb-6">
           {movements.length === 0 ? (
             <div className="text-center py-12">
@@ -409,6 +433,7 @@ export default function InventoryPage() {
             </table>
           )}
         </div>
+        </DesktopOnly>
       )}
 
       {/* Search & Filters */}
@@ -438,6 +463,49 @@ export default function InventoryPage() {
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Product</button>
         </div>
       ) : tab === 'products' ? (
+        <>
+        <MobileList>
+          {filtered.map(product => {
+            const isLow = product.stock_quantity <= product.min_stock && product.status === 'active'
+            return (
+              <MobileListCard
+                key={product.id}
+                title={product.name}
+                subtitle={product.sku ? `SKU: ${product.sku}` : (product.brand ? `${product.brand} ${product.model}` : undefined)}
+                badge={<span className={cn('text-xs font-bold', isLow ? 'text-red-600' : 'text-surface-800')}>
+                  {product.stock_quantity}{isLow && <AlertTriangle className="w-3 h-3 text-red-500 inline ml-0.5" />}
+                </span>}
+                meta={<>
+                  <span className="font-semibold text-surface-700">{formatCurrency(product.unit_price)}</span>
+                  {(product as { product_categories?: { name: string } }).product_categories?.name && <span>{(product as { product_categories?: { name: string } }).product_categories?.name}</span>}
+                  <span>Min: {product.min_stock}</span>
+                </>}
+              >
+                <div className="flex items-center gap-1">
+                  <button onClick={async () => {
+                    const prev = product.stock_quantity
+                    const next = Math.max(0, prev - 1)
+                    await supabase.from('stock_movements').insert({ workspace_id: workspaceId, product_id: product.id, type: 'adjustment', quantity: 1, previous_stock: prev, new_stock: next, notes: 'Quick adjust -1' })
+                    await supabase.from('products').update({ stock_quantity: next }).eq('id', product.id)
+                    load()
+                  }} className="w-7 h-7 flex items-center justify-center rounded-lg border border-surface-200 text-surface-500 text-sm font-bold">-</button>
+                  <button onClick={async () => {
+                    const prev = product.stock_quantity
+                    const next = prev + 1
+                    await supabase.from('stock_movements').insert({ workspace_id: workspaceId, product_id: product.id, type: 'adjustment', quantity: 1, previous_stock: prev, new_stock: next, notes: 'Quick adjust +1' })
+                    await supabase.from('products').update({ stock_quantity: next }).eq('id', product.id)
+                    load()
+                  }} className="w-7 h-7 flex items-center justify-center rounded-lg border border-surface-200 text-surface-500 text-sm font-bold">+</button>
+                  <button onClick={() => { setShowMovement(product.id); setMovType('purchase'); setMovQty(''); setMovNotes('') }}
+                    className="btn-secondary btn-sm text-[10px] ml-1">
+                    <ArrowUpDown className="w-3 h-3" /> Move
+                  </button>
+                </div>
+              </MobileListCard>
+            )
+          })}
+        </MobileList>
+        <DesktopOnly>
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead>
@@ -516,6 +584,8 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
+        </DesktopOnly>
+        </>
       ) : null}
 
       {/* Low Stock Alerts */}
