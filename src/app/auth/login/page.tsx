@@ -4,8 +4,11 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
+import LocaleSwitcher from '@/components/shared/LocaleSwitcher'
 
 export default function LoginPage() {
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -47,7 +50,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-950 flex">
+    <div className="min-h-screen bg-surface-950 flex relative">
+      <div className="absolute top-4 right-4 z-20">
+        <LocaleSwitcher variant="dark" />
+      </div>
+
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-brand-700 to-surface-950" />
@@ -60,11 +67,11 @@ export default function LoginPage() {
             </div>
             <span className="text-white font-bold text-xl tracking-tight">Tracktio</span>
           </div>
-          <p className="text-white/50 text-sm mt-3">Built to close.</p>
+          <p className="text-white/50 text-sm mt-3">{t('landing.hero.tagline')}</p>
         </div>
         <div className="relative z-10 space-y-6">
           <blockquote className="text-white/90 text-2xl font-light leading-relaxed">
-            "The pipeline view alone saved us 5 hours a week. Finally a CRM that works <em>our</em> way."
+            {t('auth.login.quote')}
           </blockquote>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm">MR</div>
@@ -75,7 +82,7 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="relative z-10 flex gap-8">
-          {[['27', 'Modules'], ['60s', 'Setup'], ['$0', 'To Start']].map(([val, label]) => (
+          {[['27', t('auth.login.stats.modules')], ['60s', t('auth.login.stats.setup')], ['$0', t('auth.login.stats.free')]].map(([val, label]) => (
             <div key={label}>
               <p className="text-white font-bold text-2xl">{val}</p>
               <p className="text-white/60 text-xs mt-0.5">{label}</p>
@@ -95,12 +102,12 @@ export default function LoginPage() {
             <span className="text-white font-bold text-lg">Tracktio</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
-          <p className="text-surface-400 text-sm mb-8">Sign in to pick up where you left off</p>
+          <h1 className="text-2xl font-bold text-white mb-1">{t('auth.login.title')}</h1>
+          <p className="text-surface-400 text-sm mb-8">{t('auth.login.subtitle')}</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-surface-400 mb-1.5 uppercase tracking-wide">Email</label>
+              <label className="block text-xs font-semibold text-surface-400 mb-1.5 uppercase tracking-wide">{t('auth.login.email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
                 <input
@@ -112,7 +119,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-surface-400 mb-1.5 uppercase tracking-wide">Password</label>
+              <label className="block text-xs font-semibold text-surface-400 mb-1.5 uppercase tracking-wide">{t('auth.login.password')}</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
                 <input
@@ -136,14 +143,14 @@ export default function LoginPage() {
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <><span>Sign in to workspace</span><ArrowRight className="w-4 h-4" /></>
+                <><span>{t('auth.login.submit')}</span><ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </form>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-surface-800" /></div>
-            <div className="relative flex justify-center text-xs"><span className="bg-surface-950 px-3 text-surface-500">or</span></div>
+            <div className="relative flex justify-center text-xs"><span className="bg-surface-950 px-3 text-surface-500">{t('auth.login.or')}</span></div>
           </div>
 
           <button onClick={handleDemo} disabled={demoLoading}
@@ -151,14 +158,14 @@ export default function LoginPage() {
             {demoLoading ? (
               <div className="w-4 h-4 border-2 border-surface-500 border-t-white rounded-full animate-spin" />
             ) : (
-              <><Zap className="w-4 h-4" /> Try the live demo</>
+              <><Zap className="w-4 h-4" /> {t('auth.login.demo')}</>
             )}
           </button>
 
           <p className="text-center text-surface-500 text-sm mt-6">
-            Don't have an account?{' '}
+            {t('auth.login.no_account')}{' '}
             <Link href="/auth/signup" className="text-brand-400 hover:text-brand-300 font-medium transition-colors">
-              Create a free workspace
+              {t('auth.login.create')}
             </Link>
           </p>
         </div>
