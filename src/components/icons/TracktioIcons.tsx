@@ -151,13 +151,26 @@ function Commerce(props: IconProps) {
   )
 }
 
-/** Insights — sparkline with dot */
+/** Insights — lightbulb with idea spark */
 function Insights(props: IconProps) {
   return (
     <Icon {...defaultProps} {...props}>
-      <path d="M3 20V10m5 10V4m5 16v-8m5 8V7" />
-      <circle cx="8" cy="4" r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="18" cy="7" r="1.5" fill="currentColor" stroke="none" />
+      <path d="M9 18h6" />
+      <path d="M10 21h4" />
+      <path d="M12 3a6 6 0 00-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0012 3z" />
+      <circle cx="12" cy="9" r="1" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
+/** Workspace — briefcase / personal toolkit */
+function Workspace(props: IconProps) {
+  return (
+    <Icon {...defaultProps} {...props}>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+      <path d="M3 13h18" />
+      <circle cx="12" cy="13" r="1" fill="currentColor" stroke="none" />
     </Icon>
   )
 }
@@ -210,10 +223,11 @@ const TracktioIcons = {
   Inbox,
   Commerce,
   Insights,
+  Workspace,
   Settings,
   Add,
   Logo,
 }
 
 export default TracktioIcons
-export { Home, Sales, Finance, Operations, People, Support, WhatsApp, Analytics, Marketing, Inbox, Commerce, Insights, Settings, Add, Logo }
+export { Home, Sales, Finance, Operations, People, Support, WhatsApp, Analytics, Marketing, Inbox, Commerce, Insights, Workspace, Settings, Add, Logo }

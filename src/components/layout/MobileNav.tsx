@@ -20,6 +20,7 @@ const ICON_MAP: Record<string, (p: { className?: string }) => React.ReactNode> =
   operations: (p) => <TracktioIcons.Operations {...p} />,
   people: (p) => <TracktioIcons.People {...p} />,
   support: (p) => <TracktioIcons.Support {...p} />,
+  workspace: (p) => <TracktioIcons.Workspace {...p} />,
   settings: (p) => <TracktioIcons.Settings {...p} />,
 }
 

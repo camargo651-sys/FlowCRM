@@ -139,7 +139,7 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: 'workspace', icon: 'people', label: 'nav.workspace',
+    key: 'workspace', icon: 'workspace', label: 'nav.workspace',
     always: true,
     items: [
       { href: '/calendar', label: 'nav.calendar' },
@@ -196,6 +196,7 @@ const ICON_MAP: Record<string, (props: { className?: string }) => React.ReactNod
   operations: (p) => <TracktioIcons.Operations {...p} />,
   people: (p) => <TracktioIcons.People {...p} />,
   support: (p) => <TracktioIcons.Support {...p} />,
+  workspace: (p) => <TracktioIcons.Workspace {...p} />,
   settings: (p) => <TracktioIcons.Settings {...p} />,
 }
 
