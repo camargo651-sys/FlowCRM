@@ -32,7 +32,7 @@ interface FilterState {
 // --- NEW DEAL MODAL ---
 function NewDealModal({ stages, contacts, onClose, onSave, workspaceId, customFields, template }: {
   stages: PipelineStage[], contacts: Pick<Contact, 'id' | 'name' | 'email'>[], onClose: () => void,
-  onSave: (deal: Partial<Deal>) => void, workspaceId: string,
+  onSave: (deal: Partial<Deal>) => Promise<boolean>, workspaceId: string,
   customFields: { entity: string; label: string; key: string; type: string; options?: string[] }[],
   template: { key?: string; name?: string; dealLabel: { singular: string; plural: string }; contactLabel: { singular: string; plural: string } },
 }) {
@@ -42,19 +42,33 @@ function NewDealModal({ stages, contacts, onClose, onSave, workspaceId, customFi
   const [contactId, setContactId] = useState('')
   const [closeDate, setCloseDate] = useState('')
   const [customValues, setCustomValues] = useState<DbRow>({})
+  const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const dealFields = customFields.filter(f => f.entity === 'deal')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSave({
-      title, value: value ? parseFloat(value) : undefined,
+    if (!title.trim()) {
+      setSubmitError('Title is required')
+      return
+    }
+    if (!stageId) {
+      setSubmitError('Stage is required')
+      return
+    }
+    setSubmitError(null)
+    setSaving(true)
+    const ok = await onSave({
+      title: title.trim(), value: value ? parseFloat(value) : undefined,
       stage_id: stageId, contact_id: contactId || undefined,
       expected_close_date: closeDate || undefined,
       workspace_id: workspaceId, status: 'open', currency: 'USD', order_index: 0,
       custom_fields: Object.keys(customValues).length > 0 ? customValues : undefined,
     })
-    onClose()
+    setSaving(false)
+    if (ok) onClose()
+    else setSubmitError('Could not save. Check the console for details.')
   }
 
   return (
@@ -149,9 +163,16 @@ function NewDealModal({ stages, contacts, onClose, onSave, workspaceId, customFi
             </div>
           )}
 
+          {submitError && (
+            <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+              {submitError}
+            </div>
+          )}
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" className="btn-primary flex-1">Create {template.dealLabel.singular}</button>
+            <button type="button" onClick={onClose} disabled={saving} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving || !title.trim()} className="btn-primary flex-1">
+              {saving ? 'Saving…' : `Create ${template.dealLabel.singular}`}
+            </button>
           </div>
         </form>
       </div>
@@ -892,15 +913,24 @@ export default function PipelinePage() {
     setWorkspaceId(ws.id)
 
     // Load all pipelines
-    const { data: pipelinesData } = await supabase.from('pipelines').select('id, name, color, contact_id, contacts(name)').eq('workspace_id', ws.id).order('order_index')
+    const { data: pipelinesData, error: pipelinesErr } = await supabase.from('pipelines').select('id, name, color, contact_id, contacts(name)').eq('workspace_id', ws.id).order('order_index')
+    if (pipelinesErr) {
+      console.error('[pipeline] pipelines load failed:', pipelinesErr)
+      toast.error(`Pipelines: ${pipelinesErr.message}`)
+    }
     const allPipelines = pipelinesData || []
+    console.log('[pipeline] loaded', { workspaceId: ws.id, pipelinesCount: allPipelines.length })
     setPipelines(allPipelines as unknown as PipelineInfo[])
 
     // Pick active pipeline
     const activeId = pipelineId || allPipelines[0]?.id || ''
     setActivePipelineId(activeId)
 
-    if (!activeId) { setLoading(false); return }
+    if (!activeId) {
+      console.warn('[pipeline] no active pipeline id')
+      setLoading(false)
+      return
+    }
 
     const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
@@ -912,8 +942,11 @@ export default function PipelinePage() {
       supabase.from('profiles').select('id, full_name').eq('workspace_id', ws.id),
     ])
 
+    if (stagesRes.error) console.error('[pipeline] stages load failed:', stagesRes.error)
+    if (dealsRes.error) console.error('[pipeline] deals load failed:', dealsRes.error)
     const stages: PipelineStage[] = stagesRes.data || []
     const deals: DealWithContact[] = dealsRes.data || []
+    console.log('[pipeline] loaded', { activeId, stages: stages.length, deals: deals.length })
     setContacts(contactsRes.data || [])
     const tm = (profilesRes.data || []) as Pick<Profile, 'id' | 'full_name'>[]
     setTeamMembers(tm)
@@ -960,14 +993,24 @@ export default function PipelinePage() {
     loadData(pipelineId)
   }
 
-  const handleCreateDeal = async (dealData: Partial<Deal>) => {
-    const dataWithPipeline = { ...dealData, pipeline_id: activePipelineId }
-    const { data } = await supabase.from('deals').insert([dataWithPipeline]).select('*, contacts(name, email)').single()
-    if (data) {
-      setColumns(prev => prev.map(col =>
-        col.id === dealData.stage_id ? { ...col, deals: [...col.deals, data] } : col
-      ))
+  const handleCreateDeal = async (dealData: Partial<Deal>): Promise<boolean> => {
+    if (!activePipelineId) {
+      toast.error('No active pipeline — reload the page')
+      return false
     }
+    const dataWithPipeline = { ...dealData, pipeline_id: activePipelineId, owner_id: currentUserId || undefined }
+    console.log('[pipeline] handleCreateDeal', dataWithPipeline)
+    const { data, error } = await supabase.from('deals').insert([dataWithPipeline]).select('*, contacts(name, email)').single()
+    if (error || !data) {
+      console.error('[pipeline] create failed:', error)
+      toast.error(`Could not create: ${error?.message || 'unknown error'}`)
+      return false
+    }
+    setColumns(prev => prev.map(col =>
+      col.id === dealData.stage_id ? { ...col, deals: [...col.deals, data] } : col
+    ))
+    toast.success('Created')
+    return true
   }
 
   const handleUpdateDeal = (dealId: string, updates: Partial<Deal>) => {
