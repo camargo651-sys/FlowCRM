@@ -1,5 +1,5 @@
 // Tracktio Service Worker - PWA offline cache + push notifications
-const CACHE_VERSION = 'tracktio-v2'
+const CACHE_VERSION = 'tracktio-v3'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 const API_CACHE = `${CACHE_VERSION}-api`
@@ -89,6 +89,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
+
+  // CRITICAL: never intercept Next.js build assets — they're immutable and
+  // caching them causes "originalFactory.call" chunk-loading errors on redeploy.
+  if (url.pathname.startsWith('/_next/')) return
 
   // Navigations: network-first with cached fallback
   if (request.mode === 'navigate') {
