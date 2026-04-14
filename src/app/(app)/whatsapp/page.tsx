@@ -9,7 +9,7 @@ import {
   MessageCircle, Send, Search, Phone, User, Check, CheckCircle2,
   Zap, ArrowLeft, UserCircle, ChevronDown, Star, Image, Mic, FileText,
   MapPin, X, DollarSign, Edit3, Mail, Building, Tag, ExternalLink,
-  ChevronRight,
+  ChevronRight, Plus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
@@ -209,6 +209,107 @@ function saveStarredMessages(set: Set<string>) {
   localStorage.setItem(STARRED_STORAGE_KEY, JSON.stringify(Array.from(set)))
 }
 
+interface PhoneContact {
+  id: string
+  name: string
+  phone: string
+  company_name: string | null
+}
+
+function NewChatModal({
+  workspaceId,
+  onClose,
+  onSelect,
+}: {
+  workspaceId: string
+  onClose: () => void
+  onSelect: (c: PhoneContact) => void
+}) {
+  const supabase = createClient()
+  const [contacts, setContacts] = useState<PhoneContact[]>([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, name, phone, company_name')
+        .eq('workspace_id', workspaceId)
+        .not('phone', 'is', null)
+        .order('name', { ascending: true })
+        .limit(500)
+      setContacts((data || []) as PhoneContact[])
+      setLoading(false)
+    }
+    load()
+  }, [supabase, workspaceId])
+
+  const q = query.trim().toLowerCase()
+  const filtered = q
+    ? contacts.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
+        (c.company_name || '').toLowerCase().includes(q)
+      )
+    : contacts
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="text-sm font-bold text-surface-900">New conversation</h2>
+          <button onClick={onClose} className="modal-close"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="modal-body">
+          <div className="relative mb-3">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by name, phone or company..."
+              className="input pl-9 w-full text-sm"
+            />
+          </div>
+          <div className="max-h-[50vh] overflow-y-auto -mx-1">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-center text-surface-400">
+                <User className="w-8 h-8 mb-2 opacity-40" />
+                <p className="text-xs">No contacts with phone found</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filtered.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => onSelect(c)}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-50 transition-colors flex items-center gap-3"
+                  >
+                    <InitialsAvatar name={c.name} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-surface-800 truncate">{c.name}</p>
+                      <p className="text-[11px] text-surface-500 truncate">
+                        {c.phone}{c.company_name ? ` · ${c.company_name}` : ''}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function WhatsAppInboxPage() {
   const supabase = createClient()
   const { t } = useI18n()
@@ -251,6 +352,9 @@ export default function WhatsAppInboxPage() {
   // #6 Bulk resolve
   const [editMode, setEditMode] = useState(false)
   const [selectedConvos, setSelectedConvos] = useState<Set<string>>(new Set())
+
+  // New chat modal
+  const [showNewChatModal, setShowNewChatModal] = useState(false)
 
   // #8 Quick actions modals
   const [showDealModal, setShowDealModal] = useState(false)
@@ -545,6 +649,34 @@ export default function WhatsAppInboxPage() {
     }
   }, [workspaceId, selectedContactId])
 
+  const handleStartNewChat = (c: PhoneContact) => {
+    setShowNewChatModal(false)
+    // If conversation already exists, just select it
+    const existing = conversations.find(cv => cv.contact_id === c.id)
+    if (existing) {
+      setSelectedContactId(c.id)
+      setMobileShowChat(true)
+      return
+    }
+    // Add a synthetic empty conversation at the top
+    const synthetic: Conversation = {
+      contact_id: c.id,
+      contact_name: c.name,
+      contact_phone: c.phone,
+      last_message: '',
+      last_message_at: new Date().toISOString(),
+      direction: 'outbound',
+      unread_count: 0,
+      wa_contact_id: null,
+      resolved: false,
+      assigned_to: null,
+    }
+    setConversations(prev => [synthetic, ...prev])
+    setSelectedContactId(c.id)
+    setMessages([])
+    setMobileShowChat(true)
+  }
+
   const handleSend = async () => {
     if (!reply.trim() || !selectedContactId || sending) return
     const msg = reply.trim()
@@ -801,17 +933,27 @@ export default function WhatsAppInboxPage() {
                 </span>
               )}
             </h1>
-            {/* #6 Edit mode toggle */}
-            <button
-              onClick={() => { setEditMode(!editMode); setSelectedConvos(new Set()) }}
-              className={cn(
-                'text-xs px-2 py-1 rounded-lg border transition-colors',
-                editMode ? 'bg-brand-600 text-white border-brand-600' : 'border-surface-200 text-surface-500 hover:bg-surface-50'
-              )}
-            >
-              <Edit3 className="w-3.5 h-3.5 inline mr-1" />
-              {editMode ? 'Done' : 'Edit'}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setShowNewChatModal(true)}
+                className="text-xs px-2 py-1 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center gap-1"
+                title="Nueva conversación"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Nuevo chat</span>
+              </button>
+              {/* #6 Edit mode toggle */}
+              <button
+                onClick={() => { setEditMode(!editMode); setSelectedConvos(new Set()) }}
+                className={cn(
+                  'text-xs px-2 py-1 rounded-lg border transition-colors',
+                  editMode ? 'bg-brand-600 text-white border-brand-600' : 'border-surface-200 text-surface-500 hover:bg-surface-50'
+                )}
+              >
+                <Edit3 className="w-3.5 h-3.5 inline mr-1" />
+                {editMode ? 'Done' : 'Edit'}
+              </button>
+            </div>
           </div>
           <div className="mt-2 relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
@@ -1461,6 +1603,14 @@ export default function WhatsAppInboxPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showNewChatModal && workspaceId && (
+        <NewChatModal
+          workspaceId={workspaceId}
+          onClose={() => setShowNewChatModal(false)}
+          onSelect={handleStartNewChat}
+        />
       )}
     </div>
   )

@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown } from 'lucide-react'
+import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -10,7 +10,10 @@ import { useI18n } from '@/lib/i18n/context'
 import type { Deal, PipelineStage, Contact, DbRow, Profile } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { validateTransition } from '@/lib/pipeline/stage-conditions'
-import { notifyRecordChange } from '@/lib/notifications/notify-change'
+import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-change'
+import { extractMentionIds } from '@/lib/mentions/parse'
+import MentionText from '@/components/shared/MentionText'
+import MentionTextarea from '@/components/shared/MentionTextarea'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -299,6 +302,9 @@ interface ActivityItem {
   created_at: string
   done: boolean
   due_date?: string
+  notes?: string | null
+  owner_id?: string | null
+  author?: { full_name: string | null; email: string | null } | null
 }
 
 function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, currentUserId, currentUserName }: {
@@ -335,6 +341,8 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
   // Activity feed state
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loadingActivities, setLoadingActivities] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [postingNote, setPostingNote] = useState(false)
 
   // Next action state
   const [nextActionText, setNextActionText] = useState('')
@@ -356,25 +364,43 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
   }, [deal.contact_id])
 
   // Load activities
-  useEffect(() => {
+  const loadActivities = useCallback(async () => {
     setLoadingActivities(true)
-    const q = supabase
+    let q = supabase
       .from('activities')
-      .select('id, type, title, created_at, done, due_date')
-      .order('created_at', { ascending: false })
-      .limit(15)
+      .select('id, type, title, notes, owner_id, created_at, done, due_date')
+      .order('created_at', { ascending: true })
+      .limit(50)
 
     if (deal.contact_id) {
-      q.or(`contact_id.eq.${deal.contact_id},deal_id.eq.${deal.id}`)
+      q = q.or(`contact_id.eq.${deal.contact_id},deal_id.eq.${deal.id}`)
     } else {
-      q.eq('deal_id', deal.id)
+      q = q.eq('deal_id', deal.id)
     }
 
-    q.then(({ data }) => {
-      setActivities((data || []) as ActivityItem[])
-      setLoadingActivities(false)
-    })
-  }, [deal.id, deal.contact_id])
+    const { data } = await q
+    const rows = (data || []) as ActivityItem[]
+
+    // Fetch profiles for owner_ids separately (no FK dependency)
+    const ownerIds = Array.from(new Set(rows.map(r => r.owner_id).filter(Boolean))) as string[]
+    let profileMap: Record<string, { full_name: string | null; email: string | null }> = {}
+    if (ownerIds.length > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', ownerIds)
+      profileMap = Object.fromEntries(
+        (profs || []).map(p => [p.id as string, { full_name: (p as { full_name: string | null }).full_name, email: (p as { email: string | null }).email }])
+      )
+    }
+    const merged = rows.map(r => ({ ...r, author: r.owner_id ? profileMap[r.owner_id] || null : null }))
+    setActivities(merged)
+    setLoadingActivities(false)
+  }, [supabase, deal.id, deal.contact_id])
+
+  useEffect(() => {
+    loadActivities()
+  }, [loadActivities])
 
   const saveField = async (field: string, value: unknown) => {
     await supabase.from('deals').update({ [field]: value }).eq('id', deal.id)
@@ -441,6 +467,52 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
     setNextActionText('')
     setNextActionDate('')
     setCreatingAction(false)
+  }
+
+  const handleToggleActivityDone = async (act: ActivityItem) => {
+    const nextDone = !act.done
+    setActivities(prev => prev.map(a => a.id === act.id ? { ...a, done: nextDone } : a))
+    await supabase.from('activities').update({ done: nextDone }).eq('id', act.id)
+  }
+
+  const handlePostNote = async () => {
+    const body = noteDraft.trim()
+    if (!body || postingNote) return
+    setPostingNote(true)
+    const { error } = await supabase.from('activities').insert({
+      type: 'note',
+      title: 'Note',
+      notes: body,
+      owner_id: currentUserId,
+      deal_id: deal.id,
+      contact_id: deal.contact_id || null,
+      done: false,
+      workspace_id: workspaceId,
+    })
+    if (error) {
+      toast.error('Failed to add note')
+      setPostingNote(false)
+      return
+    }
+    // Notify mentions
+    try {
+      const ids = extractMentionIds(body)
+      if (ids.length > 0) {
+        await notifyMentions({
+          mentionedUserIds: ids,
+          entity: 'deal',
+          entityTitle: deal.title,
+          authorId: currentUserId,
+          authorName: currentUserName,
+          excerpt: body.slice(0, 140),
+          actionUrl: `/pipeline?deal=${deal.id}`,
+          workspaceId,
+        })
+      }
+    } catch { /* best effort */ }
+    setNoteDraft('')
+    await loadActivities()
+    setPostingNote(false)
   }
 
   const sendMessage = async () => {
@@ -647,35 +719,108 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
           )}
 
           {activeTab === 'activity' && (
-            <div className="py-2 max-h-[60vh] overflow-y-auto">
-              {loadingActivities ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="w-6 h-6 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+            <div className="flex flex-col h-[60vh]">
+              <div className="flex-1 overflow-y-auto py-2 pr-1">
+                {loadingActivities ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="w-6 h-6 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-center">
+                    <CheckSquare className="w-8 h-8 text-surface-300 mb-2" />
+                    <p className="text-xs text-surface-400">No activities yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activities.map(act => {
+                      const authorName = act.author?.full_name || act.author?.email || 'Usuario'
+                      const initials = authorName
+                        .split(' ')
+                        .map(w => w[0])
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase() || '?'
+                      const typeBadgeColor =
+                        act.type === 'note' ? 'bg-surface-100 text-surface-600' :
+                        act.type === 'task' ? 'bg-emerald-100 text-emerald-700' :
+                        act.type === 'call' ? 'bg-blue-100 text-blue-700' :
+                        act.type === 'email' ? 'bg-orange-100 text-orange-700' :
+                        act.type === 'meeting' ? 'bg-violet-100 text-violet-700' :
+                        'bg-surface-100 text-surface-600'
+                      return (
+                        <div key={act.id} className="flex items-start gap-2">
+                          <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                            {initials}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                              <span className="text-xs font-semibold text-surface-800">{authorName}</span>
+                              <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase', typeBadgeColor)}>
+                                {act.type}
+                              </span>
+                              <span className="text-[10px] text-surface-400">{relativeTime(act.created_at)}</span>
+                            </div>
+                            <div className="rounded-xl bg-surface-50 dark:bg-surface-800 px-3 py-2 text-xs text-surface-700 dark:text-surface-200">
+                              {act.type === 'note' && act.notes ? (
+                                <MentionText text={act.notes} className="whitespace-pre-wrap break-words" />
+                              ) : act.type === 'task' ? (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleToggleActivityDone(act)}
+                                    className={cn(
+                                      'w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors',
+                                      act.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-surface-300 bg-white'
+                                    )}
+                                  >
+                                    {act.done && <Check className="w-3 h-3" />}
+                                  </button>
+                                  <span className={cn('flex-1', act.done && 'line-through text-surface-400')}>{act.title}</span>
+                                  {act.due_date && (
+                                    <span className="text-[9px] text-amber-600 flex items-center gap-0.5 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                      <Clock className="w-3 h-3" />
+                                      {new Date(act.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : act.type === 'call' ? (
+                                <span>📞 Llamada: {act.title}</span>
+                              ) : act.type === 'email' ? (
+                                <span>✉️ Email: {act.title}</span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <ActivityIcon type={act.type} />
+                                  <span>{act.title}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              {/* Composer */}
+              <div className="border-t border-surface-100 pt-2 mt-2">
+                <MentionTextarea
+                  value={noteDraft}
+                  onChange={setNoteDraft}
+                  users={teamMembers.map(m => ({ id: m.id, name: m.full_name || 'User' }))}
+                  placeholder="Write a note... (use @ to mention)"
+                  rows={2}
+                  className="input text-xs w-full"
+                />
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    onClick={handlePostNote}
+                    disabled={postingNote || !noteDraft.trim()}
+                    className="btn-primary btn-sm disabled:opacity-50"
+                  >
+                    {postingNote ? 'Posting...' : 'Add note'}
+                  </button>
                 </div>
-              ) : activities.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-32 text-center">
-                  <CheckSquare className="w-8 h-8 text-surface-300 mb-2" />
-                  <p className="text-xs text-surface-400">No activities yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {activities.map(act => (
-                    <div key={act.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
-                      <div className="mt-0.5"><ActivityIcon type={act.type} /></div>
-                      <div className="flex-1 min-w-0">
-                        <p className={cn('text-xs font-medium', act.done && 'line-through text-surface-400')}>{act.title}</p>
-                        <p className="text-[10px] text-surface-400">{relativeTime(act.created_at)}</p>
-                      </div>
-                      {act.due_date && !act.done && (
-                        <span className="text-[9px] text-amber-600 flex items-center gap-0.5 flex-shrink-0">
-                          <Clock className="w-3 h-3" />
-                          {new Date(act.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              </div>
             </div>
           )}
 
