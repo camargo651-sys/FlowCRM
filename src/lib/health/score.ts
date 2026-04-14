@@ -84,12 +84,12 @@ export async function calculateHealthScore(
 
   // Positive call sentiment
   const { count: posCallCount } = await supabase
-    .from('calls')
+    .from('call_logs')
     .select('id', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)
     .eq('contact_id', contactId)
     .eq('sentiment', 'positive')
-    .gte('created_at', daysAgo(60))
+    .gte('started_at', daysAgo(60))
 
   if ((posCallCount || 0) > 0) {
     score += 15
