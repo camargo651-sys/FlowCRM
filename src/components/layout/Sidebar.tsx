@@ -70,6 +70,7 @@ export const MODULES: ModuleDef[] = [
       { href: '/expenses', label: 'nav.expenses' },
       { href: '/reports', label: 'nav.reports' },
       { href: '/reports/calls', label: 'Call Reports' },
+      { href: '/reports/lost-deals', label: 'Lost Deals' },
       { href: '/reports/custom', label: 'nav.custom_reports' },
       { href: '/bi', label: 'nav.bi' },
     ],

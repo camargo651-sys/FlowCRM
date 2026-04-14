@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check } from 'lucide-react'
+import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check, Pause, Play } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -308,14 +308,65 @@ interface ActivityItem {
   author?: { full_name: string | null; email: string | null } | null
 }
 
-function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, currentUserId, currentUserName }: {
+function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, teamMembers, workspaceId, currentUserId, currentUserName }: {
   deal: DealWithContact; onClose: () => void;
   onUpdateDeal: (dealId: string, updates: Partial<Deal>) => void;
+  onDealHoldChange?: (dealId: string, onHold: boolean) => void;
   teamMembers: Pick<Profile, 'id' | 'full_name'>[];
   workspaceId: string;
   currentUserId: string | null;
   currentUserName: string;
 }) {
+  const [showHoldModal, setShowHoldModal] = useState(false)
+  const [holdProcessing, setHoldProcessing] = useState(false)
+
+  const handlePause = async (payload: { reason: string; until: string }) => {
+    setHoldProcessing(true)
+    try {
+      const res = await fetch(`/api/deals/${deal.id}/hold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ on_hold: true, hold_reason: payload.reason, hold_until: payload.until || null }),
+      })
+      const j = await res.json()
+      if (j.deal) {
+        onUpdateDeal(deal.id, { status: 'on_hold' })
+        onDealHoldChange?.(deal.id, true)
+        toast.success('Deal paused')
+        setShowHoldModal(false)
+        onClose()
+      } else {
+        toast.error(j.error || 'Failed to pause')
+      }
+    } catch {
+      toast.error('Failed to pause')
+    }
+    setHoldProcessing(false)
+  }
+
+  const handleResume = async () => {
+    setHoldProcessing(true)
+    try {
+      const res = await fetch(`/api/deals/${deal.id}/hold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ on_hold: false }),
+      })
+      const j = await res.json()
+      if (j.deal) {
+        onUpdateDeal(deal.id, { status: 'open' })
+        onDealHoldChange?.(deal.id, false)
+        toast.success('Deal resumed')
+        onClose()
+      } else {
+        toast.error(j.error || 'Failed to resume')
+      }
+    } catch {
+      toast.error('Failed to resume')
+    }
+    setHoldProcessing(false)
+  }
+
   const supabase = createClient()
   const [messages, setMessages] = useState<WaMessage[]>([])
   const [newMsg, setNewMsg] = useState('')
@@ -600,8 +651,43 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
               {deal.contacts?.name && <p className="text-[10px] text-surface-400">{deal.contacts.name}</p>}
             </div>
           </div>
-          <button onClick={onClose} className="modal-close"><X className="w-4 h-4" /></button>
+          <div className="flex items-center gap-1">
+            {deal.status !== 'on_hold' && deal.status !== 'lost' && deal.status !== 'won' && (
+              <button
+                onClick={() => setShowHoldModal(true)}
+                disabled={holdProcessing}
+                title="Pause deal"
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-amber-50 text-amber-600 transition-colors disabled:opacity-50"
+              >
+                <Pause className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={onClose} className="modal-close"><X className="w-4 h-4" /></button>
+          </div>
         </div>
+
+        {/* On-hold banner */}
+        {deal.status === 'on_hold' && (
+          <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex items-start gap-2">
+            <Pause className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-amber-800">On Hold</p>
+              {(deal as DealWithContact & { hold_reason?: string | null }).hold_reason && (
+                <p className="text-[11px] text-amber-700 mt-0.5">{(deal as DealWithContact & { hold_reason?: string | null }).hold_reason}</p>
+              )}
+              {(deal as DealWithContact & { hold_until?: string | null }).hold_until && (
+                <p className="text-[10px] text-amber-600 mt-0.5">Resume on {new Date((deal as DealWithContact & { hold_until?: string | null }).hold_until as string).toLocaleDateString()}</p>
+              )}
+            </div>
+            <button
+              onClick={handleResume}
+              disabled={holdProcessing}
+              className="btn-primary btn-sm flex items-center gap-1 disabled:opacity-50"
+            >
+              <Play className="w-3 h-3" /> Resume
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b border-surface-100">
@@ -887,17 +973,50 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
           )}
         </div>
       </div>
+      {showHoldModal && (
+        <OnHoldModal
+          dealTitle={deal.title}
+          onConfirm={handlePause}
+          onCancel={() => setShowHoldModal(false)}
+        />
+      )}
     </div>
   )
 }
 
 // --- LOSS REASON MODAL ---
+interface LossReasonOption { id: string; label: string; color: string }
 function LossReasonModal({ dealTitle, onConfirm, onCancel }: {
   dealTitle: string
-  onConfirm: (reason: string) => void
+  onConfirm: (payload: { reasonId: string | null; reasonLabel: string; notes: string }) => void
   onCancel: () => void
 }) {
-  const [reason, setReason] = useState('')
+  const [reasons, setReasons] = useState<LossReasonOption[]>([])
+  const [loadingReasons, setLoadingReasons] = useState(true)
+  const [selectedId, setSelectedId] = useState<string>('')
+  const [notes, setNotes] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/loss-reasons')
+      .then(r => r.json())
+      .then(j => {
+        if (cancelled) return
+        setReasons(j.reasons || [])
+        setLoadingReasons(false)
+      })
+      .catch(() => { if (!cancelled) setLoadingReasons(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const selected = reasons.find(r => r.id === selectedId) || null
+  const canSubmit = !!selected
+
+  const submit = () => {
+    if (!selected) return
+    onConfirm({ reasonId: selected.id, reasonLabel: selected.label, notes: notes.trim() })
+  }
+
   return (
     <div className="modal-overlay">
       <div className="modal-panel max-w-sm">
@@ -906,18 +1025,94 @@ function LossReasonModal({ dealTitle, onConfirm, onCancel }: {
           <button onClick={onCancel} className="modal-close"><X className="w-4 h-4" /></button>
         </div>
         <div className="modal-body space-y-3">
-          <p className="text-xs text-surface-500">Provide a reason for losing &ldquo;{dealTitle}&rdquo;.</p>
-          <textarea
-            className="input min-h-[80px] text-sm"
-            placeholder="e.g. Budget constraints, went with competitor..."
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            autoFocus
-          />
+          <p className="text-xs text-surface-500">Select a reason for losing &ldquo;{dealTitle}&rdquo;.</p>
+
+          {loadingReasons ? (
+            <div className="py-6 flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+            </div>
+          ) : reasons.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-surface-200 p-3 text-xs text-surface-500">
+              No loss reasons configured. <a href="/settings/loss-reasons" className="text-brand-600 underline">Configure now</a>.
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-60 overflow-y-auto">
+              {reasons.map(r => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setSelectedId(r.id)}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-sm transition-colors',
+                    selectedId === r.id
+                      ? 'border-brand-500 bg-brand-50 text-brand-800'
+                      : 'border-surface-200 hover:border-surface-300 hover:bg-surface-50'
+                  )}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: r.color || '#94a3b8' }} />
+                  <span className="flex-1">{r.label}</span>
+                  {selectedId === r.id && <Check className="w-4 h-4 text-brand-600" />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase text-surface-400">Additional notes (optional)</label>
+            <textarea
+              className="input min-h-[60px] text-sm mt-1"
+              placeholder="More context..."
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+            />
+          </div>
+
           <div className="flex gap-2">
             <button type="button" onClick={onCancel} className="btn-secondary flex-1">Cancel</button>
-            <button type="button" disabled={!reason.trim()} onClick={() => onConfirm(reason.trim())}
+            <button type="button" disabled={!canSubmit} onClick={submit}
               className="btn-primary flex-1 disabled:opacity-50">Mark as Lost</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// --- ON-HOLD MODAL ---
+function OnHoldModal({ dealTitle, onConfirm, onCancel }: {
+  dealTitle: string
+  onConfirm: (payload: { reason: string; until: string }) => void
+  onCancel: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [until, setUntil] = useState('')
+  return (
+    <div className="modal-overlay">
+      <div className="modal-panel max-w-sm">
+        <div className="modal-header">
+          <h2 className="text-sm font-bold flex items-center gap-1.5"><Pause className="w-4 h-4" /> Pause Deal</h2>
+          <button onClick={onCancel} className="modal-close"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="modal-body space-y-3">
+          <p className="text-xs text-surface-500">Pause &ldquo;{dealTitle}&rdquo; — it will move to On Hold.</p>
+          <div>
+            <label className="text-[10px] font-semibold uppercase text-surface-400">Why are you pausing this deal?</label>
+            <textarea
+              className="input min-h-[70px] text-sm mt-1"
+              placeholder="e.g. Waiting on client decision..."
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase text-surface-400">Resume on (optional)</label>
+            <input type="date" className="input text-sm mt-1" value={until} onChange={e => setUntil(e.target.value)} />
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={onCancel} className="btn-secondary flex-1">Cancel</button>
+            <button type="button" disabled={!reason.trim()} onClick={() => onConfirm({ reason: reason.trim(), until })}
+              className="btn-primary flex-1 disabled:opacity-50">Pause deal</button>
           </div>
         </div>
       </div>
@@ -1057,6 +1252,10 @@ export default function PipelinePage() {
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<FilterState>({ minValue: '', maxValue: '', assignedTo: '', age: 'all' })
   const [celebration, setCelebration] = useState<{ title: string; value: number } | null>(null)
+  const [statusView, setStatusView] = useState<'active' | 'on_hold' | 'won' | 'lost'>('active')
+  const [altDeals, setAltDeals] = useState<DealWithContact[]>([])
+  const [altLossLabels, setAltLossLabels] = useState<Record<string, { label: string; color: string }>>({})
+  const [altLoading, setAltLoading] = useState(false)
 
   const activeFilterCount = [
     filters.minValue, filters.maxValue, filters.assignedTo, filters.age !== 'all' ? 'yes' : '',
@@ -1146,6 +1345,61 @@ export default function PipelinePage() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Load alternate status views
+  const loadAltDeals = useCallback(async (status: 'on_hold' | 'won' | 'lost') => {
+    if (!workspaceId || !activePipelineId) return
+    setAltLoading(true)
+    const { data } = await supabase
+      .from('deals')
+      .select('*, contacts!deals_contact_id_fkey(name, email)')
+      .eq('workspace_id', workspaceId)
+      .eq('pipeline_id', activePipelineId)
+      .eq('status', status)
+      .order('updated_at', { ascending: false })
+    setAltDeals((data || []) as DealWithContact[])
+
+    if (status === 'lost') {
+      const ids = Array.from(new Set((data || []).map((d: DbRow) => d.lost_reason_id).filter(Boolean))) as string[]
+      if (ids.length > 0) {
+        const { data: reasons } = await supabase
+          .from('loss_reasons')
+          .select('id, label, color')
+          .in('id', ids)
+        const map: Record<string, { label: string; color: string }> = {}
+        for (const r of (reasons || []) as { id: string; label: string; color: string }[]) {
+          map[r.id] = { label: r.label, color: r.color }
+        }
+        setAltLossLabels(map)
+      } else {
+        setAltLossLabels({})
+      }
+    }
+    setAltLoading(false)
+  }, [supabase, workspaceId, activePipelineId])
+
+  useEffect(() => {
+    if (statusView === 'active') return
+    loadAltDeals(statusView)
+  }, [statusView, loadAltDeals])
+
+  const handleResumeFromList = async (dealId: string) => {
+    try {
+      const res = await fetch(`/api/deals/${dealId}/hold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ on_hold: false }),
+      })
+      if (res.ok) {
+        setAltDeals(prev => prev.filter(d => d.id !== dealId))
+        toast.success('Deal resumed')
+        loadData(activePipelineId)
+      }
+    } catch {
+      toast.error('Failed to resume')
+    }
+  }
+
 
   const switchPipeline = (pipelineId: string) => {
     setLoading(true)
@@ -1257,22 +1511,25 @@ export default function PipelinePage() {
     }
   }
 
-  const handleLossConfirm = async (reason: string) => {
+  const handleLossConfirm = async (payload: { reasonId: string | null; reasonLabel: string; notes: string }) => {
     if (!lossReasonPrompt) return
     const { dealId, stageId } = lossReasonPrompt
     const deal = columns.flatMap(c => c.deals).find(d => d.id === dealId)
     if (!deal) return
 
+    const combinedText = payload.notes ? `${payload.reasonLabel} — ${payload.notes}` : payload.reasonLabel
+
     await supabase.from('deals').update({
       stage_id: stageId,
       status: 'lost',
-      lost_reason: reason,
+      lost_reason: combinedText,
+      lost_reason_id: payload.reasonId,
     }).eq('id', dealId)
 
     setColumns(prev => prev.map(col => ({
       ...col,
       deals: col.id === stageId
-        ? [...col.deals.filter(d => d.id !== dealId), { ...deal, stage_id: stageId, status: 'lost', lost_reason: reason }]
+        ? [...col.deals.filter(d => d.id !== dealId), { ...deal, stage_id: stageId, status: 'lost', lost_reason: combinedText }]
         : col.deals.filter(d => d.id !== dealId),
     })))
 
@@ -1461,8 +1718,98 @@ export default function PipelinePage() {
         </div>
       )}
 
+      {/* Status view segmented control */}
+      <div className="mb-3 flex items-center gap-0.5 bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 w-fit">
+        {([
+          { id: 'active', label: 'Active' },
+          { id: 'on_hold', label: 'On Hold' },
+          { id: 'won', label: 'Won' },
+          { id: 'lost', label: 'Lost' },
+        ] as const).map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => setStatusView(opt.id)}
+            className={cn('px-3 py-1 rounded-md text-xs font-semibold transition-colors',
+              statusView === opt.id ? 'bg-white dark:bg-surface-700 text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700')}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ALT STATUS TABLES */}
+      {statusView !== 'active' && (
+        <div className="card p-0 overflow-hidden flex-1 flex flex-col">
+          {altLoading ? (
+            <div className="p-8 text-center text-sm text-surface-400">Loading...</div>
+          ) : altDeals.length === 0 ? (
+            <div className="p-8 text-center text-sm text-surface-400">No {statusView === 'on_hold' ? 'on-hold' : statusView} deals.</div>
+          ) : (
+            <div className="overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-50 dark:bg-surface-800 text-[11px] font-semibold text-surface-500 uppercase">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Title</th>
+                    <th className="px-3 py-2 text-right">Value</th>
+                    <th className="px-3 py-2 text-left">Contact</th>
+                    {statusView === 'on_hold' && <th className="px-3 py-2 text-left">Hold reason</th>}
+                    {statusView === 'on_hold' && <th className="px-3 py-2 text-left">Resume on</th>}
+                    {statusView === 'lost' && <th className="px-3 py-2 text-left">Reason</th>}
+                    {statusView === 'lost' && <th className="px-3 py-2 text-left">Date</th>}
+                    {statusView === 'won' && <th className="px-3 py-2 text-left">Closed</th>}
+                    <th className="px-3 py-2 text-left">Owner</th>
+                    {statusView === 'on_hold' && <th className="px-3 py-2"></th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100">
+                  {altDeals.map(d => {
+                    const dRaw = d as DealWithContact & { hold_reason?: string; hold_until?: string; lost_reason_id?: string; lost_reason?: string; updated_at?: string }
+                    const owner = teamMembers.find(t => t.id === d.owner_id)?.full_name || '—'
+                    const lostReasonInfo = dRaw.lost_reason_id ? altLossLabels[dRaw.lost_reason_id] : null
+                    return (
+                      <tr key={d.id} className="hover:bg-surface-50 dark:hover:bg-surface-800 cursor-pointer" onClick={() => setSelectedDeal(d)}>
+                        <td className="px-3 py-2 font-medium text-surface-800">{d.title}</td>
+                        <td className="px-3 py-2 text-right text-surface-700">{formatCurrency(d.value || 0)}</td>
+                        <td className="px-3 py-2 text-surface-600">{d.contacts?.name || '—'}</td>
+                        {statusView === 'on_hold' && <td className="px-3 py-2 text-surface-600 max-w-[220px] truncate">{dRaw.hold_reason || '—'}</td>}
+                        {statusView === 'on_hold' && <td className="px-3 py-2 text-surface-600">{dRaw.hold_until ? new Date(dRaw.hold_until).toLocaleDateString() : '—'}</td>}
+                        {statusView === 'lost' && (
+                          <td className="px-3 py-2">
+                            {lostReasonInfo ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: lostReasonInfo.color }} />
+                                <span className="text-surface-700">{lostReasonInfo.label}</span>
+                              </span>
+                            ) : (
+                              <span className="text-surface-500">{dRaw.lost_reason || '—'}</span>
+                            )}
+                          </td>
+                        )}
+                        {statusView === 'lost' && <td className="px-3 py-2 text-surface-500">{dRaw.updated_at ? new Date(dRaw.updated_at).toLocaleDateString() : '—'}</td>}
+                        {statusView === 'won' && <td className="px-3 py-2 text-surface-500">{dRaw.updated_at ? new Date(dRaw.updated_at).toLocaleDateString() : '—'}</td>}
+                        <td className="px-3 py-2 text-surface-600">{owner}</td>
+                        {statusView === 'on_hold' && (
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleResumeFromList(d.id) }}
+                              className="btn-primary btn-sm inline-flex items-center gap-1"
+                            >
+                              <Play className="w-3 h-3" /> Resume
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* TABLE VIEW */}
-      {columns.length > 0 && viewMode === 'table' && (
+      {statusView === 'active' && columns.length > 0 && viewMode === 'table' && (
         <DealsTable
           deals={filteredColumns.flatMap(c => c.deals)}
           columns={filteredColumns}
@@ -1472,7 +1819,7 @@ export default function PipelinePage() {
       )}
 
       {/* Mobile Accordion View */}
-      {columns.length > 0 && viewMode === 'kanban' && (
+      {statusView === 'active' && columns.length > 0 && viewMode === 'kanban' && (
         <div className="md:hidden space-y-2 pb-4 flex-1 overflow-y-auto">
           {filteredColumns.map(col => {
             const colValue = col.deals.reduce((s, d) => s + (d.value || 0), 0)
@@ -1517,7 +1864,7 @@ export default function PipelinePage() {
       )}
 
       {/* Desktop Kanban with drag-drop */}
-      {columns.length > 0 && viewMode === 'kanban' && (
+      {statusView === 'active' && columns.length > 0 && viewMode === 'kanban' && (
         <DragDropContext onDragEnd={(result: DropResult) => {
           if (!result.destination) return
           const dealId = result.draggableId
@@ -1593,6 +1940,12 @@ export default function PipelinePage() {
           deal={selectedDeal}
           onClose={() => setSelectedDeal(null)}
           onUpdateDeal={handleUpdateDeal}
+          onDealHoldChange={(dealId, onHold) => {
+            // Remove from active kanban when paused
+            if (onHold) {
+              setColumns(prev => prev.map(col => ({ ...col, deals: col.deals.filter(d => d.id !== dealId) })))
+            }
+          }}
           teamMembers={teamMembers}
           workspaceId={workspaceId}
           currentUserId={currentUserId}

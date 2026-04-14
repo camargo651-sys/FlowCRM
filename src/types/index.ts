@@ -92,8 +92,12 @@ export interface Deal {
   owner_id?: string
   probability?: number
   expected_close_date?: string
-  status: 'open' | 'won' | 'lost'
+  status: 'open' | 'won' | 'lost' | 'on_hold'
   lost_reason?: string
+  lost_reason_id?: string | null
+  hold_reason?: string | null
+  hold_until?: string | null
+  hold_at?: string | null
   notes?: string
   tags?: string[]
   custom_fields?: Json

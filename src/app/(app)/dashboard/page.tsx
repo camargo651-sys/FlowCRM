@@ -7,6 +7,7 @@ import AICommandCenter from '@/components/dashboard/AICommandCenter'
 import GettingStarted from '@/components/dashboard/GettingStarted'
 import DashboardWidgets from '@/components/dashboard/DashboardWidgets'
 import CallMetricsWidget from '@/components/shared/CallMetricsWidget'
+import LossReasonsWidget from '@/components/shared/LossReasonsWidget'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
 import { SupabaseClient } from '@supabase/supabase-js'
@@ -298,8 +299,13 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Call metrics widget */}
-          {data.workspaceId && <CallMetricsWidget workspaceId={data.workspaceId} />}
+          {/* Call metrics + Loss reasons widgets */}
+          {data.workspaceId && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <CallMetricsWidget workspaceId={data.workspaceId} />
+              <LossReasonsWidget workspaceId={data.workspaceId} />
+            </div>
+          )}
 
           {/* Trend chart + Leads by source side by side */}
           <DashboardCharts

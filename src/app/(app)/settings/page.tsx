@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle, Route, FormInput, FileText, Shield, Lock, Sliders, UserCog, Building2, CreditCard, Plug } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle, Route, FormInput, FileText, Shield, Lock, Sliders, UserCog, Building2, CreditCard, Plug, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { LOCALES } from '@/lib/i18n/translations'
@@ -476,6 +476,7 @@ export default function SettingsPage() {
               { href: '/settings/form-builder', icon: FormInput, label: 'Form Builder', desc: 'Build public intake forms' },
               { href: '/settings/templates', icon: FileText, label: 'Templates', desc: 'Email & document templates' },
               { href: '/settings/stage-conditions', icon: Sliders, label: 'Stage Conditions', desc: 'Required fields per stage' },
+              { href: '/settings/loss-reasons', icon: Tag, label: 'Loss Reasons', desc: 'Why deals are lost' },
             ],
           },
           {
