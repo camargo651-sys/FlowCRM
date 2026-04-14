@@ -11,6 +11,7 @@ interface EmailMessage {
   id: string
   workspace_id: string
   contact_id: string | null
+  email_account_id?: string | null
   thread_id: string | null
   direction: 'inbound' | 'outbound' | null
   from_address: string | null
@@ -171,11 +172,13 @@ export default function InboxEmailPage() {
           body_text: replyBody,
           contact_id: latest.contact_id,
           thread_id: latest.thread_id,
+          account_id: latest.email_account_id || undefined,
         }),
       })
       const data = await res.json()
       if (res.ok) {
-        toast.success('Reply saved', { description: data.todo })
+        const desc = data.sent ? 'Sent via connected account' : (data.send_failed ? `Stored — send failed: ${data.send_error}` : data.todo)
+        toast.success(data.sent ? 'Reply sent' : 'Reply saved', { description: desc })
         setShowReply(false)
         setReplyBody('')
         load()

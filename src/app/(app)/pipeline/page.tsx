@@ -1,6 +1,7 @@
 'use client'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check, Pause, Play, Ban, Trophy, Sheet } from 'lucide-react'
 import InlineSpreadsheet, { type SpreadsheetColumn } from '@/components/shared/InlineSpreadsheet'
@@ -1287,6 +1288,9 @@ interface PipelineInfo {
 
 export default function PipelinePage() {
   const supabase = createClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const qualityFilter = searchParams.get('filter') as 'no_owner' | 'no_close_date' | null
   const { template, customFields } = useWorkspace()
   const { t } = useI18n()
   const [pipelines, setPipelines] = useState<PipelineInfo[]>([])
@@ -1678,9 +1682,17 @@ export default function PipelinePage() {
         if (filters.age === 'aging' && (days < 7 || days > 14)) return false
         if (filters.age === 'stale' && days <= 14) return false
       }
+      // Data quality deep-link filters
+      if (qualityFilter === 'no_owner' && d.owner_id) return false
+      if (qualityFilter === 'no_close_date' && d.expected_close_date) return false
       return true
     }),
   }))
+
+  const qualityLabels: Record<string, string> = {
+    no_owner: `${template.dealLabel.plural} without owner`,
+    no_close_date: `${template.dealLabel.plural} without close date`,
+  }
 
   const allOpenDeals = columns.flatMap(c => c.deals)
   const totalValue = allOpenDeals.reduce((s, d) => s + (d.value || 0), 0)
@@ -1780,6 +1792,17 @@ export default function PipelinePage() {
           </button>
         </div>
       </div>
+
+      {qualityFilter && qualityLabels[qualityFilter] && (
+        <div className="mb-4 p-3 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-xl flex items-center justify-between flex-shrink-0">
+          <span className="text-sm text-brand-700 dark:text-brand-300 font-medium">
+            Showing: {qualityLabels[qualityFilter]}
+          </span>
+          <button onClick={() => router.push('/pipeline')} className="text-brand-500 hover:text-brand-700" aria-label="Clear filter">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Pipeline selector - only show if multiple pipelines */}
       {pipelines.length > 1 && (

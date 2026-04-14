@@ -35,14 +35,33 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     try {
       const amount = Math.round(Number(invoice.balance_due || invoice.total || 0) * 100)
       const currency = (invoice.currency || 'usd').toLowerCase()
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || ''
+
+      // Fetch contact email for customer_email hint
+      let contactEmail: string | null = null
+      if (invoice.contact_id) {
+        const { data: contact } = await auth.supabase
+          .from('contacts')
+          .select('email')
+          .eq('id', invoice.contact_id)
+          .maybeSingle()
+        contactEmail = contact?.email || null
+      }
+
+      // Create a Stripe Checkout Session (hosted) — simpler than Payment Intent + custom UI.
       const body = new URLSearchParams()
-      body.append('amount', String(amount))
-      body.append('currency', currency)
-      body.append('description', `Invoice ${invoice.invoice_number}`)
+      body.append('mode', 'payment')
+      body.append('line_items[0][price_data][currency]', currency)
+      body.append('line_items[0][price_data][product_data][name]', `Invoice ${invoice.invoice_number}`)
+      body.append('line_items[0][price_data][unit_amount]', String(amount))
+      body.append('line_items[0][quantity]', '1')
+      body.append('success_url', `${appUrl}/invoices/${invoice.id}?paid=true`)
+      body.append('cancel_url', `${appUrl}/invoices/${invoice.id}?canceled=true`)
       body.append('metadata[invoice_id]', invoice.id)
       body.append('metadata[workspace_id]', auth.workspaceId)
+      if (contactEmail) body.append('customer_email', contactEmail)
 
-      const res = await fetch('https://api.stripe.com/v1/payment_intents', {
+      const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${stripeKey}`,
@@ -51,12 +70,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         body: body.toString(),
       })
       if (res.ok) {
-        const json = await res.json() as { id: string; client_secret: string }
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
-        url = `${appUrl}/api/payments/stripe?pi=${json.id}&invoice_id=${invoice.id}`
+        const json = (await res.json()) as { id: string; url: string }
+        url = json.url
+      } else {
+        const errText = await res.text()
+        console.error('[payment-link] Stripe error', res.status, errText.slice(0, 300))
       }
-    } catch {
-      // fall through to fallback
+    } catch (e) {
+      console.error('[payment-link] Stripe exception', e)
     }
   }
 

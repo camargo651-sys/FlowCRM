@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, FileText, Send, DollarSign, CheckCircle2, X, Clock, AlertTriangle, Download, CreditCard, Copy, Repeat, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 import { pushUndoAction } from '@/lib/undo/stack'
@@ -31,6 +31,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function InvoicesPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const qualityFilter = searchParams.get('filter')
   const supabase = createClient()
   const { t } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -362,11 +364,21 @@ export default function InvoicesPage() {
     load()
   }
 
+  const now = Date.now()
   const filtered = invoices.filter(inv => {
     if (search && !inv.invoice_number.toLowerCase().includes(search.toLowerCase()) && !(inv as { contacts?: { name?: string } }).contacts?.name?.toLowerCase().includes(search.toLowerCase())) return false
     if (filterStatus !== 'all' && inv.status !== filterStatus) return false
+    if (qualityFilter === 'overdue' || qualityFilter === 'overdue_no_followup') {
+      if (inv.status === 'paid' || inv.status === 'cancelled') return false
+      if (!inv.due_date || new Date(inv.due_date).getTime() >= now) return false
+    }
     return true
   })
+
+  const qualityLabels: Record<string, string> = {
+    overdue: 'Overdue invoices without follow-up',
+    overdue_no_followup: 'Overdue invoices without follow-up',
+  }
 
   const totalOutstanding = invoices.filter(i => ['sent','partial','overdue'].includes(i.status)).reduce((s, i) => s + i.balance_due, 0)
   const totalPaid = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0)
@@ -388,6 +400,17 @@ export default function InvoicesPage() {
         </div>
         <button onClick={openNewInvoice} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Invoice</button>
       </div>
+
+      {qualityFilter && qualityLabels[qualityFilter] && (
+        <div className="mb-4 p-3 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-xl flex items-center justify-between">
+          <span className="text-sm text-brand-700 dark:text-brand-300 font-medium">
+            Showing: {qualityLabels[qualityFilter]} ({filtered.length})
+          </span>
+          <button onClick={() => router.push('/invoices')} className="text-brand-500 hover:text-brand-700" aria-label="Clear filter">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

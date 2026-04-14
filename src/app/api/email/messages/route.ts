@@ -1,6 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendGmailMessage } from '@/lib/email/gmail-send'
+import { sendOutlookMessage } from '@/lib/email/outlook-send'
 
 function getSupabase() {
   const cookieStore = cookies()
@@ -74,35 +76,143 @@ export async function POST(request: NextRequest) {
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
 
   const body = await request.json()
-  const { to, cc, subject, body_html, body_text, contact_id, thread_id } = body
+  const { to, cc, subject, body_html, body_text, contact_id, thread_id, account_id } = body
   if (!to || !subject) return NextResponse.json({ error: 'Missing to/subject' }, { status: 400 })
 
-  // Auto-link contact by from-email if not provided
+  const toList: string[] = Array.isArray(to) ? to : [to]
+  const ccList: string[] | undefined = Array.isArray(cc) ? cc : (cc ? [cc] : undefined)
+
+  // Auto-link contact by to-email if not provided
   let linkedContactId = contact_id || null
-  if (!linkedContactId && Array.isArray(to) && to[0]) {
-    const { data: c } = await supabase.from('contacts').select('id').eq('workspace_id', ws.id).eq('email', to[0]).maybeSingle()
+  if (!linkedContactId && toList[0]) {
+    const { data: c } = await supabase.from('contacts').select('id').eq('workspace_id', ws.id).eq('email', toList[0]).maybeSingle()
     if (c) linkedContactId = c.id
   }
 
-  const { data, error } = await supabase.from('email_messages').insert({
+  // Resolve sending account: explicit account_id, or fall back to first active account for user
+  let sendAccount: {
+    id: string
+    provider: string
+    email_address: string
+    access_token: string
+    refresh_token: string | null
+    token_expires_at: string | null
+  } | null = null
+
+  if (account_id) {
+    const { data: acc } = await supabase
+      .from('email_accounts')
+      .select('id, provider, email_address, access_token, refresh_token, token_expires_at')
+      .eq('id', account_id)
+      .eq('workspace_id', ws.id)
+      .maybeSingle()
+    if (acc) sendAccount = acc
+  } else {
+    const { data: acc } = await supabase
+      .from('email_accounts')
+      .select('id, provider, email_address, access_token, refresh_token, token_expires_at')
+      .eq('workspace_id', ws.id)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle()
+    if (acc) sendAccount = acc
+  }
+
+  const onTokenRefreshed = async (accountId: string, encryptedToken: string, expiresAt: Date) => {
+    await supabase.from('email_accounts').update({
+      access_token: encryptedToken,
+      token_expires_at: expiresAt.toISOString(),
+      status: 'active',
+    }).eq('id', accountId)
+  }
+
+  let externalId: string | null = null
+  let externalThreadId: string | null = thread_id || null
+  let sendFailed = false
+  let sendError: string | null = null
+
+  if (sendAccount) {
+    try {
+      const sendInput = {
+        to: toList,
+        cc: ccList,
+        subject,
+        body_html: body_html || null,
+        body_text: body_text || null,
+        thread_id: thread_id || null,
+        from_address: sendAccount.email_address,
+        from_name: user.user_metadata?.full_name || null,
+      }
+      const result = sendAccount.provider === 'gmail'
+        ? await sendGmailMessage(sendAccount as never, sendInput, onTokenRefreshed)
+        : await sendOutlookMessage(sendAccount as never, sendInput, onTokenRefreshed)
+      externalId = result.id
+      externalThreadId = result.thread_id || externalThreadId
+    } catch (err) {
+      sendFailed = true
+      sendError = err instanceof Error ? err.message : 'send failed'
+      console.error('[email/messages] send failed', sendError)
+    }
+  }
+
+  const insertPayload: Record<string, unknown> = {
     workspace_id: ws.id,
     user_id: user.id,
     contact_id: linkedContactId,
-    thread_id: thread_id || null,
+    thread_id: externalThreadId,
     direction: 'outbound',
-    from_address: user.email || '',
+    from_address: sendAccount?.email_address || user.email || '',
     from_name: user.user_metadata?.full_name || null,
-    to_addresses: Array.isArray(to) ? to : [to],
-    cc_addresses: cc || null,
+    to_addresses: toList,
+    cc_addresses: ccList || null,
     subject,
     snippet: (body_text || '').slice(0, 500),
     body_html: body_html || null,
     body_text: body_text || null,
     is_read: true,
     received_at: new Date().toISOString(),
-  }).select().single()
+  }
+  if (externalId) insertPayload.external_id = externalId
+  if (sendAccount) insertPayload.email_account_id = sendAccount.id
+  if (sendFailed) insertPayload.send_failed = true
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { data, error } = await supabase.from('email_messages').insert(insertPayload).select().single()
 
-  return NextResponse.json({ message: data, todo: 'Real Gmail/Outlook send not yet wired — message stored locally' })
+  if (error) {
+    // Retry without optional columns that may not exist in schema
+    const retry = await supabase.from('email_messages').insert({
+      workspace_id: ws.id,
+      user_id: user.id,
+      contact_id: linkedContactId,
+      thread_id: externalThreadId,
+      direction: 'outbound',
+      from_address: sendAccount?.email_address || user.email || '',
+      from_name: user.user_metadata?.full_name || null,
+      to_addresses: toList,
+      cc_addresses: ccList || null,
+      subject,
+      snippet: (body_text || '').slice(0, 500),
+      body_html: body_html || null,
+      body_text: body_text || null,
+      is_read: true,
+      received_at: new Date().toISOString(),
+    }).select().single()
+    if (retry.error) return NextResponse.json({ error: retry.error.message }, { status: 500 })
+    return NextResponse.json({
+      message: retry.data,
+      sent: !!externalId,
+      send_failed: sendFailed,
+      send_error: sendError,
+      todo: sendAccount ? undefined : 'No connected email account — message stored locally',
+    })
+  }
+
+  return NextResponse.json({
+    message: data,
+    sent: !!externalId,
+    send_failed: sendFailed,
+    send_error: sendError,
+    todo: sendAccount ? undefined : 'No connected email account — message stored locally',
+  })
 }

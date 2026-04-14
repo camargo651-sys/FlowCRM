@@ -1,7 +1,7 @@
 'use client'
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download, GitMerge, MapPin, ChevronDown, Tag } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
@@ -201,6 +201,8 @@ function NewContactModal({ onClose, onSave, workspaceId, customFields, template 
 export default function ContactsPage() {
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const qualityFilter = searchParams.get('filter') as 'no_email' | 'no_phone' | 'no_tags' | 'stale' | null
   const { template, customFields } = useWorkspace()
   const { t } = useI18n()
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -348,13 +350,33 @@ export default function ContactsPage() {
     return `${Math.floor(days / 30)}mo ago`
   }
 
+  const STALE_MS = 90 * 24 * 60 * 60 * 1000
+  const qualityMatch = (c: Contact): boolean => {
+    if (!qualityFilter) return true
+    if (qualityFilter === 'no_email') return !c.email
+    if (qualityFilter === 'no_phone') return !c.phone
+    if (qualityFilter === 'no_tags') return !c.tags || c.tags.length === 0
+    if (qualityFilter === 'stale') {
+      const la = lastInteractions[c.id]
+      if (!la) return true
+      return Date.now() - new Date(la).getTime() > STALE_MS
+    }
+    return true
+  }
+  const qualityLabels: Record<string, string> = {
+    no_email: 'Contacts missing email',
+    no_phone: 'Contacts missing phone',
+    no_tags: 'Contacts without tags',
+    stale: 'Stale contacts (90+ days no activity)',
+  }
+
   const filtered = contacts.filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase()) || c.company_name?.toLowerCase().includes(search.toLowerCase())
     const matchFilter = filter === 'all' || c.type === filter
     const matchTags = filterTags.length === 0 || filterTags.some(t => (c.tags || []).includes(t))
     const matchScore = filterScore === 'all' || (c.score_label || 'cold') === filterScore
     const matchOwner = filterOwner === 'all' || c.owner_id === userId
-    return matchSearch && matchFilter && matchTags && matchScore && matchOwner
+    return matchSearch && matchFilter && matchTags && matchScore && matchOwner && qualityMatch(c)
   })
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
@@ -400,6 +422,17 @@ export default function ContactsPage() {
           </button>
         </div>
       </div>
+
+      {qualityFilter && qualityLabels[qualityFilter] && (
+        <div className="mb-4 p-3 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-xl flex items-center justify-between">
+          <span className="text-sm text-brand-700 dark:text-brand-300 font-medium">
+            Showing: {qualityLabels[qualityFilter]} ({filtered.length})
+          </span>
+          <button onClick={() => router.push('/contacts')} className="text-brand-500 hover:text-brand-700" aria-label="Clear filter">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {importResult && (
         <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">

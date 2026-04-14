@@ -6,14 +6,132 @@ import {
   ArrowLeft, ArrowRight, Check, Upload, Key, Database, Loader2, ExternalLink, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { detectColumns, type FieldKey } from '@/lib/data-quality/csv-mapper'
 
 type Source = 'hubspot' | 'pipedrive' | 'zoho' | 'salesforce' | 'csv'
+
+type EntityKind = 'contacts' | 'deals' | 'companies'
+
+const TARGET_FIELDS: Record<EntityKind, { key: string; label: string }[]> = {
+  contacts: [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'company', label: 'Company' },
+    { key: 'address', label: 'Address' },
+    { key: 'city', label: 'City' },
+    { key: 'country', label: 'Country' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'notes', label: 'Notes' },
+    { key: 'type', label: 'Type (person/company)' },
+    { key: 'linkedin_url', label: 'LinkedIn URL' },
+    { key: 'position', label: 'Position / Job title' },
+    { key: 'birthday', label: 'Birthday' },
+  ],
+  deals: [
+    { key: 'title', label: 'Title' },
+    { key: 'value', label: 'Value' },
+    { key: 'stage', label: 'Stage' },
+    { key: 'expected_close_date', label: 'Expected close date' },
+    { key: 'contact_email', label: 'Contact email' },
+    { key: 'owner_email', label: 'Owner email' },
+    { key: 'notes', label: 'Notes' },
+    { key: 'probability', label: 'Probability' },
+  ],
+  companies: [
+    { key: 'name', label: 'Name' },
+    { key: 'website', label: 'Website' },
+    { key: 'industry', label: 'Industry' },
+    { key: 'size', label: 'Size' },
+    { key: 'revenue', label: 'Revenue' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'address', label: 'Address' },
+  ],
+}
+
+// Map a csv-mapper FieldKey guess → target field key per entity
+const FIELD_KEY_TO_CONTACT: Partial<Record<FieldKey, string>> = {
+  name: 'name',
+  email: 'email',
+  phone: 'phone',
+  company: 'company',
+  job_title: 'position',
+  address: 'address',
+  website: 'linkedin_url',
+  notes: 'notes',
+  tags: 'tags',
+}
+const FIELD_KEY_TO_DEAL: Partial<Record<FieldKey, string>> = {
+  name: 'title',
+  email: 'contact_email',
+  value: 'value',
+  price: 'value',
+  stage: 'stage',
+  close_date: 'expected_close_date',
+  notes: 'notes',
+}
+const FIELD_KEY_TO_COMPANY: Partial<Record<FieldKey, string>> = {
+  name: 'name',
+  website: 'website',
+  phone: 'phone',
+  address: 'address',
+}
+
+// Known source schemas (displayed as Source column list when sample unavailable)
+const SOURCE_SCHEMAS: Record<string, Record<EntityKind, string[]>> = {
+  hubspot: {
+    contacts: ['firstname', 'lastname', 'email', 'phone', 'company', 'jobtitle', 'website'],
+    companies: ['name', 'domain', 'phone', 'industry'],
+    deals: ['dealname', 'amount', 'dealstage', 'closedate'],
+  },
+  pipedrive: {
+    contacts: ['name', 'email', 'phone', 'org_name', 'job_title'],
+    companies: ['name', 'address', 'people_count'],
+    deals: ['title', 'value', 'stage_id', 'expected_close_date', 'person_id'],
+  },
+  zoho: {
+    contacts: ['First_Name', 'Last_Name', 'Email', 'Phone', 'Account_Name', 'Title'],
+    companies: ['Account_Name', 'Phone', 'Website', 'Industry'],
+    deals: ['Deal_Name', 'Amount', 'Stage', 'Closing_Date', 'Contact_Name'],
+  },
+  salesforce: {
+    contacts: ['FirstName', 'LastName', 'Email', 'Phone', 'Account.Name', 'Title'],
+    companies: ['Name', 'Phone', 'Website', 'Industry'],
+    deals: ['Name', 'Amount', 'StageName', 'CloseDate'],
+  },
+}
+
+// Minimal CSV parser (handles quoted fields, newlines within quotes)
+function parseCsv(text: string, maxRows = 6): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++ } else { inQuotes = false }
+      } else field += c
+    } else {
+      if (c === '"') inQuotes = true
+      else if (c === ',') { row.push(field); field = '' }
+      else if (c === '\n' || c === '\r') {
+        if (field.length || row.length) { row.push(field); rows.push(row); row = []; field = '' }
+        if (c === '\r' && text[i + 1] === '\n') i++
+        if (rows.length >= maxRows) return rows
+      } else field += c
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row) }
+  return rows
+}
 
 interface SourceInfo {
   id: Source
   name: string
   logo: string
-  mode: 'api' | 'csv' | 'coming-soon'
+  mode: 'api' | 'csv' | 'oauth' | 'coming-soon'
   apiGuide?: { title: string; steps: string[]; docs: string }
   description: string
 }
@@ -78,8 +196,8 @@ const SOURCES: SourceInfo[] = [
     id: 'salesforce',
     name: 'Salesforce',
     logo: 'SF',
-    mode: 'coming-soon',
-    description: 'Coming soon — requires Connected App OAuth2 setup',
+    mode: 'oauth',
+    description: 'Connect via OAuth2 Connected App to import contacts, accounts and opportunities',
   },
   {
     id: 'csv',
@@ -124,6 +242,9 @@ export default function MigrateWizardPage() {
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<PreviewData | null>(null)
   const [progress, setProgress] = useState(0)
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [csvSampleRows, setCsvSampleRows] = useState<string[][]>([])
+  const [mappingEntity, setMappingEntity] = useState<EntityKind>('contacts')
 
   // Restore progress
   useEffect(() => {
@@ -141,6 +262,34 @@ export default function MigrateWizardPage() {
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)) } catch {}
   }, [state])
 
+  // Auto-prefill mapping when reaching step 4 for API sources
+  useEffect(() => {
+    if (state.step !== 4 || !state.source || state.source === 'csv') return
+    const schema = SOURCE_SCHEMAS[state.source]
+    if (!schema) return
+    const existing = state.mapping
+    const next: Record<string, string> = { ...existing }
+    const maps: Record<EntityKind, Partial<Record<FieldKey, string>>> = {
+      contacts: FIELD_KEY_TO_CONTACT,
+      deals: FIELD_KEY_TO_DEAL,
+      companies: FIELD_KEY_TO_COMPANY,
+    }
+    let changed = false
+    ;(['contacts', 'deals', 'companies'] as EntityKind[]).forEach(ent => {
+      const cols = schema[ent] || []
+      for (const col of cols) {
+        const key = `${ent}:${col}`
+        if (next[key] !== undefined) continue
+        const detected = detectColumns([col], [])
+        const fk = detected[0]
+        const target = fk && fk !== 'ignore' ? maps[ent][fk] : undefined
+        if (target) { next[key] = target; changed = true }
+      }
+    })
+    if (changed) update({ mapping: next })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.step, state.source])
+
   const source = SOURCES.find(s => s.id === state.source)
   const update = useCallback((patch: Partial<WizardState>) => setState(s => ({ ...s, ...patch })), [])
 
@@ -153,9 +302,9 @@ export default function MigrateWizardPage() {
   const goNext = () => update({ step: Math.min(5, state.step + 1) as Step })
   const goBack = () => update({ step: Math.max(1, state.step - 1) as Step })
 
-  // Fetch a preview (API sources only)
+  // Fetch a preview (API + OAuth sources)
   const fetchPreview = async () => {
-    if (!source || source.mode !== 'api') return
+    if (!source || (source.mode !== 'api' && source.mode !== 'oauth')) return
     setRunning(true)
     try {
       const res = await fetch(`/api/migrate/${source.id}`, {
@@ -194,7 +343,7 @@ export default function MigrateWizardPage() {
         if (!res.ok) { toast.error(j.error || 'Import failed'); setRunning(false); return }
         setResult({ contacts: { imported: j.imported, total: j.total, errors: j.errors || [] } })
         update({ step: 5 })
-      } else if (source.mode === 'api') {
+      } else if (source.mode === 'api' || source.mode === 'oauth') {
         setProgress(30)
         const res = await fetch(`/api/migrate/${source.id}`, {
           method: 'POST',
@@ -292,10 +441,44 @@ export default function MigrateWizardPage() {
                 <input
                   type="file"
                   accept=".csv"
-                  onChange={e => {
+                  onChange={async e => {
                     const f = e.target.files?.[0] || null
                     setFile(f)
-                    update({ csvFile: f?.name || null })
+                    update({ csvFile: f?.name || null, mapping: {} })
+                    if (f) {
+                      try {
+                        const text = await f.text()
+                        const parsed = parseCsv(text, 6)
+                        if (parsed.length > 0) {
+                          const headers = parsed[0].map(h => h.trim())
+                          const samples = parsed.slice(1)
+                          setCsvHeaders(headers)
+                          setCsvSampleRows(samples)
+                          // Auto-detect + prefill mapping for all entities
+                          const detected = detectColumns(headers, samples)
+                          const autoMap: Record<string, string> = {}
+                          const maps: Record<EntityKind, Partial<Record<FieldKey, string>>> = {
+                            contacts: FIELD_KEY_TO_CONTACT,
+                            deals: FIELD_KEY_TO_DEAL,
+                            companies: FIELD_KEY_TO_COMPANY,
+                          }
+                          for (const [idxStr, fk] of Object.entries(detected)) {
+                            if (fk === 'ignore') continue
+                            const header = headers[Number(idxStr)]
+                            ;(['contacts', 'deals', 'companies'] as EntityKind[]).forEach(ent => {
+                              const target = maps[ent][fk as FieldKey]
+                              if (target) autoMap[`${ent}:${header}`] = target
+                            })
+                          }
+                          update({ mapping: autoMap })
+                        }
+                      } catch (err) {
+                        toast.error(`Failed to read CSV: ${(err as Error).message}`)
+                      }
+                    } else {
+                      setCsvHeaders([])
+                      setCsvSampleRows([])
+                    }
                   }}
                   className="block w-full text-xs text-surface-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:font-medium hover:file:bg-brand-100 file:text-xs"
                 />
@@ -372,6 +555,15 @@ export default function MigrateWizardPage() {
               >
                 Next <ArrowRight className="w-3.5 h-3.5" />
               </button>
+            ) : source.mode === 'oauth' ? (
+              <button
+                disabled={running}
+                onClick={fetchPreview}
+                className="btn-primary btn-sm disabled:opacity-40 flex items-center gap-1"
+              >
+                {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                {running ? 'Fetching preview…' : 'Preview import'}
+              </button>
             ) : (
               <button
                 disabled={!state.apiKey || running}
@@ -421,36 +613,87 @@ export default function MigrateWizardPage() {
       )}
 
       {/* Step 4: Mapping */}
-      {state.step === 4 && source && (
+      {state.step === 4 && source && (() => {
+        const targets = TARGET_FIELDS[mappingEntity]
+        // Build source columns list
+        let sourceColumns: { name: string; preview: string }[] = []
+        if (source.mode === 'csv') {
+          sourceColumns = csvHeaders.map((h, i) => ({
+            name: h,
+            preview: csvSampleRows[0]?.[i] || csvSampleRows[1]?.[i] || '',
+          }))
+        } else {
+          const schema = SOURCE_SCHEMAS[source.id]?.[mappingEntity] || []
+          sourceColumns = schema.map(n => ({ name: n, preview: '' }))
+        }
+        const availableEntities = state.entities.filter(e =>
+          (['contacts', 'deals', 'companies'] as string[]).includes(e)
+        ) as EntityKind[]
+
+        return (
         <div className="space-y-4">
           <div className="card p-5">
             <h3 className="font-semibold text-surface-900 mb-2">Field mapping</h3>
             <p className="text-xs text-surface-500 mb-4">
-              {source.mode === 'api'
-                ? `Default mapping is preconfigured for ${source.name}. Review and adjust if needed.`
-                : 'We will auto-detect columns from your CSV header row.'}
+              Match each {source.name} column to a Tracktio field. Auto-detected matches are pre-filled.
             </p>
-            <div className="space-y-2 text-xs">
-              {[
-                ['name', 'Name / Full name'],
-                ['email', 'Email'],
-                ['phone', 'Phone'],
-                ['company_name', 'Company'],
-                ['job_title', 'Job title'],
-              ].map(([target, label]) => (
-                <div key={target} className="grid grid-cols-2 gap-2 items-center">
-                  <div className="text-surface-500">{label}</div>
-                  <input
-                    className="input text-xs"
-                    placeholder={`${source.id} field (auto)`}
-                    value={state.mapping[target] || ''}
-                    onChange={e => update({ mapping: { ...state.mapping, [target]: e.target.value } })}
-                  />
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-surface-400 mt-3">TODO: load actual source schema and provide dropdowns per field.</p>
+
+            {availableEntities.length > 1 && (
+              <div className="segmented-control mb-4">
+                {availableEntities.map(ent => (
+                  <button
+                    key={ent}
+                    onClick={() => setMappingEntity(ent)}
+                    data-active={mappingEntity === ent}
+                    className={cn(mappingEntity === ent && 'active', 'capitalize')}
+                  >
+                    {ent}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {sourceColumns.length === 0 ? (
+              <p className="text-xs text-surface-400 italic">No source columns detected.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="border-b border-surface-200 dark:border-surface-700">
+                    <tr className="text-[10px] uppercase text-surface-400 font-semibold">
+                      <th className="text-left py-2 pr-3">Source column</th>
+                      <th className="text-left py-2 pr-3">Preview value</th>
+                      <th className="text-left py-2">Map to Tracktio field</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sourceColumns.map(col => {
+                      const mappingKey = `${mappingEntity}:${col.name}`
+                      const current = state.mapping[mappingKey] || ''
+                      return (
+                        <tr key={col.name} className="border-b border-surface-100 dark:border-surface-800">
+                          <td className="py-2 pr-3 font-mono text-surface-700 dark:text-surface-200">{col.name}</td>
+                          <td className="py-2 pr-3 text-surface-500 truncate max-w-[160px]">{col.preview || <span className="text-surface-300">—</span>}</td>
+                          <td className="py-2">
+                            <select
+                              className="input text-xs py-1"
+                              value={current}
+                              onChange={e => update({ mapping: { ...state.mapping, [mappingKey]: e.target.value } })}
+                            >
+                              <option value="">— Ignore —</option>
+                              {targets.map(t => (
+                                <option key={t.key} value={t.key}>{t.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
+
           <div className="flex items-center justify-between">
             <button onClick={goBack} className="btn-secondary btn-sm flex items-center gap-1">
               <ArrowLeft className="w-3.5 h-3.5" /> Back
@@ -461,7 +704,7 @@ export default function MigrateWizardPage() {
               className="btn-primary btn-sm flex items-center gap-1 disabled:opacity-40"
             >
               {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              {running ? 'Importing…' : 'Start import'}
+              {running ? 'Importing…' : 'Run import'}
             </button>
           </div>
           {running && (
@@ -470,7 +713,8 @@ export default function MigrateWizardPage() {
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Step 5: Result */}
       {state.step === 5 && (
@@ -482,16 +726,37 @@ export default function MigrateWizardPage() {
             <h3 className="font-semibold text-surface-900 mb-1">Import complete</h3>
             <p className="text-xs text-surface-500 mb-4">Your data has been imported from {source?.name}.</p>
             {result && (
-              <div className="grid grid-cols-3 gap-2">
-                {(['contacts', 'companies', 'deals'] as const).map(k => result[k] && (
-                  <div key={k} className="rounded-lg bg-surface-50 dark:bg-surface-800 p-2">
-                    <p className="text-[10px] uppercase text-surface-400 font-bold">{k}</p>
-                    <p className="text-lg font-bold text-emerald-600">
-                      {result[k]?.imported}<span className="text-surface-400 text-xs"> / {result[k]?.total}</span>
-                    </p>
+              <>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {(['contacts', 'companies', 'deals'] as const).map(k => result[k] && (
+                    <div key={k} className="rounded-lg bg-surface-50 dark:bg-surface-800 p-2">
+                      <p className="text-[10px] uppercase text-surface-400 font-bold">{k}</p>
+                      <p className="text-lg font-bold text-emerald-600">
+                        {result[k]?.imported}<span className="text-surface-400 text-xs"> / {result[k]?.total}</span>
+                      </p>
+                      {(result[k]?.errors?.length ?? 0) > 0 && (
+                        <p className="text-[10px] text-red-600 font-semibold mt-1">
+                          {result[k]?.errors.length} failed
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {(['contacts', 'companies', 'deals'] as const).some(k => (result[k]?.errors?.length ?? 0) > 0) && (
+                  <div className="text-left">
+                    <p className="text-[11px] font-semibold text-surface-700 mb-1">Errors</p>
+                    <div className="max-h-40 overflow-y-auto rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 p-2 space-y-1">
+                      {(['contacts', 'companies', 'deals'] as const).flatMap(k =>
+                        (result[k]?.errors || []).slice(0, 50).map((err, i) => (
+                          <p key={`${k}-${i}`} className="text-[10px] text-red-700 dark:text-red-400 font-mono">
+                            <span className="uppercase font-bold">{k}:</span> {err}
+                          </p>
+                        ))
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
           <div className="flex items-center justify-between">

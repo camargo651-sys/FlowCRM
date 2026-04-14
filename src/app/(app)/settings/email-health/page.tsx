@@ -21,6 +21,7 @@ interface VolumeStats {
   bounced: number
   complaints: number
   delivered: number
+  hasRealEvents: boolean
 }
 
 function statusColor(s: TrafficStatus): string {
@@ -46,13 +47,42 @@ export default function EmailHealthPage() {
   const [loading, setLoading] = useState(true)
   const [checking, setChecking] = useState(false)
   const [dns, setDns] = useState<DnsResult | null>(null)
-  const [stats, setStats] = useState<VolumeStats>({ sent: 0, bounced: 0, complaints: 0, delivered: 0 })
+  const [stats, setStats] = useState<VolumeStats>({ sent: 0, bounced: 0, complaints: 0, delivered: 0, hasRealEvents: false })
 
   const loadStats = useCallback(async (wsId: string) => {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     const safe = async (q: PromiseLike<{ count: number | null; error: unknown }>) => {
       try { const r = await q; return r.count || 0 } catch { return 0 }
     }
+
+    // Prefer real ESP events from email_events table when available.
+    const countEvent = (type: string) => safe(
+      supabase.from('email_events').select('id', { count: 'exact', head: true })
+        .eq('workspace_id', wsId).eq('event_type', type).gte('occurred_at', since)
+    )
+
+    const [evSent, evDelivered, evBounced, evComplained] = await Promise.all([
+      countEvent('sent'),
+      countEvent('delivered'),
+      countEvent('bounced'),
+      countEvent('complained'),
+    ])
+
+    const hasRealEvents = (evSent + evDelivered + evBounced + evComplained) > 0
+
+    if (hasRealEvents) {
+      const sentTotal = Math.max(evSent, evDelivered + evBounced)
+      setStats({
+        sent: sentTotal,
+        delivered: evDelivered,
+        bounced: evBounced,
+        complaints: evComplained,
+        hasRealEvents: true,
+      })
+      return
+    }
+
+    // Fallback: legacy heuristic from email_messages labels.
     const sent = await safe(
       supabase.from('email_messages').select('id', { count: 'exact', head: true })
         .eq('workspace_id', wsId).eq('direction', 'outbound').gte('created_at', since)
@@ -65,7 +95,7 @@ export default function EmailHealthPage() {
       supabase.from('email_messages').select('id', { count: 'exact', head: true })
         .eq('workspace_id', wsId).eq('direction', 'outbound').contains('labels', ['complaint']).gte('created_at', since)
     )
-    setStats({ sent, bounced, complaints, delivered: Math.max(0, sent - bounced) })
+    setStats({ sent, bounced, complaints, delivered: Math.max(0, sent - bounced), hasRealEvents: false })
   }, [supabase])
 
   const load = useCallback(async () => {
@@ -142,6 +172,23 @@ export default function EmailHealthPage() {
           </button>
         )}
       </div>
+
+      {!stats.hasRealEvents && (
+        <div className="card p-6 mb-6 border-brand-200 bg-brand-50/50 dark:bg-brand-500/5">
+          <div className="flex items-start gap-3">
+            <Mail className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-surface-900 dark:text-surface-50">Configure ESP webhooks to see real stats</h3>
+              <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">
+                Currently showing heuristic estimates based on message labels. Connect your email provider webhook (SendGrid, Mailgun, or Postmark) for accurate delivery, bounce and complaint rates.
+              </p>
+              <Link href="/settings/email-health/docs" className="inline-flex mt-3 text-sm font-semibold text-brand-600 hover:text-brand-700">
+                View webhook setup instructions →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!customDomain && (
         <div className="card p-6 mb-6 border-amber-200 bg-amber-50/50 dark:bg-amber-500/5">
