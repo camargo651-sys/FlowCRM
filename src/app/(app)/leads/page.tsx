@@ -78,7 +78,8 @@ export default function LeadsPage() {
     const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
-    const { data } = await supabase.from('social_leads').select('*').eq('workspace_id', ws.id).order('created_at', { ascending: false })
+    const { data, error: leadsErr } = await supabase.from('social_leads').select('*').eq('workspace_id', ws.id).order('created_at', { ascending: false })
+    if (leadsErr) console.error('[leads] load failed:', leadsErr)
     setLeads(data || [])
 
     // Load pipelines & stages for Convert to Deal
@@ -135,9 +136,18 @@ export default function LeadsPage() {
 
   const createLead = async () => {
     if (!form.author_name) return
-    const { data: newLead } = await supabase.from('social_leads').insert({
+    if (!workspaceId) {
+      toast.error('No active workspace — please reload')
+      return
+    }
+    const { data: newLead, error } = await supabase.from('social_leads').insert({
       workspace_id: workspaceId, ...form,
     }).select('id').single()
+    if (error || !newLead) {
+      console.error('[leads] insert failed:', error)
+      toast.error(`Failed to add lead: ${error?.message || 'unknown error'}`)
+      return
+    }
     setForm({ author_name: '', author_username: '', platform: 'instagram', source_type: 'comment', message: '', post_url: '' })
     setShowNew(false)
     toast.success('Lead added')
