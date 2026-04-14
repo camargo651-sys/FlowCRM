@@ -15,7 +15,16 @@ export default function NotificationSetup() {
     try {
       if (localStorage.getItem(DISMISS_KEY) === '1') return
     } catch {}
-    if (Notification.permission === 'default') setShow(true)
+    if (Notification.permission !== 'default') return
+    // Only show the banner if the server actually has VAPID keys configured.
+    ;(async () => {
+      try {
+        const res = await fetch('/api/settings/vapid-keys')
+        if (!res.ok) return
+        const json = (await res.json()) as { configured?: boolean }
+        if (json.configured) setShow(true)
+      } catch {}
+    })()
   }, [])
 
   const enable = async () => {

@@ -1,6 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  getValidSalesforceToken,
+  refreshSalesforceToken,
+  type IntegrationRow,
+} from '@/lib/integrations/salesforce-token'
 
 function getSupabase() {
   const cookieStore = cookies()
@@ -18,29 +24,43 @@ function getSupabase() {
   )
 }
 
-interface SFConfig {
-  access_token?: string
-  refresh_token?: string | null
-  instance_url?: string
-}
-
-async function sfQuery<T>(instanceUrl: string, accessToken: string, soql: string): Promise<T[]> {
-  const url = `${instanceUrl}/services/data/v59.0/query?q=${encodeURIComponent(soql)}`
+async function sfQuery<T>(
+  supabase: SupabaseClient,
+  row: IntegrationRow,
+  soql: string,
+): Promise<T[]> {
   const results: T[] = []
-  let next: string | null = url
+  let { access_token, instance_url } = await getValidSalesforceToken(supabase, row)
+  let next: string | null =
+    `${instance_url}/services/data/v59.0/query?q=${encodeURIComponent(soql)}`
   let guard = 0
+  let refreshed = false
+
   while (next && guard < 20) {
     guard++
     const res: Response = await fetch(next, {
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        'Content-Type': 'application/json',
+      },
     })
+    if (res.status === 401 && !refreshed) {
+      // Token may have expired mid-pagination. Refresh once and retry.
+      refreshed = true
+      const fresh = await refreshSalesforceToken(supabase, row)
+      access_token = fresh.access_token
+      instance_url = fresh.instance_url
+      continue
+    }
     if (!res.ok) {
       const text = await res.text()
       throw new Error(`Salesforce query failed: ${res.status} ${text.slice(0, 200)}`)
     }
     const json = (await res.json()) as { records: T[]; done?: boolean; nextRecordsUrl?: string }
     results.push(...(json.records || []))
-    next = json.done === false && json.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null
+    next = json.done === false && json.nextRecordsUrl
+      ? `${instance_url}${json.nextRecordsUrl}`
+      : null
   }
   return results
 }
@@ -66,19 +86,20 @@ export async function POST(request: NextRequest) {
 
   const { data: integration } = await supabase
     .from('integrations')
-    .select('config')
+    .select('id, workspace_id, key, config')
     .eq('workspace_id', ws.id)
     .eq('key', 'salesforce')
     .eq('enabled', true)
     .maybeSingle()
 
-  const cfg = (integration?.config || {}) as SFConfig
-  if (!cfg.access_token || !cfg.instance_url) {
+  if (!integration || !integration.config || !(integration.config as { refresh_token?: string }).refresh_token && !(integration.config as { access_token?: string }).access_token) {
     return NextResponse.json(
       { error: 'Salesforce not connected. Visit /api/migrate/salesforce/start to authorize.' },
       { status: 400 },
     )
   }
+
+  const row = integration as IntegrationRow
 
   const body = await request.json().catch(() => ({})) as { entities?: string[]; preview?: boolean }
   const entities = body.entities || ['contacts', 'companies', 'deals']
@@ -89,7 +110,8 @@ export async function POST(request: NextRequest) {
   try {
     if (entities.includes('contacts')) {
       const contacts = await sfQuery<SFContact>(
-        cfg.instance_url, cfg.access_token,
+        supabase,
+        row,
         'SELECT Id, Name, Email, Phone, Title FROM Contact LIMIT 500',
       )
       const r = { imported: 0, total: contacts.length, errors: [] as string[] }
@@ -115,7 +137,8 @@ export async function POST(request: NextRequest) {
 
     if (entities.includes('companies')) {
       const accounts = await sfQuery<SFAccount>(
-        cfg.instance_url, cfg.access_token,
+        supabase,
+        row,
         'SELECT Id, Name, Phone, Website, Industry FROM Account LIMIT 500',
       )
       const r = { imported: 0, total: accounts.length, errors: [] as string[] }
@@ -140,7 +163,8 @@ export async function POST(request: NextRequest) {
 
     if (entities.includes('deals')) {
       const opps = await sfQuery<SFOpportunity>(
-        cfg.instance_url, cfg.access_token,
+        supabase,
+        row,
         'SELECT Id, Name, Amount, StageName, CloseDate FROM Opportunity LIMIT 500',
       )
       const r = { imported: 0, total: opps.length, errors: [] as string[] }

@@ -36,15 +36,6 @@ export async function POST(request: NextRequest) {
 
   const rawBody = await request.text()
 
-  // Optional signature verification (shared secret stored in env or per-workspace integrations).
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  if (webhookSecret) {
-    const sig = request.headers.get('stripe-signature')
-    if (!verifyStripeSignature(rawBody, sig, webhookSecret)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
-    }
-  }
-
   let event: { type?: string; data?: { object?: Record<string, unknown> } }
   try {
     event = JSON.parse(rawBody)
@@ -54,6 +45,35 @@ export async function POST(request: NextRequest) {
 
   const type = event.type
   const obj = (event.data?.object || {}) as Record<string, unknown>
+
+  // Per-workspace webhook secret lookup.
+  // Payment-link handlers stash `metadata.workspace_id` on checkout.session /
+  // payment_intent objects. If present, prefer the workspace's own secret
+  // stored in integrations.config.webhook_secret.
+  const metadataEarly = (obj.metadata || {}) as Record<string, string>
+  const wsIdEarly = metadataEarly.workspace_id
+
+  let webhookSecret: string | null = null
+  if (wsIdEarly) {
+    const { data: integ } = await supabase
+      .from('integrations')
+      .select('config')
+      .eq('workspace_id', wsIdEarly)
+      .eq('key', 'stripe')
+      .maybeSingle()
+    const cfg = (integ?.config || {}) as { webhook_secret?: string }
+    if (cfg.webhook_secret) webhookSecret = cfg.webhook_secret
+  }
+  if (!webhookSecret) webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || null
+
+  if (webhookSecret) {
+    const sig = request.headers.get('stripe-signature')
+    if (!verifyStripeSignature(rawBody, sig, webhookSecret)) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
+    }
+  } else {
+    console.warn('[webhooks/stripe] no webhook secret configured — skipping signature verification')
+  }
 
   try {
     if (type === 'checkout.session.completed' || type === 'payment_intent.succeeded') {
