@@ -13,8 +13,10 @@ import {
   type FieldPermission,
 } from '@/lib/rbac/field-permissions'
 import { getAllRoles } from '@/lib/rbac/permissions'
+import { useI18n } from '@/lib/i18n/context'
 
 export default function FieldPermissionsPage() {
+  const { t } = useI18n()
   const [rows, setRows] = useState<FieldPermission[]>([])
   const [loaded, setLoaded] = useState(false)
   const roles = getAllRoles()
@@ -43,18 +45,18 @@ export default function FieldPermissionsPage() {
     const clean = rows.filter(r => r.field.trim().length > 0)
     const ok = await saveFieldPermissionsAsync(clean)
     setRows(clean)
-    if (ok) toast.success(`Saved ${clean.length} field permission rule${clean.length === 1 ? '' : 's'}`)
-    else toast.error('Failed to save field permissions')
+    if (ok) toast.success(t('settings.fp.saved'))
+    else toast.error(t('settings.fp.save_failed'))
   }
 
   const resetDefaults = async () => {
     setRows(DEFAULT_FIELD_PERMISSIONS)
     const ok = await saveFieldPermissionsAsync(DEFAULT_FIELD_PERMISSIONS)
-    if (ok) toast.success('Restored defaults')
-    else toast.error('Failed to restore defaults')
+    if (ok) toast.success(t('settings.fp.restored_defaults'))
+    else toast.error(t('settings.fp.restore_failed'))
   }
 
-  if (!loaded) return <div className="p-6 text-sm text-surface-500">Loading…</div>
+  if (!loaded) return <div className="p-6 text-sm text-surface-500">{t('settings.fp.loading')}</div>
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -64,10 +66,8 @@ export default function FieldPermissionsPage() {
             <Shield className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-surface-900">Field Permissions</h1>
-            <p className="text-sm text-surface-500">
-              Control which roles can see or edit specific fields on each entity.
-            </p>
+            <h1 className="text-xl font-semibold text-surface-900">{t('settings.fp.title')}</h1>
+            <p className="text-sm text-surface-500">{t('settings.fp.desc')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -75,13 +75,13 @@ export default function FieldPermissionsPage() {
             onClick={resetDefaults}
             className="px-3 py-2 text-sm rounded-lg border border-surface-200 hover:bg-surface-50"
           >
-            Reset defaults
+            {t('settings.fp.reset_defaults')}
           </button>
           <button
             onClick={save}
             className="px-3 py-2 text-sm rounded-lg bg-brand-500 text-white hover:bg-brand-600 flex items-center gap-2"
           >
-            <Save className="w-4 h-4" /> Save
+            <Save className="w-4 h-4" /> {t('settings.fp.save')}
           </button>
         </div>
       </div>
@@ -90,10 +90,10 @@ export default function FieldPermissionsPage() {
         <table className="w-full text-sm">
           <thead className="bg-surface-50 text-surface-600 text-xs uppercase tracking-wide">
             <tr>
-              <th className="text-left px-4 py-3">Role</th>
-              <th className="text-left px-4 py-3">Entity</th>
-              <th className="text-left px-4 py-3">Field</th>
-              <th className="text-left px-4 py-3">Access</th>
+              <th className="text-left px-4 py-3">{t('settings.fp.role')}</th>
+              <th className="text-left px-4 py-3">{t('settings.fp.entity')}</th>
+              <th className="text-left px-4 py-3">{t('settings.fp.field')}</th>
+              <th className="text-left px-4 py-3">{t('settings.fp.access')}</th>
               <th className="w-10 px-4 py-3"></th>
             </tr>
           </thead>
@@ -101,7 +101,7 @@ export default function FieldPermissionsPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-surface-400">
-                  No rules. Click &ldquo;Add rule&rdquo; to start restricting fields.
+                  {t('settings.fp.no_rules')}
                 </td>
               </tr>
             )}
@@ -133,7 +133,7 @@ export default function FieldPermissionsPage() {
                   <input
                     value={r.field}
                     onChange={e => update(i, { field: e.target.value })}
-                    placeholder="e.g. salary, email, amount"
+                    placeholder={t('settings.fp.field_placeholder')}
                     className="w-full px-2 py-1.5 text-sm rounded-md border border-surface-200"
                   />
                 </td>
@@ -152,7 +152,7 @@ export default function FieldPermissionsPage() {
                   <button
                     onClick={() => remove(i)}
                     className="p-1.5 rounded-md text-surface-400 hover:text-red-500 hover:bg-red-50"
-                    aria-label="Delete rule"
+                    aria-label={t('settings.fp.delete_rule')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -166,17 +166,12 @@ export default function FieldPermissionsPage() {
             onClick={addRow}
             className="px-3 py-1.5 text-sm rounded-md border border-dashed border-surface-300 text-surface-600 hover:border-brand-400 hover:text-brand-600 flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Add rule
+            <Plus className="w-4 h-4" /> {t('settings.fp.add_rule')}
           </button>
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-surface-400">
-        Rules persist to <code className="px-1 py-0.5 rounded bg-surface-100">localStorage</code>{' '}
-        under <code className="px-1 py-0.5 rounded bg-surface-100">tracktio_field_permissions</code>.
-        Database migration stub available at{' '}
-        <code className="px-1 py-0.5 rounded bg-surface-100">supabase/migrations/</code>.
-      </p>
+      <p className="mt-4 text-xs text-surface-400">{t('settings.fp.storage_note')}</p>
     </div>
   )
 }

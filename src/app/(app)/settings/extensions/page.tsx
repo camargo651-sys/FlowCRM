@@ -6,6 +6,7 @@ import { Plug, Check, ChevronDown, ChevronRight, Eye, EyeOff, ExternalLink, X } 
 import { getCategories, getProvidersByCategory, getProviderDef, type ServiceCategory, type ProviderDef } from '@/lib/providers/registry'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import { useI18n } from '@/lib/i18n/context'
 
 interface SavedProvider {
   category: string
@@ -15,6 +16,7 @@ interface SavedProvider {
 }
 
 export default function ExtensionsPage() {
+  const { t } = useI18n()
   const supabase = createClient()
   const [workspaceId, setWorkspaceId] = useState('')
   const [savedProviders, setSavedProviders] = useState<SavedProvider[]>([])
@@ -66,22 +68,22 @@ export default function ExtensionsPage() {
     setSavedProviders(updated)
     setConfiguring(null)
     setSaving(false)
-    toast.success(`${configuring.name} connected!`)
+    toast.success(`${configuring.name} ${t('settings.ext.connected_msg')}`)
   }
 
   const disconnectProvider = async (category: string) => {
     const updated = savedProviders.filter(p => p.category !== category)
     await supabase.from('workspaces').update({ providers: updated }).eq('id', workspaceId)
     setSavedProviders(updated)
-    toast.success('Provider disconnected')
+    toast.success(t('settings.ext.disconnected_msg'))
   }
 
   return (
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Extensions</h1>
-          <p className="text-sm text-surface-500 mt-0.5">Choose which services power each feature of your ERP</p>
+          <h1 className="page-title">{t('settings.ext.title')}</h1>
+          <p className="text-sm text-surface-500 mt-0.5">{t('settings.ext.desc')}</p>
         </div>
       </div>
 
@@ -137,18 +139,18 @@ export default function ExtensionsPage() {
                             {isActive ? (
                               <button onClick={() => disconnectProvider(cat.key)}
                                 className="btn-ghost btn-sm text-xs text-red-500 hover:text-red-600">
-                                Disconnect
+                                {t('settings.ext.disconnect')}
                               </button>
                             ) : (
                               <button onClick={() => startConfigure(provider)}
                                 className="btn-primary btn-sm text-xs">
-                                {provider.requiredKeys.length === 0 ? 'Activate' : 'Configure'}
+                                {provider.requiredKeys.length === 0 ? t('settings.ext.activate') : t('settings.ext.configure')}
                               </button>
                             )}
                             {provider.website && (
                               <a href={provider.website} target="_blank" rel="noopener noreferrer"
                                 className="btn-ghost btn-sm text-xs">
-                                <ExternalLink className="w-3 h-3" /> Website
+                                <ExternalLink className="w-3 h-3" /> {t('settings.ext.website')}
                               </a>
                             )}
                           </div>
@@ -170,13 +172,13 @@ export default function ExtensionsPage() {
             <div className="modal-header">
               <div className="flex items-center gap-2.5">
                 <span className="text-xl">{configuring.logo}</span>
-                <h2 className="font-semibold text-surface-900">Configure {configuring.name}</h2>
+                <h2 className="font-semibold text-surface-900">{t('settings.ext.configure_title')} {configuring.name}</h2>
               </div>
               <button onClick={() => setConfiguring(null)} className="modal-close"><X className="w-4 h-4" /></button>
             </div>
             <div className="modal-body space-y-4">
               {configuring.requiredKeys.length === 0 ? (
-                <p className="text-sm text-surface-500">No configuration needed. Click save to activate.</p>
+                <p className="text-sm text-surface-500">{t('settings.ext.no_config')}</p>
               ) : (
                 configuring.requiredKeys.map(field => (
                   <div key={field.key}>
@@ -202,7 +204,7 @@ export default function ExtensionsPage() {
               )}
               {configuring.website && (
                 <p className="text-xs text-surface-400">
-                  Get your keys at{' '}
+                  {t('settings.ext.get_keys_at')}{' '}
                   <a href={configuring.website} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">
                     {configuring.website.replace('https://', '')}
                   </a>
@@ -210,9 +212,9 @@ export default function ExtensionsPage() {
               )}
             </div>
             <div className="modal-footer justify-end">
-              <button onClick={() => setConfiguring(null)} className="btn-secondary">Cancel</button>
+              <button onClick={() => setConfiguring(null)} className="btn-secondary">{t('settings.ext.cancel')}</button>
               <button onClick={saveProvider} disabled={saving} className="btn-primary">
-                {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Save & Activate'}
+                {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('settings.ext.save_activate')}
               </button>
             </div>
           </div>

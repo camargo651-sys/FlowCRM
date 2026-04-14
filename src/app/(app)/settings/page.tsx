@@ -447,13 +447,13 @@ export default function SettingsPage() {
 
   const TABS = [
     { id: 'pipelines', label: pipelineLabel.plural, icon: Kanban },
-    { id: 'terminology', label: 'Terminology', icon: Type },
-    { id: 'fields', label: 'Custom Fields', icon: Database },
+    { id: 'terminology', label: t('settings.tab_terminology'), icon: Type },
+    { id: 'fields', label: t('settings.tab_custom_fields'), icon: Database },
     { id: 'brand', label: t('settings.brand'), icon: Palette },
     { id: 'language', label: t('settings.language'), icon: Globe },
     { id: 'team', label: t('settings.team'), icon: Users },
-    { id: 'whatsapp_bot', label: 'WhatsApp Bot', icon: MessageCircle },
-    { id: 'lead_routing', label: 'Lead Routing', icon: Route },
+    { id: 'whatsapp_bot', label: t('settings.tab_whatsapp_bot'), icon: MessageCircle },
+    { id: 'lead_routing', label: t('settings.tab_lead_routing'), icon: Route },
   ] as const
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" /></div>
@@ -471,32 +471,32 @@ export default function SettingsPage() {
       <div className="mb-8 space-y-5">
         {[
           {
-            category: 'Personalización',
+            category: t('settings.cat_personalization'),
             items: [
-              { href: '/settings/form-builder', icon: FormInput, label: 'Form Builder', desc: 'Build public intake forms' },
-              { href: '/settings/templates', icon: FileText, label: 'Templates', desc: 'Email & document templates' },
-              { href: '/settings/stage-conditions', icon: Sliders, label: 'Stage Conditions', desc: 'Required fields per stage' },
-              { href: '/settings/loss-reasons', icon: Tag, label: 'Loss Reasons', desc: 'Why deals are lost' },
+              { href: '/settings/form-builder', icon: FormInput, label: t('settings.hub.form_builder_label'), desc: t('settings.hub.form_builder_desc') },
+              { href: '/settings/templates', icon: FileText, label: t('settings.hub.templates_label'), desc: t('settings.hub.templates_desc') },
+              { href: '/settings/stage-conditions', icon: Sliders, label: t('settings.hub.stage_conditions_label'), desc: t('settings.hub.stage_conditions_desc') },
+              { href: '/settings/loss-reasons', icon: Tag, label: t('settings.hub.loss_reasons_label'), desc: t('settings.hub.loss_reasons_desc') },
             ],
           },
           {
-            category: 'Permisos',
+            category: t('settings.cat_permissions'),
             items: [
-              { href: '/roles', icon: Shield, label: 'Roles', desc: 'Roles and permissions' },
-              { href: '/settings/field-permissions', icon: Lock, label: 'Field Permissions', desc: 'Field-level access control' },
-              { href: '/team', icon: UserCog, label: 'Team', desc: 'Invite and manage members' },
+              { href: '/roles', icon: Shield, label: t('settings.hub.roles_label'), desc: t('settings.hub.roles_desc') },
+              { href: '/settings/field-permissions', icon: Lock, label: t('settings.hub.field_perms_label'), desc: t('settings.hub.field_perms_desc') },
+              { href: '/team', icon: UserCog, label: t('settings.hub.team_label'), desc: t('settings.hub.team_desc') },
             ],
           },
           {
-            category: 'Cuenta',
+            category: t('settings.cat_account'),
             items: [
-              { href: '/billing', icon: CreditCard, label: 'Billing', desc: 'Subscription and invoices' },
+              { href: '/billing', icon: CreditCard, label: t('settings.hub.billing_label'), desc: t('settings.hub.billing_desc') },
             ],
           },
           {
-            category: 'Integraciones',
+            category: t('settings.cat_integrations'),
             items: [
-              { href: '/integrations', icon: Plug, label: 'Integrations', desc: 'Connected apps and APIs' },
+              { href: '/integrations', icon: Plug, label: t('settings.hub.integrations_label'), desc: t('settings.hub.integrations_desc') },
             ],
           },
         ].map(group => (
@@ -535,10 +535,10 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-surface-900">Your {pipelineLabel.plural}</h2>
-              <p className="text-xs text-surface-500 mt-0.5">Create multiple {pipelineLabel.plural.toLowerCase()} for different workflows (e.g., Sales, Projects, Support)</p>
+              <h2 className="font-semibold text-surface-900">{t('settings.your_pipelines')}</h2>
+              <p className="text-xs text-surface-500 mt-0.5">{t('settings.pipelines_hint')}</p>
             </div>
-            <button onClick={addPipeline} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> Add {pipelineLabel.singular}</button>
+            <button onClick={addPipeline} className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" /> {t('settings.add_pipeline')}</button>
           </div>
 
           {pipelines.map(pipeline => (
@@ -551,7 +551,7 @@ export default function SettingsPage() {
                   onChange={e => updatePipelineName(pipeline.id, e.target.value)}
                   onClick={e => e.stopPropagation()}
                   className="flex-1 bg-transparent font-semibold text-surface-900 focus:outline-none border-b border-transparent focus:border-brand-400 text-sm" />
-                <span className="text-xs text-surface-400 font-medium">{pipeline.stages.length} stages</span>
+                <span className="text-xs text-surface-400 font-medium">{pipeline.stages.length} {t('settings.stages_count')}</span>
                 {pipelines.length > 1 && (
                   <button onClick={e => { e.stopPropagation(); deletePipeline(pipeline.id) }}
                     className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-surface-300 hover:text-red-500 transition-colors">
@@ -567,13 +567,13 @@ export default function SettingsPage() {
                   {/* Client association */}
                   {companies.length > 0 && (
                     <div className="mb-4 p-3 bg-surface-50 rounded-xl border border-surface-100">
-                      <label className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">Assigned Client (optional)</label>
+                      <label className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">{t('settings.assigned_client_optional')}</label>
                       <select className="input mt-1.5 text-sm" value={pipeline.contact_id || ''}
                         onChange={e => updatePipelineClient(pipeline.id, e.target.value)}>
-                        <option value="">No client — general pipeline</option>
+                        <option value="">{t('settings.no_client_general')}</option>
                         {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
-                      <p className="text-[11px] text-surface-400 mt-1">Link this pipeline to a specific client. Useful for agencies managing multiple accounts.</p>
+                      <p className="text-[11px] text-surface-400 mt-1">{t('settings.assigned_client_hint')}</p>
                     </div>
                   )}
 
@@ -594,11 +594,11 @@ export default function SettingsPage() {
                         <div className="flex items-center gap-3 flex-shrink-0">
                           <label className="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" checked={stage.win_stage} onChange={e => updateStage(pipeline.id, stage.id, 'win_stage', e.target.checked)} className="w-3.5 h-3.5 accent-emerald-500" />
-                            <span className="text-[10px] font-semibold text-emerald-600 uppercase">Won</span>
+                            <span className="text-[10px] font-semibold text-emerald-600 uppercase">{t('settings.won')}</span>
                           </label>
                           <label className="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" checked={stage.lost_stage} onChange={e => updateStage(pipeline.id, stage.id, 'lost_stage', e.target.checked)} className="w-3.5 h-3.5 accent-red-500" />
-                            <span className="text-[10px] font-semibold text-red-500 uppercase">Lost</span>
+                            <span className="text-[10px] font-semibold text-red-500 uppercase">{t('settings.lost')}</span>
                           </label>
                           <button onClick={() => removeStage(pipeline.id, stage.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-surface-300 hover:text-red-500 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
@@ -606,12 +606,12 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <div className="flex gap-2 ml-5 mt-1 flex-wrap">
-                        <span className="text-[9px] text-surface-400 font-semibold uppercase">Require:</span>
+                        <span className="text-[9px] text-surface-400 font-semibold uppercase">{t('settings.require_label')}</span>
                         {[
-                          { key: 'value', label: 'Value' },
-                          { key: 'contact', label: 'Contact' },
-                          { key: 'close_date', label: 'Close date' },
-                          { key: 'probability', label: 'Probability' },
+                          { key: 'value', label: t('settings.req_value') },
+                          { key: 'contact', label: t('settings.req_contact') },
+                          { key: 'close_date', label: t('settings.req_close_date') },
+                          { key: 'probability', label: t('settings.req_probability') },
                         ].map(rf => {
                           const reqs = (stage.required_fields as string[]) || []
                           const checked = reqs.includes(rf.key)
@@ -631,7 +631,7 @@ export default function SettingsPage() {
                     ))}
                   </div>
                   <button onClick={() => addStage(pipeline.id)} className="btn-ghost btn-sm w-full justify-center border border-dashed border-surface-200">
-                    <Plus className="w-3.5 h-3.5" /> Add Stage
+                    <Plus className="w-3.5 h-3.5" /> {t('settings.add_stage')}
                   </button>
                 </div>
               )}
@@ -640,7 +640,7 @@ export default function SettingsPage() {
 
           <button onClick={savePipelines} disabled={saving} className="btn-primary">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-            {saved ? t('settings.saved') : 'Save All Pipelines'}
+            {saved ? t('settings.saved') : t('settings.save_all_pipelines')}
           </button>
         </div>
       )}
@@ -648,59 +648,59 @@ export default function SettingsPage() {
       {/* ==================== TERMINOLOGY TAB ==================== */}
       {tab === 'terminology' && (
         <div className="card p-6">
-          <h2 className="font-semibold text-surface-900 mb-1">Customize Terminology</h2>
-          <p className="text-xs text-surface-500 mb-6">Rename the core entities to match how your business works. These labels appear throughout the entire CRM.</p>
+          <h2 className="font-semibold text-surface-900 mb-1">{t('settings.customize_terminology')}</h2>
+          <p className="text-xs text-surface-500 mb-6">{t('settings.terminology_desc')}</p>
 
           <div className="space-y-6">
             <div className="p-4 bg-surface-50 rounded-xl space-y-3">
-              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">What do you call your opportunities / sales?</p>
+              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">{t('settings.term_deal_q')}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="label">Singular</label>
+                  <label className="label">{t('settings.singular')}</label>
                   <input className="input" value={dealLabel.singular} onChange={e => setDealLabel(v => ({ ...v, singular: e.target.value }))} placeholder="Deal" />
                 </div>
                 <div>
-                  <label className="label">Plural</label>
+                  <label className="label">{t('settings.plural')}</label>
                   <input className="input" value={dealLabel.plural} onChange={e => setDealLabel(v => ({ ...v, plural: e.target.value }))} placeholder="Deals" />
                 </div>
               </div>
-              <p className="text-[11px] text-surface-400">Examples: Deal/Deals, Property/Properties, Order/Orders, Project/Projects, Tender/Tenders, Lead/Leads</p>
+              <p className="text-[11px] text-surface-400">{t('settings.term_deal_examples')}</p>
             </div>
 
             <div className="p-4 bg-surface-50 rounded-xl space-y-3">
-              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">What do you call your contacts / clients?</p>
+              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">{t('settings.term_contact_q')}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="label">Singular</label>
+                  <label className="label">{t('settings.singular')}</label>
                   <input className="input" value={contactLabel.singular} onChange={e => setContactLabel(v => ({ ...v, singular: e.target.value }))} placeholder="Contact" />
                 </div>
                 <div>
-                  <label className="label">Plural</label>
+                  <label className="label">{t('settings.plural')}</label>
                   <input className="input" value={contactLabel.plural} onChange={e => setContactLabel(v => ({ ...v, plural: e.target.value }))} placeholder="Contacts" />
                 </div>
               </div>
-              <p className="text-[11px] text-surface-400">Examples: Contact/Contacts, Client/Clients, Patient/Patients, Student/Students, Customer/Customers</p>
+              <p className="text-[11px] text-surface-400">{t('settings.term_contact_examples')}</p>
             </div>
 
             <div className="p-4 bg-surface-50 rounded-xl space-y-3">
-              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">What do you call your workflow views?</p>
+              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide">{t('settings.term_pipeline_q')}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="label">Singular</label>
+                  <label className="label">{t('settings.singular')}</label>
                   <input className="input" value={pipelineLabel.singular} onChange={e => setPipelineLabel(v => ({ ...v, singular: e.target.value }))} placeholder="Pipeline" />
                 </div>
                 <div>
-                  <label className="label">Plural</label>
+                  <label className="label">{t('settings.plural')}</label>
                   <input className="input" value={pipelineLabel.plural} onChange={e => setPipelineLabel(v => ({ ...v, plural: e.target.value }))} placeholder="Pipelines" />
                 </div>
               </div>
-              <p className="text-[11px] text-surface-400">Examples: Pipeline/Pipelines, Board/Boards, Workflow/Workflows, Process/Processes</p>
+              <p className="text-[11px] text-surface-400">{t('settings.term_pipeline_examples')}</p>
             </div>
           </div>
 
           <button onClick={saveTerminology} disabled={saving} className="btn-primary mt-6">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-            {saved ? t('settings.saved') : 'Save Terminology'}
+            {saved ? t('settings.saved') : t('settings.save_terminology')}
           </button>
         </div>
       )}
@@ -709,8 +709,8 @@ export default function SettingsPage() {
       {tab === 'fields' && (
         <div className="space-y-4">
           <div>
-            <h2 className="font-semibold text-surface-900 mb-1">Custom Fields</h2>
-            <p className="text-xs text-surface-500">Add fields specific to your business. These appear in your forms when creating or editing {dealLabel.plural.toLowerCase()} and {contactLabel.plural.toLowerCase()}.</p>
+            <h2 className="font-semibold text-surface-900 mb-1">{t('settings.custom_fields')}</h2>
+            <p className="text-xs text-surface-500">{t('settings.custom_fields_desc')}</p>
           </div>
 
           {/* Entity toggle */}
@@ -732,9 +732,9 @@ export default function SettingsPage() {
                   <div className="flex-1 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <input value={field.label} onChange={e => updateField(field.id, 'label', e.target.value)}
-                        placeholder="Field name" className="input text-sm" />
+                        placeholder={t('settings.field_name_placeholder')} className="input text-sm" />
                       <select value={field.type} onChange={e => updateField(field.id, 'type', e.target.value)} className="input text-sm">
-                        {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        {FIELD_TYPES.map(ft => <option key={ft.value} value={ft.value}>{ft.label}</option>)}
                       </select>
                     </div>
                     {field.type === 'select' && (
@@ -753,20 +753,20 @@ export default function SettingsPage() {
               {customFields.filter(f => f.entity === fieldEntity).length === 0 && (
                 <div className="text-center py-8 border-2 border-dashed border-surface-200 rounded-xl">
                   <Database className="w-8 h-8 text-surface-300 mx-auto mb-2" />
-                  <p className="text-sm text-surface-500 font-medium">No custom fields yet</p>
-                  <p className="text-xs text-surface-400 mt-0.5">Add fields that are specific to your business</p>
+                  <p className="text-sm text-surface-500 font-medium">{t('settings.no_custom_fields')}</p>
+                  <p className="text-xs text-surface-400 mt-0.5">{t('settings.no_custom_fields_hint')}</p>
                 </div>
               )}
             </div>
 
             <button onClick={addField} className="btn-ghost btn-sm w-full justify-center border border-dashed border-surface-200 mb-4">
-              <Plus className="w-3.5 h-3.5" /> Add Field
+              <Plus className="w-3.5 h-3.5" /> {t('settings.add_field')}
             </button>
 
             {customFields.filter(f => f.entity === fieldEntity).length > 0 && (
               <button onClick={saveFields} disabled={saving} className="btn-primary">
                 {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-                {saved ? t('settings.saved') : 'Save Fields'}
+                {saved ? t('settings.saved') : t('settings.save_fields')}
               </button>
             )}
           </div>
@@ -810,30 +810,30 @@ export default function SettingsPage() {
             </div>
             {/* Custom Domain */}
             <div>
-              <label className="label">Custom Domain</label>
+              <label className="label">{t('settings.custom_domain')}</label>
               <input className="input" value={customDomain} onChange={e => setCustomDomain(e.target.value)} placeholder="crm.mycompany.com" />
-              <p className="text-[11px] text-surface-400 mt-1">Point your domain CNAME to tracktio.app to use a custom domain</p>
+              <p className="text-[11px] text-surface-400 mt-1">{t('settings.custom_domain_hint')}</p>
             </div>
 
             {/* Favicon URL */}
             <div>
-              <label className="label">Favicon URL</label>
+              <label className="label">{t('settings.favicon_url')}</label>
               <input className="input" value={faviconUrl} onChange={e => setFaviconUrl(e.target.value)} placeholder="https://mycompany.com/favicon.ico" />
-              <p className="text-[11px] text-surface-400 mt-1">URL to a .ico or .png file for the browser tab icon</p>
+              <p className="text-[11px] text-surface-400 mt-1">{t('settings.favicon_url_hint')}</p>
             </div>
 
             {/* Custom Login Message */}
             <div>
-              <label className="label">Custom Login Message</label>
-              <textarea className="input resize-none" rows={3} value={loginMessage} onChange={e => setLoginMessage(e.target.value)} placeholder="Welcome to our CRM! Please sign in with your company credentials." />
-              <p className="text-[11px] text-surface-400 mt-1">Shown on the login page for your users</p>
+              <label className="label">{t('settings.custom_login_msg')}</label>
+              <textarea className="input resize-none" rows={3} value={loginMessage} onChange={e => setLoginMessage(e.target.value)} />
+              <p className="text-[11px] text-surface-400 mt-1">{t('settings.custom_login_msg_hint')}</p>
             </div>
 
             {/* Powered by Toggle */}
             <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100">
               <div>
-                <p className="text-sm font-semibold text-surface-900">Show &quot;Powered by Tracktio&quot;</p>
-                <p className="text-xs text-surface-400 mt-0.5">Display Tracktio branding in the footer</p>
+                <p className="text-sm font-semibold text-surface-900">{t('settings.show_powered_by')}</p>
+                <p className="text-xs text-surface-400 mt-0.5">{t('settings.show_powered_by_hint')}</p>
               </div>
               <button onClick={() => setPoweredByVisible(!poweredByVisible)}
                 className={cn('relative w-11 h-6 rounded-full transition-colors', poweredByVisible ? 'bg-brand-600' : 'bg-surface-300')}>
@@ -871,15 +871,15 @@ export default function SettingsPage() {
       {/* ==================== WHATSAPP BOT TAB ==================== */}
       {tab === 'whatsapp_bot' && (
         <div className="card p-6">
-          <h2 className="font-semibold text-surface-900 mb-1">WhatsApp Bot Auto-Reply</h2>
-          <p className="text-xs text-surface-500 mb-6">Automatically greet new contacts and ask qualification questions when they send their first message.</p>
+          <h2 className="font-semibold text-surface-900 mb-1">{t('settings.wabot_title')}</h2>
+          <p className="text-xs text-surface-500 mb-6">{t('settings.wabot_desc')}</p>
 
           <div className="space-y-6">
             {/* Enable toggle */}
             <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100">
               <div>
-                <p className="text-sm font-semibold text-surface-900">Enable Bot Auto-Reply</p>
-                <p className="text-xs text-surface-400 mt-0.5">When enabled, new contacts receive an automatic greeting on their first message</p>
+                <p className="text-sm font-semibold text-surface-900">{t('settings.enable_bot')}</p>
+                <p className="text-xs text-surface-400 mt-0.5">{t('settings.enable_bot_hint')}</p>
               </div>
               <button onClick={() => setBotEnabled(!botEnabled)}
                 className={cn('relative w-11 h-6 rounded-full transition-colors', botEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
@@ -889,21 +889,20 @@ export default function SettingsPage() {
 
             {/* Greeting message */}
             <div>
-              <label className="label">Greeting Message</label>
+              <label className="label">{t('settings.greeting_message')}</label>
               <textarea
                 className="input resize-none"
                 rows={3}
                 value={botGreeting}
                 onChange={e => setBotGreeting(e.target.value)}
-                placeholder="Hi! Thanks for contacting us. Let me ask a few questions to help you better."
               />
-              <p className="text-[11px] text-surface-400 mt-1">This message is sent first when a new contact writes for the first time.</p>
+              <p className="text-[11px] text-surface-400 mt-1">{t('settings.greeting_hint')}</p>
             </div>
 
             {/* Qualification questions */}
             <div>
-              <label className="label">Qualification Questions</label>
-              <p className="text-[11px] text-surface-400 mb-2">These are sent as a numbered list right after the greeting.</p>
+              <label className="label">{t('settings.qualification_questions')}</label>
+              <p className="text-[11px] text-surface-400 mb-2">{t('settings.qualification_questions_hint')}</p>
               <div className="space-y-2 mb-3">
                 {botQuestions.map((q, i) => (
                   <div key={i} className="flex items-center gap-2">
@@ -929,32 +928,31 @@ export default function SettingsPage() {
               <button
                 onClick={() => setBotQuestions([...botQuestions, ''])}
                 className="btn-ghost btn-sm w-full justify-center border border-dashed border-surface-200">
-                <Plus className="w-3.5 h-3.5" /> Add Question
+                <Plus className="w-3.5 h-3.5" /> {t('settings.add_question')}
               </button>
             </div>
 
             {/* Qualify keyword */}
             <div>
-              <label className="label">Qualify Keyword (optional)</label>
+              <label className="label">{t('settings.qualify_keyword')}</label>
               <input
                 className="input"
                 value={botQualifyKeyword}
                 onChange={e => setBotQualifyKeyword(e.target.value)}
-                placeholder="e.g. interested"
               />
-              <p className="text-[11px] text-surface-400 mt-1">If set, leads that reply with this keyword are auto-marked as qualified.</p>
+              <p className="text-[11px] text-surface-400 mt-1">{t('settings.qualify_keyword_hint')}</p>
             </div>
 
             {/* AI Auto-Reply Section */}
             <div className="border-t border-surface-200 pt-6 mt-6">
-              <h3 className="font-semibold text-surface-900 mb-1">AI Auto-Reply</h3>
-              <p className="text-xs text-surface-500 mb-4">Use AI to automatically respond to WhatsApp messages. The AI understands conversation context and pre-qualifies leads for you.</p>
+              <h3 className="font-semibold text-surface-900 mb-1">{t('settings.ai_autoreply')}</h3>
+              <p className="text-xs text-surface-500 mb-4">{t('settings.ai_autoreply_desc')}</p>
 
               {/* AI Enable toggle */}
               <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100 mb-4">
                 <div>
-                  <p className="text-sm font-semibold text-surface-900">Enable AI auto-reply</p>
-                  <p className="text-xs text-surface-400 mt-0.5">AI will respond to incoming WhatsApp messages based on conversation context</p>
+                  <p className="text-sm font-semibold text-surface-900">{t('settings.enable_ai')}</p>
+                  <p className="text-xs text-surface-400 mt-0.5">{t('settings.enable_ai_hint')}</p>
                 </div>
                 <button onClick={() => setAiEnabled(!aiEnabled)}
                   className={cn('relative w-11 h-6 rounded-full transition-colors', aiEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
@@ -966,35 +964,35 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   {/* Custom instructions */}
                   <div>
-                    <label className="label">Custom instructions for AI</label>
+                    <label className="label">{t('settings.ai_custom_instructions')}</label>
                     <textarea
                       className="input resize-none"
                       rows={4}
                       value={aiInstructions}
                       onChange={e => setAiInstructions(e.target.value)}
-                      placeholder="Tell the AI about your business, services, pricing, and how to qualify leads..."
+                      placeholder={t('settings.ai_instructions_placeholder')}
                     />
-                    <p className="text-[11px] text-surface-400 mt-1">Give the AI context about your business so it can have informed conversations with leads.</p>
+                    <p className="text-[11px] text-surface-400 mt-1">{t('settings.ai_instructions_hint')}</p>
                   </div>
 
                   {/* Confidence threshold */}
                   <div>
-                    <label className="label">AI confidence threshold</label>
+                    <label className="label">{t('settings.ai_threshold')}</label>
                     <select
                       className="input"
                       value={aiThreshold}
                       onChange={e => setAiThreshold(e.target.value as 'high' | 'medium' | 'all')}
                     >
-                      <option value="high">High only — AI replies only when very confident</option>
-                      <option value="medium">Medium+ — AI replies when reasonably confident</option>
-                      <option value="all">All — AI always attempts a reply</option>
+                      <option value="high">{t('settings.ai_threshold_high')}</option>
+                      <option value="medium">{t('settings.ai_threshold_medium')}</option>
+                      <option value="all">{t('settings.ai_threshold_all')}</option>
                     </select>
-                    <p className="text-[11px] text-surface-400 mt-1">When confidence is below threshold, you get a notification instead of an auto-reply.</p>
+                    <p className="text-[11px] text-surface-400 mt-1">{t('settings.ai_threshold_hint')}</p>
                   </div>
 
                   {/* Info box */}
                   <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                    <p className="text-xs text-blue-700 font-medium mb-1">How AI auto-reply works</p>
+                    <p className="text-xs text-blue-700 font-medium mb-1">{t('settings.how_ai_works')}</p>
                     <ul className="text-[11px] text-blue-600 space-y-1 list-disc list-inside">
                       <li>AI reads the last 10 messages for context and generates a natural reply</li>
                       <li>For contacts with <strong>active deals</strong>, AI will notify you instead of replying — your rep handles those</li>
@@ -1009,7 +1007,7 @@ export default function SettingsPage() {
 
             <button onClick={saveBotConfig} disabled={saving} className="btn-primary">
               {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-              {saved ? t('settings.saved') : 'Save Bot Configuration'}
+              {saved ? t('settings.saved') : t('settings.save_bot_config')}
             </button>
           </div>
         </div>
@@ -1018,15 +1016,15 @@ export default function SettingsPage() {
       {/* ==================== LEAD ROUTING TAB ==================== */}
       {tab === 'lead_routing' && (
         <div className="card p-6">
-          <h2 className="font-semibold text-surface-900 mb-1">Lead Routing</h2>
-          <p className="text-xs text-surface-500 mb-6">Automatically assign new leads to team members using round-robin or least-loaded distribution.</p>
+          <h2 className="font-semibold text-surface-900 mb-1">{t('settings.routing_title')}</h2>
+          <p className="text-xs text-surface-500 mb-6">{t('settings.routing_desc')}</p>
 
           <div className="space-y-6">
             {/* Enable toggle */}
             <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl border border-surface-100">
               <div>
-                <p className="text-sm font-semibold text-surface-900">Enable Lead Routing</p>
-                <p className="text-xs text-surface-400 mt-0.5">When enabled, new leads are automatically assigned to selected team members</p>
+                <p className="text-sm font-semibold text-surface-900">{t('settings.enable_routing')}</p>
+                <p className="text-xs text-surface-400 mt-0.5">{t('settings.enable_routing_hint')}</p>
               </div>
               <button onClick={() => setRoutingEnabled(!routingEnabled)}
                 className={cn('relative w-11 h-6 rounded-full transition-colors', routingEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
@@ -1036,13 +1034,13 @@ export default function SettingsPage() {
 
             {/* Mode selector */}
             <div>
-              <label className="label">Routing Mode</label>
+              <label className="label">{t('settings.routing_mode')}</label>
               <div className="flex gap-2 p-1 bg-surface-100 rounded-xl w-fit">
                 {([
-                  { id: 'round_robin', label: 'Round Robin' },
-                  { id: 'least_loaded', label: 'Least Loaded' },
-                  { id: 'smart', label: 'Smart' },
-                  { id: 'manual', label: 'Manual' },
+                  { id: 'round_robin', label: t('settings.mode_round_robin') },
+                  { id: 'least_loaded', label: t('settings.mode_least_loaded') },
+                  { id: 'smart', label: t('settings.mode_smart') },
+                  { id: 'manual', label: t('settings.mode_manual') },
                 ] as const).map(mode => (
                   <button key={mode.id} onClick={() => setRoutingMode(mode.id)}
                     className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -1052,23 +1050,23 @@ export default function SettingsPage() {
                 ))}
               </div>
               <p className="text-[11px] text-surface-400 mt-2">
-                {routingMode === 'round_robin' && 'Leads are distributed evenly in order across selected reps.'}
-                {routingMode === 'least_loaded' && 'Each new lead goes to the rep with the fewest open leads.'}
-                {routingMode === 'smart' && 'Routes by service keywords + working hours + workload. Configure each rep below.'}
-                {routingMode === 'manual' && 'Leads are not auto-assigned. Use this to disable auto-routing while keeping the config.'}
+                {routingMode === 'round_robin' && t('settings.mode_round_robin_desc')}
+                {routingMode === 'least_loaded' && t('settings.mode_least_loaded_desc')}
+                {routingMode === 'smart' && t('settings.mode_smart_desc')}
+                {routingMode === 'manual' && t('settings.mode_manual_desc')}
               </p>
             </div>
 
             {/* Team member selector */}
             <div>
-              <label className="label">Team Members in Rotation</label>
-              <p className="text-[11px] text-surface-400 mb-3">Select which team members should receive auto-assigned leads.</p>
+              <label className="label">{t('settings.team_in_rotation')}</label>
+              <p className="text-[11px] text-surface-400 mb-3">{t('settings.team_in_rotation_hint')}</p>
               <div className="space-y-2">
                 {teamProfiles.length === 0 && (
                   <div className="text-center py-6 border-2 border-dashed border-surface-200 rounded-xl">
                     <Users className="w-8 h-8 text-surface-300 mx-auto mb-2" />
-                    <p className="text-sm text-surface-500 font-medium">No team members found</p>
-                    <p className="text-xs text-surface-400 mt-0.5">Invite team members to your workspace first</p>
+                    <p className="text-sm text-surface-500 font-medium">{t('settings.no_team_found')}</p>
+                    <p className="text-xs text-surface-400 mt-0.5">{t('settings.no_team_found_hint')}</p>
                   </div>
                 )}
                 {teamProfiles.map(profile => (
@@ -1096,8 +1094,8 @@ export default function SettingsPage() {
             {/* Smart routing: per-rep config */}
             {routingMode === 'smart' && routingReps.length > 0 && (
               <div>
-                <label className="label">Rep Configuration (Smart Mode)</label>
-                <p className="text-[11px] text-surface-400 mb-3">Configure service keywords and working hours for each rep.</p>
+                <label className="label">{t('settings.rep_config_smart')}</label>
+                <p className="text-[11px] text-surface-400 mb-3">{t('settings.rep_config_smart_hint')}</p>
                 <div className="space-y-3">
                   {routingReps.map(repId => {
                     const profile = teamProfiles.find(p => p.id === repId)
@@ -1106,20 +1104,20 @@ export default function SettingsPage() {
                       <div key={repId} className="p-3 rounded-xl border border-surface-200 space-y-2">
                         <p className="text-sm font-semibold text-surface-900">{profile?.full_name || 'Rep'}</p>
                         <div>
-                          <label className="text-[11px] text-surface-500">Service keywords (comma-separated)</label>
+                          <label className="text-[11px] text-surface-500">{t('settings.service_keywords')}</label>
                           <input className="input text-xs" placeholder="e.g. immigration, visa, legal" value={rc.services}
                             onChange={e => setRoutingRepConfigs(prev => ({ ...prev, [repId]: { ...rc, services: e.target.value } }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[11px] text-surface-500">Start hour</label>
+                            <label className="text-[11px] text-surface-500">{t('settings.start_hour')}</label>
                             <select className="input text-xs" value={rc.startHour}
                               onChange={e => setRoutingRepConfigs(prev => ({ ...prev, [repId]: { ...rc, startHour: parseInt(e.target.value) } }))}>
                               {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="text-[11px] text-surface-500">End hour</label>
+                            <label className="text-[11px] text-surface-500">{t('settings.end_hour')}</label>
                             <select className="input text-xs" value={rc.endHour}
                               onChange={e => setRoutingRepConfigs(prev => ({ ...prev, [repId]: { ...rc, endHour: parseInt(e.target.value) } }))}>
                               {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>)}
@@ -1131,9 +1129,9 @@ export default function SettingsPage() {
                   })}
                 </div>
                 <div className="mt-3">
-                  <label className="text-[11px] text-surface-500">Fallback rep (outside hours / no keyword match)</label>
+                  <label className="text-[11px] text-surface-500">{t('settings.fallback_rep')}</label>
                   <select className="input text-xs" value={routingFallback} onChange={e => setRoutingFallback(e.target.value)}>
-                    <option value="">First available</option>
+                    <option value="">{t('settings.first_available')}</option>
                     {routingReps.map(id => {
                       const p = teamProfiles.find(tp => tp.id === id)
                       return <option key={id} value={id}>{p?.full_name || id}</option>
@@ -1146,20 +1144,20 @@ export default function SettingsPage() {
             {/* Current rotation status */}
             {routingEnabled && routingReps.length > 0 && (
               <div className="p-4 bg-brand-50 rounded-xl border border-brand-200">
-                <p className="text-[10px] font-semibold text-brand-600 uppercase tracking-wide mb-1">Rotation Status</p>
-                <p className="text-sm font-medium text-brand-900">Next lead goes to: <span className="font-bold">{getNextRepName()}</span></p>
-                <p className="text-xs text-brand-600 mt-0.5">{routingReps.length} rep{routingReps.length !== 1 ? 's' : ''} in rotation</p>
+                <p className="text-[10px] font-semibold text-brand-600 uppercase tracking-wide mb-1">{t('settings.rotation_status')}</p>
+                <p className="text-sm font-medium text-brand-900">{t('settings.next_lead_goes_to')}: <span className="font-bold">{getNextRepName()}</span></p>
+                <p className="text-xs text-brand-600 mt-0.5">{routingReps.length} {t('settings.reps_in_rotation')}</p>
               </div>
             )}
 
             {/* Auto-enroll non-responders in sequence */}
             <div className="border-t border-surface-100 pt-5">
-              <h3 className="font-semibold text-surface-900 mb-1">Auto Follow-up Sequence</h3>
-              <p className="text-xs text-surface-400 mb-4">Automatically enroll leads in a follow-up sequence if they don&apos;t respond within a set time.</p>
+              <h3 className="font-semibold text-surface-900 mb-1">{t('settings.auto_followup')}</h3>
+              <p className="text-xs text-surface-400 mb-4">{t('settings.auto_followup_desc')}</p>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-semibold text-surface-900">Enable Auto Follow-up</p>
-                  <p className="text-[11px] text-surface-400">Non-responding leads will be auto-enrolled</p>
+                  <p className="text-sm font-semibold text-surface-900">{t('settings.enable_auto_followup')}</p>
+                  <p className="text-[11px] text-surface-400">{t('settings.enable_auto_followup_hint')}</p>
                 </div>
                 <button onClick={() => setAutoSequenceEnabled(!autoSequenceEnabled)}
                   className={cn('relative w-11 h-6 rounded-full transition-colors', autoSequenceEnabled ? 'bg-brand-600' : 'bg-surface-300')}>
@@ -1169,18 +1167,17 @@ export default function SettingsPage() {
               {autoSequenceEnabled && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-[11px] text-surface-500">Follow-up sequence</label>
+                    <label className="text-[11px] text-surface-500">{t('settings.followup_sequence')}</label>
                     <select className="input text-xs" value={autoSequenceId} onChange={e => setAutoSequenceId(e.target.value)}>
-                      <option value="">Select a sequence...</option>
+                      <option value="">{t('settings.select_sequence')}</option>
                       {sequences.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
-                    {sequences.length === 0 && <p className="text-[10px] text-amber-500 mt-1">Create a sequence first at /sequences</p>}
+                    {sequences.length === 0 && <p className="text-[10px] text-amber-500 mt-1">{t('settings.create_sequence_first')}</p>}
                   </div>
                   <div>
-                    <label className="text-[11px] text-surface-500">Wait time before enrolling (hours)</label>
+                    <label className="text-[11px] text-surface-500">{t('settings.wait_hours')}</label>
                     <input type="number" className="input text-xs w-32" value={autoSequenceHours} min={1} max={168}
                       onChange={e => setAutoSequenceHours(parseInt(e.target.value) || 24)} />
-                    <p className="text-[10px] text-surface-400 mt-1">If lead doesn&apos;t respond within {autoSequenceHours}h, they&apos;ll be enrolled in the sequence.</p>
                   </div>
                 </div>
               )}
@@ -1188,7 +1185,7 @@ export default function SettingsPage() {
 
             <button onClick={saveRoutingConfig} disabled={saving} className="btn-primary">
               {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-              {saved ? t('settings.saved') : 'Save Routing Configuration'}
+              {saved ? t('settings.saved') : t('settings.save_routing_config')}
             </button>
           </div>
         </div>

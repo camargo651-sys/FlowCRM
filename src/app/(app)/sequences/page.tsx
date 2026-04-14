@@ -254,8 +254,8 @@ export default function SequencesPage() {
   }
 
   const saveSequence = async () => {
-    if (!name.trim()) { toast.error('Name is required'); return }
-    if (steps.some(s => !s.message.trim())) { toast.error('All steps need a message'); return }
+    if (!name.trim()) { toast.error(t('sequences.name_required')); return }
+    if (steps.some(s => !s.message.trim())) { toast.error(t('sequences.all_steps_need_message')); return }
     if (!workspaceId) return
 
     setSaving(true)
@@ -271,16 +271,16 @@ export default function SequencesPage() {
 
       if (editingId) {
         await supabase.from('sequences').update(payload).eq('id', editingId)
-        toast.success('Sequence updated')
+        toast.success(t('sequences.updated_toast'))
       } else {
         await supabase.from('sequences').insert(payload)
-        toast.success('Sequence created')
+        toast.success(t('sequences.created_toast'))
       }
 
       setShowEditor(false)
       loadSequences()
     } catch {
-      toast.error('Error saving sequence')
+      toast.error(t('sequences.error_saving'))
     } finally {
       setSaving(false)
     }
@@ -292,10 +292,10 @@ export default function SequencesPage() {
   }
 
   const deleteSequence = async (id: string) => {
-    if (!confirm('Delete this sequence? Enrolled contacts will be removed.')) return
+    if (!confirm(t('sequences.confirm_delete'))) return
     await supabase.from('sequences').delete().eq('id', id)
     setSequences(prev => prev.filter(s => s.id !== id))
-    toast.success('Sequence deleted')
+    toast.success(t('sequences.deleted_toast'))
   }
 
   // ── Duplicate Sequence ──
@@ -312,14 +312,14 @@ export default function SequencesPage() {
       send_window_end: seq.send_window_end ?? 18,
     }
     await supabase.from('sequences').insert(payload)
-    toast.success('Sequence duplicated')
+    toast.success(t('sequences.duplicated_toast'))
     loadSequences()
   }
 
   // ── Pause/Resume enrollment ──
   const pauseEnrollment = async (enrollmentId: string, seqId: string) => {
     await supabase.from('sequence_enrollments').update({ status: 'paused' }).eq('id', enrollmentId)
-    toast.success('Enrollment paused')
+    toast.success(t('sequences.enrollment_paused_toast'))
     loadEnrollments(seqId)
   }
 
@@ -332,7 +332,7 @@ export default function SequencesPage() {
     await supabase.from('sequence_enrollments')
       .update({ status: 'active', next_run_at: nextRun })
       .eq('id', enrollment.id)
-    toast.success('Enrollment resumed')
+    toast.success(t('sequences.enrollment_resumed_toast'))
     loadEnrollments(seqId)
   }
 
@@ -346,7 +346,7 @@ export default function SequencesPage() {
       await supabase.from('sequences').update({ enrolled_count: newCount }).eq('id', seqId)
       setSequences(prev => prev.map(s => s.id === seqId ? { ...s, enrolled_count: newCount } : s))
     }
-    toast.success('Contact removed from sequence')
+    toast.success(t('sequences.contact_removed_toast'))
     loadEnrollments(seqId)
   }
 
@@ -409,7 +409,7 @@ export default function SequencesPage() {
       else errors++
     }
 
-    toast.success(`Enrolled ${enrolled} contacts${errors > 0 ? `, ${errors} errors` : ''}`)
+    toast.success(`${t('sequences.enrolled_prefix')} ${enrolled} ${t('sequences.contacts_suffix') || 'contacts'}${errors > 0 ? `, ${errors} ${t('sequences.errors_suffix')}` : ''}`)
     setShowEnroll(false)
     setEnrolling(false)
     loadSequences()
@@ -439,12 +439,12 @@ export default function SequencesPage() {
         <div>
           <h1 className="text-2xl font-bold text-surface-900">{t('nav.sequences')}</h1>
           <p className="text-sm text-surface-500 mt-1">
-            Multi-step drip campaigns via WhatsApp, SMS, or email
+            {t('sequences.subtitle')}
           </p>
         </div>
         <button onClick={openCreate}
           className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Create Sequence
+          <Plus className="w-4 h-4" /> {t('sequences.create_sequence')}
         </button>
       </div>
 
@@ -452,11 +452,11 @@ export default function SequencesPage() {
       {sequences.length === 0 ? (
         <div className="bg-white rounded-2xl border border-surface-100 p-12 text-center">
           <Zap className="w-12 h-12 text-surface-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-surface-800 mb-2">No sequences yet</h3>
+          <h3 className="text-lg font-semibold text-surface-800 mb-2">{t('sequences.no_sequences')}</h3>
           <p className="text-sm text-surface-500 mb-6">
-            Create your first drip campaign to automate follow-ups via WhatsApp, SMS, or email.
+            {t('sequences.no_sequences_desc')}
           </p>
-          <button onClick={openCreate} className="btn-primary">Create Sequence</button>
+          <button onClick={openCreate} className="btn-primary">{t('sequences.create_sequence')}</button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -479,18 +479,18 @@ export default function SequencesPage() {
                         'px-2 py-0.5 rounded-full text-[11px] font-medium',
                         seq.enabled ? 'bg-green-50 text-green-700' : 'bg-surface-100 text-surface-500',
                       )}>
-                        {seq.enabled ? 'Active' : 'Paused'}
+                        {seq.enabled ? t('sequences.active') : t('sequences.paused')}
                       </span>
                     </div>
                     {seq.description && (
                       <p className="text-xs text-surface-500 mt-0.5 truncate">{seq.description}</p>
                     )}
                     <div className="flex items-center gap-4 mt-1.5 text-xs text-surface-400">
-                      <span>{seq.steps.length} step{seq.steps.length !== 1 ? 's' : ''}</span>
+                      <span>{seq.steps.length} {seq.steps.length !== 1 ? t('sequences.step_plural') : t('sequences.step_singular')}</span>
                       <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" /> {seq.enrolled_count} enrolled
+                        <Users className="w-3 h-3" /> {seq.enrolled_count} {t('sequences.enrolled')}
                       </span>
-                      <span>{seq.completed_count} completed</span>
+                      <span>{seq.completed_count} {t('sequences.completed')}</span>
                       <div className="flex items-center gap-1">
                         {(seq.steps || []).map((s, i) => {
                           const Icon = CHANNEL_ICONS[s.channel]
@@ -504,16 +504,16 @@ export default function SequencesPage() {
                   <div className="flex items-center gap-2">
                     <button onClick={() => openEnroll(seq.id)}
                       className="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" /> Enroll
+                      <Users className="w-3.5 h-3.5" /> {t('sequences.enroll')}
                     </button>
                     <button onClick={() => duplicateSequence(seq)}
                       className="p-2 rounded-lg hover:bg-surface-50 text-surface-400 hover:text-surface-600"
-                      title="Duplicate">
+                      title={t('sequences.duplicate')}>
                       <Copy className="w-4 h-4" />
                     </button>
                     <button onClick={() => toggleEnabled(seq)}
                       className="p-2 rounded-lg hover:bg-surface-50 text-surface-400 hover:text-surface-600"
-                      title={seq.enabled ? 'Pause' : 'Activate'}>
+                      title={seq.enabled ? t('sequences.pause') : t('sequences.activate')}>
                       {seq.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                     </button>
                     <button onClick={() => openEdit(seq)}
@@ -543,7 +543,7 @@ export default function SequencesPage() {
                           )}>
                           {tab === 'analytics' && <BarChart3 className="w-3 h-3 inline mr-1.5" />}
                           {tab === 'enrollments' && <Users className="w-3 h-3 inline mr-1.5" />}
-                          {tab}
+                          {tab === 'steps' ? t('sequences.tab_steps') : tab === 'analytics' ? t('sequences.tab_analytics') : t('sequences.tab_enrollments')}
                         </button>
                       ))}
                     </div>
@@ -567,10 +567,10 @@ export default function SequencesPage() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 text-xs text-surface-500">
                                     <span className="font-medium capitalize">{step.channel}</span>
-                                    <span>after {step.delay_hours}h</span>
+                                    <span>{t('sequences.after_hours')} {step.delay_hours}{t('sequences.hours_short')}</span>
                                     {step.condition === 'no_reply' && (
                                       <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">
-                                        Only if no reply
+                                        {t('sequences.only_if_no_reply')}
                                       </span>
                                     )}
                                   </div>
@@ -591,7 +591,7 @@ export default function SequencesPage() {
                             <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
                           </div>
                         ) : stepAnalytics.length === 0 ? (
-                          <p className="text-sm text-surface-400 text-center py-6">No enrollment data yet</p>
+                          <p className="text-sm text-surface-400 text-center py-6">{t('sequences.no_enrollment_data')}</p>
                         ) : (
                           <div className="space-y-3">
                             {stepAnalytics.map((sa, i) => {
@@ -605,11 +605,11 @@ export default function SequencesPage() {
                                 <div key={i} className="space-y-1.5">
                                   <div className="flex items-center justify-between text-xs">
                                     <span className="font-medium text-surface-700">
-                                      Step {i + 1}: {sa.sent} sent, {sa.replied} replied, {sa.waiting} waiting
+                                      {t('sequences.step_label')} {i + 1}: {sa.sent} {t('sequences.sent')} {sa.replied} {t('sequences.replied')} {sa.waiting} {t('sequences.waiting')}
                                     </span>
                                     {dropOff > 0 && (
                                       <span className="text-red-500 text-[10px] font-medium">
-                                        -{dropOff}% drop-off
+                                        -{dropOff}% {t('sequences.drop_off')}
                                       </span>
                                     )}
                                   </div>
@@ -618,8 +618,8 @@ export default function SequencesPage() {
                                     <div className="bg-green-500 h-full transition-all" style={{ width: `${repliedPct}%` }} />
                                   </div>
                                   <div className="flex gap-4 text-[10px] text-surface-400">
-                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-500 inline-block" /> Sent</span>
-                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Replied</span>
+                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-500 inline-block" /> {t('sequences.legend_sent')}</span>
+                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> {t('sequences.legend_replied')}</span>
                                   </div>
                                 </div>
                               )
@@ -637,17 +637,17 @@ export default function SequencesPage() {
                             <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
                           </div>
                         ) : enrollments.length === 0 ? (
-                          <p className="text-sm text-surface-400 text-center py-6">No enrollments yet</p>
+                          <p className="text-sm text-surface-400 text-center py-6">{t('sequences.no_enrollments')}</p>
                         ) : (
                           <div className="space-y-1 overflow-x-auto">
                             <div className="min-w-[560px]">
                             {/* Table header */}
                             <div className="grid grid-cols-[1fr_80px_80px_120px_100px] gap-2 px-3 py-1.5 text-[10px] font-semibold text-surface-400 uppercase tracking-wider">
-                              <span>Contact</span>
-                              <span>Step</span>
-                              <span>Status</span>
-                              <span>Started</span>
-                              <span className="text-right">Actions</span>
+                              <span>{t('sequences.col_contact')}</span>
+                              <span>{t('sequences.col_step')}</span>
+                              <span>{t('sequences.col_status')}</span>
+                              <span>{t('sequences.col_started')}</span>
+                              <span className="text-right">{t('sequences.col_actions')}</span>
                             </div>
                             {enrollments.map(enr => {
                               const isLogOpen = expandedLogId === enr.id
@@ -666,7 +666,7 @@ export default function SequencesPage() {
                                         className="text-surface-300 hover:text-surface-500 shrink-0">
                                         {isLogOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                       </button>
-                                      <span className="truncate font-medium">{enr.contacts?.name || 'Unknown'}</span>
+                                      <span className="truncate font-medium">{enr.contacts?.name || t('sequences.unknown')}</span>
                                     </div>
                                     <span>{enr.current_step + 1}/{seq.steps.length}</span>
                                     <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium text-center', statusColors[enr.status] || 'bg-surface-100 text-surface-500')}>
@@ -677,20 +677,20 @@ export default function SequencesPage() {
                                       {enr.status === 'active' && (
                                         <button onClick={() => pauseEnrollment(enr.id, seq.id)}
                                           className="p-1 rounded hover:bg-amber-50 text-surface-400 hover:text-amber-600"
-                                          title="Pause">
+                                          title={t('sequences.pause')}>
                                           <Pause className="w-3 h-3" />
                                         </button>
                                       )}
                                       {enr.status === 'paused' && (
                                         <button onClick={() => resumeEnrollment(enr, seq.id)}
                                           className="p-1 rounded hover:bg-green-50 text-surface-400 hover:text-green-600"
-                                          title="Resume">
+                                          title={t('sequences.resume')}>
                                           <Play className="w-3 h-3" />
                                         </button>
                                       )}
                                       <button onClick={() => removeEnrollment(enr.id, seq.id)}
                                         className="p-1 rounded hover:bg-red-50 text-surface-400 hover:text-red-500"
-                                        title="Remove from sequence">
+                                        title={t('sequences.remove_from_sequence')}>
                                         <UserMinus className="w-3 h-3" />
                                       </button>
                                     </div>
@@ -704,13 +704,13 @@ export default function SequencesPage() {
                                             <div key={li} className="flex items-center gap-2 text-surface-500">
                                               <span className="font-mono text-surface-400">{new Date(entry.sent_at).toLocaleString()}</span>
                                               <span className="capitalize font-medium">{entry.channel}</span>
-                                              <span>Step {entry.step + 1}</span>
+                                              <span>{t('sequences.step_label')} {entry.step + 1}</span>
                                               {entry.status && <span className="text-surface-400">({entry.status})</span>}
                                             </div>
                                           ))}
                                         </div>
                                       ) : (
-                                        <p className="text-surface-400">No log entries yet</p>
+                                        <p className="text-surface-400">{t('sequences.no_log')}</p>
                                       )}
                                     </div>
                                   )}
@@ -738,7 +738,7 @@ export default function SequencesPage() {
             onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-surface-100 flex items-center justify-between">
               <h2 className="text-lg font-bold text-surface-900">
-                {editingId ? 'Edit Sequence' : 'Create Sequence'}
+                {editingId ? t('sequences.edit_sequence') : t('sequences.create_sequence')}
               </h2>
               <button onClick={() => setShowEditor(false)}
                 className="p-2 rounded-lg hover:bg-surface-50 text-surface-400">
@@ -750,7 +750,7 @@ export default function SequencesPage() {
               {/* ── Sequence Templates (only when creating) ── */}
               {!editingId && (
                 <div>
-                  <label className="text-sm font-medium text-surface-700 block mb-2">Start from a template</label>
+                  <label className="text-sm font-medium text-surface-700 block mb-2">{t('sequences.start_from_template')}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {SEQUENCE_TEMPLATES.map(tpl => (
                       <button key={tpl.label}
@@ -767,15 +767,15 @@ export default function SequencesPage() {
               {/* Name & Description */}
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-surface-700 block mb-1.5">Name</label>
+                  <label className="text-sm font-medium text-surface-700 block mb-1.5">{t('sequences.name')}</label>
                   <input type="text" value={name} onChange={e => setName(e.target.value)}
-                    placeholder="e.g. New Lead Follow-up"
+                    placeholder={t('sequences.name_placeholder')}
                     className="input w-full" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-surface-700 block mb-1.5">Description</label>
+                  <label className="text-sm font-medium text-surface-700 block mb-1.5">{t('sequences.description')}</label>
                   <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-                    placeholder="Optional description"
+                    placeholder={t('sequences.description_placeholder')}
                     className="input w-full" />
                 </div>
               </div>
@@ -784,16 +784,16 @@ export default function SequencesPage() {
               <div className="border border-surface-200 rounded-xl p-4 bg-surface-50/50">
                 <div className="flex items-center gap-2 mb-3">
                   <Clock className="w-4 h-4 text-surface-500" />
-                  <label className="text-sm font-medium text-surface-700">Send window</label>
-                  <span className="text-[10px] text-surface-400">(messages only sent during this window)</span>
+                  <label className="text-sm font-medium text-surface-700">{t('sequences.send_window')}</label>
+                  <span className="text-[10px] text-surface-400">{t('sequences.send_window_hint')}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <label className="text-xs text-surface-500">From</label>
+                  <label className="text-xs text-surface-500">{t('sequences.from')}</label>
                   <input type="number" min={0} max={23} value={sendWindowStart}
                     onChange={e => setSendWindowStart(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
                     className="input w-16 text-xs text-center" />
                   <span className="text-xs text-surface-400">:00</span>
-                  <label className="text-xs text-surface-500 ml-2">To</label>
+                  <label className="text-xs text-surface-500 ml-2">{t('sequences.to')}</label>
                   <input type="number" min={0} max={23} value={sendWindowEnd}
                     onChange={e => setSendWindowEnd(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
                     className="input w-16 text-xs text-center" />
@@ -803,7 +803,7 @@ export default function SequencesPage() {
 
               {/* Steps builder */}
               <div>
-                <label className="text-sm font-medium text-surface-700 block mb-3">Steps</label>
+                <label className="text-sm font-medium text-surface-700 block mb-3">{t('sequences.steps_label')}</label>
                 <div className="space-y-4">
                   {steps.map((step, i) => {
                     const Icon = CHANNEL_ICONS[step.channel]
@@ -814,7 +814,7 @@ export default function SequencesPage() {
                           <div className="flex items-center justify-center mb-2 text-surface-300">
                             <ArrowDown className="w-4 h-4" />
                             <span className="text-xs text-surface-400 ml-1">
-                              Wait {step.delay_hours >= 24 ? `${Math.round(step.delay_hours / 24)}d` : `${step.delay_hours}h`}
+                              {t('sequences.wait')} {step.delay_hours >= 24 ? `${Math.round(step.delay_hours / 24)}d` : `${step.delay_hours}h`}
                             </span>
                           </div>
                         )}
@@ -857,7 +857,7 @@ export default function SequencesPage() {
                           <textarea
                             value={step.message}
                             onChange={e => updateStep(i, { message: e.target.value })}
-                            placeholder={`Message for step ${i + 1}... Use {{name}} or {{first_name}}`}
+                            placeholder={`${t('sequences.message_placeholder')} ${i + 1}... ${t('sequences.use_variables')}`}
                             rows={3}
                             className="input w-full text-sm resize-none mb-3"
                           />
@@ -877,20 +877,20 @@ export default function SequencesPage() {
                           {/* Delay & Condition */}
                           <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                              <label className="text-xs text-surface-500">Delay:</label>
+                              <label className="text-xs text-surface-500">{t('sequences.delay')}</label>
                               <input type="number" min={0} value={step.delay_hours}
                                 onChange={e => updateStep(i, { delay_hours: parseInt(e.target.value) || 0 })}
                                 className="input w-16 text-xs text-center" />
-                              <span className="text-xs text-surface-400">hours</span>
+                              <span className="text-xs text-surface-400">{t('sequences.hours')}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <label className="text-xs text-surface-500">Condition:</label>
+                              <label className="text-xs text-surface-500">{t('sequences.condition')}</label>
                               <select
                                 value={step.condition || ''}
                                 onChange={e => updateStep(i, { condition: e.target.value === 'no_reply' ? 'no_reply' : null })}
                                 className="input text-xs py-1.5">
-                                <option value="">None</option>
-                                <option value="no_reply">Only if no reply</option>
+                                <option value="">{t('sequences.none')}</option>
+                                <option value="no_reply">{t('sequences.only_if_no_reply')}</option>
                               </select>
                             </div>
                           </div>
@@ -902,13 +902,13 @@ export default function SequencesPage() {
 
                 <button onClick={addStep}
                   className="mt-3 w-full py-2.5 border-2 border-dashed border-surface-200 rounded-xl text-sm text-surface-400 hover:border-brand-300 hover:text-brand-600 transition-colors flex items-center justify-center gap-2">
-                  <Plus className="w-4 h-4" /> Add Step
+                  <Plus className="w-4 h-4" /> {t('sequences.add_step')}
                 </button>
               </div>
 
               {/* Visual flow preview */}
               <div>
-                <label className="text-sm font-medium text-surface-700 block mb-2">Preview</label>
+                <label className="text-sm font-medium text-surface-700 block mb-2">{t('sequences.preview')}</label>
                 <div className="border border-surface-200 rounded-xl p-4 bg-white">
                   <div className="flex items-center gap-2 flex-wrap">
                     {steps.map((step, i) => {
@@ -933,16 +933,16 @@ export default function SequencesPage() {
                     })}
                   </div>
                   {steps.some(s => s.condition === 'no_reply') && (
-                    <p className="text-[10px] text-amber-600 mt-2">* Only sends if contact has not replied</p>
+                    <p className="text-[10px] text-amber-600 mt-2">{t('sequences.only_sends_note')}</p>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="p-6 border-t border-surface-100 flex justify-end gap-3">
-              <button onClick={() => setShowEditor(false)} className="btn-outline">Cancel</button>
+              <button onClick={() => setShowEditor(false)} className="btn-outline">{t('sequences.cancel')}</button>
               <button onClick={saveSequence} disabled={saving} className="btn-primary">
-                {saving ? 'Saving...' : editingId ? 'Update Sequence' : 'Create Sequence'}
+                {saving ? t('sequences.saving') : editingId ? t('sequences.update_sequence') : t('sequences.create_sequence')}
               </button>
             </div>
           </div>
@@ -956,7 +956,7 @@ export default function SequencesPage() {
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-xl"
             onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-surface-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-surface-900">Enroll Contacts</h2>
+              <h2 className="text-lg font-bold text-surface-900">{t('sequences.enroll_contacts')}</h2>
               <button onClick={() => setShowEnroll(false)}
                 className="p-2 rounded-lg hover:bg-surface-50 text-surface-400">
                 <X className="w-5 h-5" />
@@ -969,12 +969,12 @@ export default function SequencesPage() {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
                 <input type="text" value={contactSearch}
                   onChange={e => setContactSearch(e.target.value)}
-                  placeholder="Search contacts..."
+                  placeholder={t('sequences.search_contacts')}
                   className="input w-full pl-9" />
               </div>
               {selectedContacts.size > 0 && (
                 <p className="text-xs text-brand-600 mt-2 font-medium">
-                  {selectedContacts.size} contact{selectedContacts.size !== 1 ? 's' : ''} selected
+                  {selectedContacts.size} {selectedContacts.size !== 1 ? t('sequences.contact_plural') : t('sequences.contact_singular')}
                 </p>
               )}
             </div>
@@ -982,7 +982,7 @@ export default function SequencesPage() {
             {/* Contact list */}
             <div className="flex-1 overflow-y-auto p-2">
               {filteredContacts.length === 0 ? (
-                <p className="text-center text-sm text-surface-400 py-8">No contacts found</p>
+                <p className="text-center text-sm text-surface-400 py-8">{t('sequences.no_contacts_found')}</p>
               ) : (
                 filteredContacts.map(c => (
                   <label key={c.id}
@@ -994,7 +994,7 @@ export default function SequencesPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-surface-800 truncate">{c.name}</p>
                       <p className="text-xs text-surface-400 truncate">
-                        {c.phone || c.email || 'No contact info'}
+                        {c.phone || c.email || t('sequences.no_contact_info')}
                       </p>
                     </div>
                     <div className="flex gap-1">
@@ -1007,11 +1007,11 @@ export default function SequencesPage() {
             </div>
 
             <div className="p-4 border-t border-surface-100 flex justify-end gap-3">
-              <button onClick={() => setShowEnroll(false)} className="btn-outline">Cancel</button>
+              <button onClick={() => setShowEnroll(false)} className="btn-outline">{t('sequences.cancel')}</button>
               <button onClick={enrollSelected}
                 disabled={enrolling || selectedContacts.size === 0}
                 className="btn-primary flex items-center gap-2">
-                {enrolling ? 'Enrolling...' : `Enroll ${selectedContacts.size} Contact${selectedContacts.size !== 1 ? 's' : ''}`}
+                {enrolling ? t('sequences.enrolling') : `${t('sequences.enroll_action')} ${selectedContacts.size}`}
               </button>
             </div>
           </div>

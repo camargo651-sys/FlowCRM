@@ -62,9 +62,9 @@ export default function WidgetSettingsPage() {
     setSaving(true)
     const { error } = await supabase.from('workspaces').update({ widget_config: config as unknown as Record<string, unknown> }).eq('id', workspaceId)
     if (error) {
-      toast.error('Failed to save widget settings')
+      toast.error(t('settings.wid.save_failed'))
     } else {
-      toast.success('Widget settings saved')
+      toast.success(t('settings.wid.saved'))
     }
     setSaving(false)
   }
@@ -74,7 +74,7 @@ export default function WidgetSettingsPage() {
   const copyCode = async () => {
     await navigator.clipboard.writeText(embedCode)
     setCopied(true)
-    toast.success('Copied to clipboard')
+    toast.success(t('settings.wid.copied'))
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -94,17 +94,13 @@ export default function WidgetSettingsPage() {
           <Globe className="w-6 h-6 text-brand-600" />
           {t('nav.widget')}
         </h1>
-        <p className="text-surface-500 text-sm mt-1">
-          Embed a chat widget on your website to capture leads and connect them to WhatsApp.
-        </p>
+        <p className="text-surface-500 text-sm mt-1">{t('settings.wid.desc')}</p>
       </div>
 
       {/* Embed Code */}
       <section className="bg-white border border-surface-200 rounded-xl p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-surface-900">Embed Code</h2>
-        <p className="text-sm text-surface-500">
-          Copy and paste this code before the closing <code className="bg-surface-100 px-1 rounded">&lt;/body&gt;</code> tag on your website.
-        </p>
+        <h2 className="text-lg font-semibold text-surface-900">{t('settings.wid.embed_code')}</h2>
+        <p className="text-sm text-surface-500">{t('settings.wid.embed_desc')}</p>
         <div className="relative">
           <pre className="bg-surface-50 border border-surface-200 rounded-lg p-4 text-xs text-surface-700 overflow-x-auto whitespace-pre-wrap break-all font-mono">
             {embedCode}
@@ -121,12 +117,12 @@ export default function WidgetSettingsPage() {
 
       {/* Configuration */}
       <section className="bg-white border border-surface-200 rounded-xl p-6 space-y-5">
-        <h2 className="text-lg font-semibold text-surface-900">Configuration</h2>
+        <h2 className="text-lg font-semibold text-surface-900">{t('settings.wid.configuration')}</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Greeting */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-surface-700">Greeting message</label>
+            <label className="text-sm font-medium text-surface-700">{t('settings.wid.greeting_message')}</label>
             <input
               type="text"
               value={config.greeting}
@@ -138,7 +134,7 @@ export default function WidgetSettingsPage() {
 
           {/* Button text */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-surface-700">Button text</label>
+            <label className="text-sm font-medium text-surface-700">{t('settings.wid.button_text')}</label>
             <input
               type="text"
               value={config.button_text}
@@ -150,7 +146,7 @@ export default function WidgetSettingsPage() {
 
           {/* Color */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-surface-700">Widget color</label>
+            <label className="text-sm font-medium text-surface-700">{t('settings.wid.widget_color')}</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
@@ -174,7 +170,7 @@ export default function WidgetSettingsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium text-surface-700">Auto-reply via WhatsApp</span>
+              <span className="text-sm font-medium text-surface-700">{t('settings.wid.whatsapp_autoreply')}</span>
             </div>
             <button
               onClick={() => setConfig(prev => ({ ...prev, auto_whatsapp_reply: !prev.auto_whatsapp_reply }))}
@@ -193,7 +189,7 @@ export default function WidgetSettingsPage() {
           {config.auto_whatsapp_reply && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-surface-700">
-                Auto-reply message <span className="text-surface-400 font-normal">(use {'{name}'} for personalization)</span>
+                {t('settings.wid.autoreply_message_label')} <span className="text-surface-400 font-normal">(use {'{name}'})</span>
               </label>
               <textarea
                 value={config.auto_reply_message}
@@ -213,14 +209,14 @@ export default function WidgetSettingsPage() {
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white rounded-lg text-sm font-semibold hover:bg-brand-700 disabled:opacity-60 transition-colors"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save settings'}
+            {saving ? t('settings.wid.saving') : t('settings.wid.save_settings')}
           </button>
           <button
             onClick={() => setPreviewOpen(!previewOpen)}
             className="inline-flex items-center gap-2 px-5 py-2.5 border border-surface-200 text-surface-700 rounded-lg text-sm font-medium hover:bg-surface-50 transition-colors"
           >
             <Eye className="w-4 h-4" />
-            {previewOpen ? 'Hide preview' : 'Preview widget'}
+            {previewOpen ? t('settings.wid.hide_preview') : t('settings.wid.preview_widget')}
           </button>
         </div>
       </section>
@@ -228,7 +224,7 @@ export default function WidgetSettingsPage() {
       {/* Preview */}
       {previewOpen && (
         <section className="bg-white border border-surface-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-surface-900">Preview</h2>
+          <h2 className="text-lg font-semibold text-surface-900">{t('settings.wid.preview')}</h2>
           <div className="relative bg-surface-50 rounded-xl border border-surface-200 min-h-[560px] overflow-hidden">
             {/* Simulated widget preview */}
             <div className="absolute bottom-5 right-5 flex flex-col items-end gap-3">

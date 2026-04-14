@@ -54,8 +54,8 @@ export default function WhatsAppCampaignsPage() {
   }
 
   const sendCampaign = async () => {
-    if (!messageText.trim()) { toast.error('Message is required'); return }
-    if (filteredContacts.length === 0) { toast.error('No contacts match filters'); return }
+    if (!messageText.trim()) { toast.error(t('wa_campaigns.message_required')); return }
+    if (filteredContacts.length === 0) { toast.error(t('wa_campaigns.no_contacts_match')); return }
     setSending(true)
 
     let sentCount = 0, failedCount = 0
@@ -85,7 +85,7 @@ export default function WhatsAppCampaignsPage() {
     })
 
     setSent({ sent: sentCount, failed: failedCount })
-    toast.success(`Sent to ${sentCount} contacts!`)
+    toast.success(`${t('wa_campaigns.sent_to_n')} ${sentCount} ${t('wa_campaigns.contacts_suffix')}!`)
     setSending(false)
   }
 
@@ -94,7 +94,7 @@ export default function WhatsAppCampaignsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('pages.wa_campaigns')}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">{contacts.length} contacts with phone number</p>
+          <p className="text-sm text-surface-500 mt-0.5">{contacts.length} {t('wa_campaigns.contacts_with_phone')}</p>
         </div>
       </div>
 
@@ -103,15 +103,15 @@ export default function WhatsAppCampaignsPage() {
           <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <MessageCircle className="w-7 h-7 text-emerald-500" />
           </div>
-          <h2 className="text-xl font-bold text-surface-900 mb-2">Campaign sent!</h2>
-          <p className="text-sm text-surface-500">{sent.sent} messages delivered, {sent.failed} failed</p>
-          <button onClick={() => { setSent(null); setBlocks([]) }} className="btn-primary btn-sm mt-4">New campaign</button>
+          <h2 className="text-xl font-bold text-surface-900 mb-2">{t('wa_campaigns.campaign_sent')}</h2>
+          <p className="text-sm text-surface-500">{sent.sent} {t('wa_campaigns.messages_delivered')} {sent.failed} {t('wa_campaigns.failed')}</p>
+          <button onClick={() => { setSent(null); setBlocks([]) }} className="btn-primary btn-sm mt-4">{t('wa_campaigns.new_campaign')}</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <div className="card p-4">
-              <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Quick templates</p>
+              <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">{t('wa_campaigns.quick_templates')}</p>
               <div className="flex gap-2 flex-wrap">
                 {WHATSAPP_TEMPLATES.map(tpl => (
                   <button key={tpl.name} onClick={() => applyTemplate(tpl)} className="btn-secondary btn-sm text-xs">{tpl.name}</button>
@@ -120,16 +120,16 @@ export default function WhatsAppCampaignsPage() {
             </div>
 
             <div className="card p-4">
-              <label className="label">Message</label>
+              <label className="label">{t('wa_campaigns.message')}</label>
               <VisualMessageEditor type="whatsapp" value={blocks} onChange={setBlocks} />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-[10px] text-surface-400">Variables: {'{{name}}, {{first_name}}'} · Max 200 recipients</p>
-                <p className="text-[10px] font-semibold text-surface-400">{messageText.length} chars</p>
+                <p className="text-[10px] text-surface-400">{t('wa_campaigns.variables_max')}</p>
+                <p className="text-[10px] font-semibold text-surface-400">{messageText.length} {t('wa_campaigns.chars')}</p>
               </div>
             </div>
 
             <div className="card p-4">
-              <p className="label">Preview</p>
+              <p className="label">{t('wa_campaigns.preview')}</p>
               <WhatsAppPreview text={previewText} />
             </div>
           </div>
@@ -138,21 +138,21 @@ export default function WhatsAppCampaignsPage() {
             <div className="card p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Filter className="w-4 h-4 text-surface-400" />
-                <p className="text-sm font-semibold text-surface-900">Audience</p>
+                <p className="text-sm font-semibold text-surface-900">{t('wa_campaigns.audience')}</p>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className="label">Engagement</label>
+                  <label className="label">{t('wa_campaigns.engagement')}</label>
                   <select className="input" value={filterScore} onChange={e => setFilterScore(e.target.value)}>
-                    <option value="all">All</option>
-                    <option value="hot">Hot only</option>
-                    <option value="warm">Warm only</option>
-                    <option value="cold">Cold only</option>
+                    <option value="all">{t('wa_campaigns.all')}</option>
+                    <option value="hot">{t('wa_campaigns.hot_only')}</option>
+                    <option value="warm">{t('wa_campaigns.warm_only')}</option>
+                    <option value="cold">{t('wa_campaigns.cold_only')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label">Tags</label>
-                  <input className="input" value={filterTags} onChange={e => setFilterTags(e.target.value)} placeholder="e.g. vip, newsletter" />
+                  <label className="label">{t('wa_campaigns.tags')}</label>
+                  <input className="input" value={filterTags} onChange={e => setFilterTags(e.target.value)} placeholder={t('wa_campaigns.tags_placeholder')} />
                 </div>
               </div>
             </div>
@@ -160,15 +160,15 @@ export default function WhatsAppCampaignsPage() {
             <div className="card p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-surface-400" />
-                <p className="text-sm font-semibold text-surface-900">Recipients</p>
+                <p className="text-sm font-semibold text-surface-900">{t('wa_campaigns.recipients')}</p>
               </div>
               <p className="text-3xl font-extrabold text-surface-900">{Math.min(filteredContacts.length, 200)}</p>
-              <p className="text-xs text-surface-400">contacts with phone number</p>
+              <p className="text-xs text-surface-400">{t('wa_campaigns.contacts_with_phone')}</p>
             </div>
 
             <button onClick={sendCampaign} disabled={sending || !messageText.trim() || filteredContacts.length === 0}
               className="btn-primary w-full py-3">
-              {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><MessageCircle className="w-4 h-4" /> {t('action.send')} WhatsApp</>}
+              {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><MessageCircle className="w-4 h-4" /> {t('wa_campaigns.send_whatsapp')}</>}
             </button>
           </div>
         </div>

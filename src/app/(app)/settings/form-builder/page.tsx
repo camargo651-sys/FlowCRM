@@ -522,19 +522,20 @@ function VariablePickerModal({
   onAdd: (variable: VariableDef) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const variables = VARIABLE_MAP[entity] || []
   if (variables.length === 0) {
     return (
       <div className="modal-overlay">
         <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up">
           <div className="flex items-center justify-between p-5 border-b border-surface-100">
-            <h2 className="font-semibold text-surface-900">Add Variable</h2>
+            <h2 className="font-semibold text-surface-900">{t('settings.fb.variable_picker_title')}</h2>
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
           </div>
           <div className="p-8 text-center">
             <Variable className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-            <p className="text-sm text-surface-500">No pre-defined variables available for <strong>{entity}</strong> entities.</p>
-            <p className="text-xs text-surface-400 mt-1">Use the Formula field type to create custom computed fields.</p>
+            <p className="text-sm text-surface-500">{t('settings.fb.no_variables_available')}</p>
+            <p className="text-xs text-surface-400 mt-1">{t('settings.fb.no_variables_hint')}</p>
           </div>
         </div>
       </div>
@@ -546,8 +547,8 @@ function VariablePickerModal({
       <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-lg animate-slide-up max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b border-surface-100 flex-shrink-0">
           <div>
-            <h2 className="font-semibold text-surface-900">Add Variable</h2>
-            <p className="text-xs text-surface-400 mt-0.5">Pick a pre-defined computed field for {entity}s</p>
+            <h2 className="font-semibold text-surface-900">{t('settings.fb.variable_picker_title')}</h2>
+            <p className="text-xs text-surface-400 mt-0.5">{t('settings.fb.variable_picker_desc')}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
         </div>
@@ -577,9 +578,9 @@ function VariablePickerModal({
                     <p className="text-[10px] text-surface-400">{v.description}</p>
                   </div>
                   {alreadyAdded ? (
-                    <span className="text-[10px] px-2 py-0.5 bg-surface-100 rounded text-surface-400 font-medium">Added</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-surface-100 rounded text-surface-400 font-medium">{t('settings.fb.added_badge')}</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 bg-brand-50 rounded text-brand-600 font-medium">+ Add</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-brand-50 rounded text-brand-600 font-medium">{t('settings.fb.add_badge')}</span>
                   )}
                 </div>
               )
@@ -663,7 +664,7 @@ export default function FormBuilderPage() {
       time_filter: null, status_filter: null, relationship: SOURCE_RELATIONSHIPS['deals']?.[entity] || 'contact_id',
     })
     setShowNew(false)
-    toast.success('Field added')
+    toast.success(t('settings.fb.field_added'))
     load()
   }
 
@@ -678,14 +679,14 @@ export default function FormBuilderPage() {
       required: false,
       order_index: entityFields.length,
     })
-    toast.success(`Variable "${variable.label}" added`)
+    toast.success(t('settings.fb.variable_added'))
     load()
   }
 
   const deleteField = async (id: string) => {
-    if (!confirm('Delete this field? Data in this field will be lost.')) return
+    if (!confirm(t('settings.fb.delete_confirm'))) return
     await supabase.from('custom_field_defs').delete().eq('id', id)
-    toast.success('Field deleted')
+    toast.success(t('settings.fb.field_deleted'))
     load()
   }
 
@@ -725,7 +726,7 @@ export default function FormBuilderPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('pages.form_builder')}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">Customize the fields on your entity forms</p>
+          <p className="text-sm text-surface-500 mt-0.5">{t('settings.fb.desc')}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Mobile preview toggle */}
@@ -734,12 +735,12 @@ export default function FormBuilderPage() {
             className="btn-secondary btn-sm lg:hidden"
           >
             {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            {showPreview ? 'Hide Preview' : 'Show Preview'}
+            {showPreview ? t('settings.fb.hide_preview') : t('settings.fb.show_preview')}
           </button>
           <button onClick={() => setShowVariablePicker(true)} className="btn-secondary btn-sm">
-            <Variable className="w-3.5 h-3.5" /> Add Variable
+            <Variable className="w-3.5 h-3.5" /> {t('settings.fb.add_variable')}
           </button>
-          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Field</button>
+          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> {t('settings.fb.add_field')}</button>
         </div>
       </div>
 
@@ -760,21 +761,18 @@ export default function FormBuilderPage() {
         <div className="w-full lg:w-[60%]">
           {/* Default fields info */}
           <div className="card p-4 mb-4 bg-surface-50 border-surface-200">
-            <p className="text-xs text-surface-500">
-              <strong>Built-in fields:</strong> Name, Email, Phone, Company, Tags, Notes — these are always present.
-              Below are your <strong>custom fields</strong> that appear in the {entity} form.
-            </p>
+            <p className="text-xs text-surface-500">{t('settings.fb.builtin_note')}</p>
           </div>
 
           {/* Fields list */}
           {entityFields.length === 0 ? (
             <div className="card text-center py-12">
               <Type className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-              <p className="text-surface-600 font-medium mb-1">No custom fields for {entity}s</p>
-              <p className="text-xs text-surface-400 mb-4">Add fields to customize your {entity} forms</p>
+              <p className="text-surface-600 font-medium mb-1">{t('settings.fb.no_custom_fields')}</p>
+              <p className="text-xs text-surface-400 mb-4">{t('settings.fb.no_custom_fields_desc')}</p>
               <div className="flex items-center justify-center gap-2">
-                <button onClick={() => setShowVariablePicker(true)} className="btn-secondary btn-sm"><Variable className="w-3.5 h-3.5" /> Add Variable</button>
-                <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Field</button>
+                <button onClick={() => setShowVariablePicker(true)} className="btn-secondary btn-sm"><Variable className="w-3.5 h-3.5" /> {t('settings.fb.add_variable')}</button>
+                <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> {t('settings.fb.add_field')}</button>
               </div>
             </div>
           ) : (
@@ -812,7 +810,7 @@ export default function FormBuilderPage() {
                     {!isFormula && (
                       <button onClick={() => toggleRequired(field.id, field.required)}
                         className="text-[10px] text-surface-400 hover:text-brand-600">
-                        {field.required ? 'Optional' : 'Required'}
+                        {field.required ? t('settings.fb.optional') : t('settings.fb.required')}
                       </button>
                     )}
                     <button onClick={() => deleteField(field.id)} className="text-surface-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -842,12 +840,12 @@ export default function FormBuilderPage() {
         <div className="modal-overlay">
           <div className="bg-white rounded-2xl shadow-card-hover w-full max-w-md animate-slide-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-surface-100">
-              <h2 className="font-semibold text-surface-900">New Custom Field</h2>
+              <h2 className="font-semibold text-surface-900">{t('settings.fb.new_custom_field')}</h2>
               <button onClick={() => setShowNew(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100"><X className="w-4 h-4 text-surface-500" /></button>
             </div>
             <div className="p-5 space-y-4">
-              <div><label className="label">Field Label *</label><input className="input" value={newField.label} onChange={e => setNewField(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Industry, Budget, Region" /></div>
-              <div><label className="label">Field Type</label>
+              <div><label className="label">{t('settings.fb.field_label')}</label><input className="input" value={newField.label} onChange={e => setNewField(f => ({ ...f, label: e.target.value }))} placeholder={t('settings.fb.field_label_placeholder')} /></div>
+              <div><label className="label">{t('settings.fb.field_type')}</label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {FIELD_TYPES.map(t => (
                     <button key={t.value} onClick={() => setNewField(f => ({ ...f, type: t.value }))}
@@ -861,7 +859,7 @@ export default function FormBuilderPage() {
                 </div>
               </div>
               {newField.type === 'select' && (
-                <div><label className="label">Options (comma separated)</label><input className="input" value={newField.options} onChange={e => setNewField(f => ({ ...f, options: e.target.value }))} placeholder="Option 1, Option 2, Option 3" /></div>
+                <div><label className="label">{t('settings.fb.options_csv')}</label><input className="input" value={newField.options} onChange={e => setNewField(f => ({ ...f, options: e.target.value }))} placeholder={t('settings.fb.options_placeholder')} /></div>
               )}
               {newField.type === 'formula' && (
                 <FormulaBuilderUI
@@ -874,12 +872,12 @@ export default function FormBuilderPage() {
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="rounded border-surface-300 text-brand-600"
                     checked={newField.required} onChange={e => setNewField(f => ({ ...f, required: e.target.checked }))} />
-                  <span className="text-xs text-surface-600">Required field</span>
+                  <span className="text-xs text-surface-600">{t('settings.fb.required_field')}</span>
                 </label>
               )}
               <div className="flex gap-2">
-                <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={addField} disabled={!newField.label || (newField.type === 'formula' && !formulaConfig.relationship)} className="btn-primary flex-1">Add Field</button>
+                <button onClick={() => setShowNew(false)} className="btn-secondary flex-1">{t('settings.fb.cancel')}</button>
+                <button onClick={addField} disabled={!newField.label || (newField.type === 'formula' && !formulaConfig.relationship)} className="btn-primary flex-1">{t('settings.fb.add_field')}</button>
               </div>
             </div>
           </div>

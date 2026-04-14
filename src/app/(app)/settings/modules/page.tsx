@@ -80,18 +80,18 @@ export default function ModulesPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('pages.modules')}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">{enabledCount} of {MODULES.length} modules enabled</p>
+          <p className="text-sm text-surface-500 mt-0.5">{enabledCount} / {MODULES.length} {t('settings.mod.modules_enabled')}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={enableAll} className="btn-secondary btn-sm">Enable All</button>
+          <button onClick={enableAll} className="btn-secondary btn-sm">{t('settings.mod.enable_all')}</button>
           <button onClick={saveModules} disabled={saving} className="btn-primary btn-sm">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saved ? 'Saved!' : t('action.save')}
+            {saved ? t('settings.mod.saved_excl') : t('action.save')}
           </button>
         </div>
       </div>
 
-      <p className="text-xs text-surface-500 mb-6">Choose which modules appear in the sidebar. You can enable or disable them anytime. CRM is always active.</p>
+      <p className="text-xs text-surface-500 mb-6">{t('settings.mod.desc')}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {MODULES.map(mod => {
@@ -109,7 +109,7 @@ export default function ModulesPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-surface-900">{mod.label}</h3>
-                    {isLocked && <span className="text-[9px] px-1.5 py-0.5 bg-surface-200 text-surface-500 rounded-full font-semibold">Required</span>}
+                    {isLocked && <span className="text-[9px] px-1.5 py-0.5 bg-surface-200 text-surface-500 rounded-full font-semibold">{t('settings.mod.required_badge')}</span>}
                   </div>
                   <p className="text-[11px] text-surface-500 mt-0.5">{mod.desc}</p>
                 </div>

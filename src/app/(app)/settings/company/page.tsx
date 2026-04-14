@@ -76,18 +76,18 @@ export default function CompanySettingsPage() {
 
   const [resetting, setResetting] = useState(false)
   const resetDatabase = async () => {
-    const input = prompt('Type RESET to confirm. This will delete ALL data in your workspace.')
+    const input = prompt(t('settings.co.reset_confirm_prompt'))
     if (input !== 'RESET') return
-    const emailConfirm = prompt('Type your email address to confirm this irreversible action.')
+    const emailConfirm = prompt(t('settings.co.reset_email_prompt'))
     if (!emailConfirm) return
     setResetting(true)
     const res = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'RESET', confirmEmail: emailConfirm }) })
     if (res.ok) {
-      toast.success('Database reset complete. Reloading...')
+      toast.success(t('settings.co.reset_complete'))
       setTimeout(() => { window.location.href = '/dashboard' }, 1000)
     } else {
       const data = await res.json().catch(() => ({}))
-      toast.error(data.error || 'Reset failed')
+      toast.error(data.error || t('settings.co.reset_failed'))
     }
     setResetting(false)
   }
@@ -123,14 +123,14 @@ export default function CompanySettingsPage() {
   return (
     <div className="animate-fade-in max-w-4xl">
       <div className="page-header">
-        <div><h1 className="page-title">{t('pages.company')}</h1><p className="text-sm text-surface-500 mt-0.5">Configure your business details</p></div>
+        <div><h1 className="page-title">{t('pages.company')}</h1><p className="text-sm text-surface-500 mt-0.5">{t('settings.co.desc')}</p></div>
       </div>
 
       <div className="segmented-control mb-8">
-        {[{ id: 'company', label: 'Company Info' }, { id: 'billing', label: 'Billing & Tax' }, { id: 'api', label: 'API Keys' }, { id: 'danger', label: 'Danger Zone' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as 'company'|'billing'|'api'|'danger')}
-            className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
-            {t.label}
+        {[{ id: 'company', label: t('settings.co.company_info') }, { id: 'billing', label: t('settings.co.billing_tax') }, { id: 'api', label: t('settings.co.api_keys') }, { id: 'danger', label: t('settings.co.danger_zone') }].map(tab2 => (
+          <button key={tab2.id} onClick={() => setTab(tab2.id as 'company'|'billing'|'api'|'danger')}
+            className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === tab2.id ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500')}>
+            {tab2.label}
           </button>
         ))}
       </div>
@@ -139,41 +139,41 @@ export default function CompanySettingsPage() {
       {tab === 'company' && (
         <div className="space-y-6">
           <div className="card p-6">
-            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><Building2 className="w-4 h-4" /> Business Information</h3>
+            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><Building2 className="w-4 h-4" /> {t('settings.co.business_info')}</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">Company Name</label><input className="input" value={form.company_name || ''} onChange={e => set('company_name', e.target.value)} /></div>
-                <div><label className="label">Tax ID / NIT / RUT</label><input className="input" value={form.tax_id || ''} onChange={e => set('tax_id', e.target.value)} placeholder="e.g. 900.123.456-7" /></div>
+                <div><label className="label">{t('settings.co.company_name')}</label><input className="input" value={form.company_name || ''} onChange={e => set('company_name', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.tax_id')}</label><input className="input" value={form.tax_id || ''} onChange={e => set('tax_id', e.target.value)} placeholder="e.g. 900.123.456-7" /></div>
               </div>
-              <div><label className="label">Address</label><input className="input" value={form.address || ''} onChange={e => set('address', e.target.value)} /></div>
+              <div><label className="label">{t('settings.co.address')}</label><input className="input" value={form.address || ''} onChange={e => set('address', e.target.value)} /></div>
               <div className="grid grid-cols-4 gap-4">
-                <div><label className="label">City</label><input className="input" value={form.city || ''} onChange={e => set('city', e.target.value)} /></div>
-                <div><label className="label">State</label><input className="input" value={form.state || ''} onChange={e => set('state', e.target.value)} /></div>
-                <div><label className="label">Country</label><input className="input" value={form.country || ''} onChange={e => set('country', e.target.value)} /></div>
-                <div><label className="label">Zip Code</label><input className="input" value={form.zip_code || ''} onChange={e => set('zip_code', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.city')}</label><input className="input" value={form.city || ''} onChange={e => set('city', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.state')}</label><input className="input" value={form.state || ''} onChange={e => set('state', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.country')}</label><input className="input" value={form.country || ''} onChange={e => set('country', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.zip')}</label><input className="input" value={form.zip_code || ''} onChange={e => set('zip_code', e.target.value)} /></div>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <div><label className="label">Phone</label><input className="input" value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></div>
-                <div><label className="label">Email</label><input className="input" type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} /></div>
-                <div><label className="label">Website</label><input className="input" value={form.website || ''} onChange={e => set('website', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.phone')}</label><input className="input" value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.email')}</label><input className="input" type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} /></div>
+                <div><label className="label">{t('settings.co.website')}</label><input className="input" value={form.website || ''} onChange={e => set('website', e.target.value)} /></div>
               </div>
             </div>
           </div>
 
           <div className="card p-6">
-            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><Globe className="w-4 h-4" /> Regional Settings</h3>
+            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><Globe className="w-4 h-4" /> {t('settings.co.regional')}</h3>
             <div className="grid grid-cols-3 gap-4">
-              <div><label className="label">Timezone</label>
+              <div><label className="label">{t('settings.co.timezone')}</label>
                 <select className="input" value={form.timezone || ''} onChange={e => set('timezone', e.target.value)}>
                   {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
                 </select>
               </div>
-              <div><label className="label">Date Format</label>
+              <div><label className="label">{t('settings.co.date_format')}</label>
                 <select className="input" value={form.date_format || ''} onChange={e => set('date_format', e.target.value)}>
                   {DATE_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
-              <div><label className="label">Fiscal Year Start</label>
+              <div><label className="label">{t('settings.co.fiscal_year_start')}</label>
                 <select className="input" value={form.fiscal_year_start || 1} onChange={e => set('fiscal_year_start', e.target.value)}>
                   {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
                     <option key={i} value={i + 1}>{m}</option>
@@ -185,7 +185,7 @@ export default function CompanySettingsPage() {
 
           <button onClick={saveSettings} disabled={saving} className="btn-primary">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saved ? 'Saved!' : 'Save Settings'}
+            {saved ? t('settings.co.saved_excl') : t('settings.co.save_settings')}
           </button>
         </div>
       )}
@@ -194,35 +194,35 @@ export default function CompanySettingsPage() {
       {tab === 'billing' && (
         <div className="space-y-6">
           <div className="card p-6">
-            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><DollarSign className="w-4 h-4" /> Currency & Tax</h3>
+            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><DollarSign className="w-4 h-4" /> {t('settings.co.currency_tax')}</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Default Currency</label>
+              <div><label className="label">{t('settings.co.default_currency')}</label>
                 <select className="input" value={form.default_currency || 'USD'} onChange={e => set('default_currency', e.target.value)}>
                   {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div><label className="label">Default Tax Rate (%)</label>
+              <div><label className="label">{t('settings.co.default_tax_rate')}</label>
                 <input className="input" type="number" step="0.01" value={form.default_tax_rate || 0} onChange={e => set('default_tax_rate', e.target.value)} />
               </div>
             </div>
           </div>
 
           <div className="card p-6">
-            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><FileText className="w-4 h-4" /> Document Prefixes</h3>
+            <h3 className="font-semibold text-surface-900 mb-4 flex items-center gap-2"><FileText className="w-4 h-4" /> {t('settings.co.doc_prefixes')}</h3>
             <div className="grid grid-cols-3 gap-4">
-              <div><label className="label">Invoice Prefix</label><input className="input" value={form.invoice_prefix || 'INV'} onChange={e => set('invoice_prefix', e.target.value)} /></div>
-              <div><label className="label">Quote Prefix</label><input className="input" value={form.quote_prefix || 'Q'} onChange={e => set('quote_prefix', e.target.value)} /></div>
-              <div><label className="label">PO Prefix</label><input className="input" value={form.po_prefix || 'PO'} onChange={e => set('po_prefix', e.target.value)} /></div>
+              <div><label className="label">{t('settings.co.invoice_prefix')}</label><input className="input" value={form.invoice_prefix || 'INV'} onChange={e => set('invoice_prefix', e.target.value)} /></div>
+              <div><label className="label">{t('settings.co.quote_prefix')}</label><input className="input" value={form.quote_prefix || 'Q'} onChange={e => set('quote_prefix', e.target.value)} /></div>
+              <div><label className="label">{t('settings.co.po_prefix')}</label><input className="input" value={form.po_prefix || 'PO'} onChange={e => set('po_prefix', e.target.value)} /></div>
             </div>
           </div>
 
           <div className="card p-6">
-            <h3 className="font-semibold text-surface-900 mb-4">Default Invoice Text</h3>
+            <h3 className="font-semibold text-surface-900 mb-4">{t('settings.co.default_invoice_text')}</h3>
             <div className="space-y-4">
-              <div><label className="label">Default Notes (appears on all invoices)</label>
+              <div><label className="label">{t('settings.co.default_notes')}</label>
                 <textarea className="input resize-none" rows={2} value={form.invoice_notes || ''} onChange={e => set('invoice_notes', e.target.value)} placeholder="e.g. Thank you for your business!" />
               </div>
-              <div><label className="label">Default Terms & Conditions</label>
+              <div><label className="label">{t('settings.co.default_terms')}</label>
                 <textarea className="input resize-none" rows={3} value={form.invoice_terms || ''} onChange={e => set('invoice_terms', e.target.value)} placeholder="e.g. Payment due within 30 days..." />
               </div>
             </div>
@@ -230,7 +230,7 @@ export default function CompanySettingsPage() {
 
           <button onClick={saveSettings} disabled={saving} className="btn-primary">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saved ? 'Saved!' : 'Save Settings'}
+            {saved ? t('settings.co.saved_excl') : t('settings.co.save_settings')}
           </button>
         </div>
       )}
@@ -239,12 +239,12 @@ export default function CompanySettingsPage() {
       {tab === 'api' && (
         <div className="space-y-6">
           <div className="card p-6">
-            <h3 className="font-semibold text-surface-900 mb-2 flex items-center gap-2"><Key className="w-4 h-4" /> API Keys</h3>
-            <p className="text-xs text-surface-500 mb-4">Use API keys to access the Tracktio REST API (v1) from external applications.</p>
+            <h3 className="font-semibold text-surface-900 mb-2 flex items-center gap-2"><Key className="w-4 h-4" /> {t('settings.co.api_keys')}</h3>
+            <p className="text-xs text-surface-500 mb-4">{t('settings.co.api_keys_desc')}</p>
 
             {generatedKey && (
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl mb-4">
-                <p className="text-xs font-semibold text-emerald-800 mb-1">New API key created — copy it now (won't be shown again):</p>
+                <p className="text-xs font-semibold text-emerald-800 mb-1">{t('settings.co.new_key_created')}</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs bg-white p-2 rounded-lg font-mono text-surface-800 border border-emerald-200 select-all">{generatedKey}</code>
                   <button onClick={() => { navigator.clipboard.writeText(generatedKey); }} className="btn-secondary btn-sm"><Copy className="w-3.5 h-3.5" /></button>
@@ -253,8 +253,8 @@ export default function CompanySettingsPage() {
             )}
 
             <div className="flex gap-2 mb-4">
-              <input className="input flex-1" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} placeholder="Key name (e.g. Zapier, Mobile App)" />
-              <button onClick={createApiKey} disabled={!newKeyName} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Create Key</button>
+              <input className="input flex-1" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} placeholder={t('settings.co.key_name_placeholder')} />
+              <button onClick={createApiKey} disabled={!newKeyName} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> {t('settings.co.create_key')}</button>
             </div>
 
             {apiKeys.length > 0 ? (
@@ -266,20 +266,20 @@ export default function CompanySettingsPage() {
                       <p className="text-[10px] text-surface-400 font-mono">{key.key_prefix} · Created {new Date(key.created_at).toLocaleDateString()}{key.last_used_at ? ` · Last used ${new Date(key.last_used_at).toLocaleDateString()}` : ''}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={cn('badge text-[10px]', key.active ? 'badge-green' : 'badge-red')}>{key.active ? 'Active' : 'Revoked'}</span>
+                      <span className={cn('badge text-[10px]', key.active ? 'badge-green' : 'badge-red')}>{key.active ? t('settings.co.active') : t('settings.co.revoked')}</span>
                       {key.active && <button onClick={() => revokeKey(key.id)} className="text-surface-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-surface-400 text-center py-6">No API keys yet</p>
+              <p className="text-xs text-surface-400 text-center py-6">{t('settings.co.no_keys')}</p>
             )}
           </div>
 
           <div className="card p-6">
-            <h3 className="font-semibold text-surface-900 mb-2">API Documentation</h3>
-            <p className="text-xs text-surface-500 mb-3">All endpoints support pagination, search, and filtering.</p>
+            <h3 className="font-semibold text-surface-900 mb-2">{t('settings.co.api_docs')}</h3>
+            <p className="text-xs text-surface-500 mb-3">{t('settings.co.api_docs_desc')}</p>
             <div className="space-y-1 font-mono text-xs">
               {[
                 'GET /api/v1/contacts', 'GET /api/v1/deals', 'GET /api/v1/products',
@@ -302,15 +302,12 @@ export default function CompanySettingsPage() {
       {tab === 'danger' && (
         <div className="space-y-6">
           <div className="card p-6 border-red-200">
-            <h3 className="font-semibold text-red-700 mb-2">Reset Database</h3>
-            <p className="text-xs text-surface-500 mb-4">
-              This will permanently delete ALL data in your workspace: contacts, deals, products, invoices, employees, and everything else.
-              Your account and workspace settings will be preserved. You'll go through onboarding again.
-            </p>
-            <p className="text-xs text-red-500 font-semibold mb-4">This action cannot be undone.</p>
+            <h3 className="font-semibold text-red-700 mb-2">{t('settings.co.reset_db')}</h3>
+            <p className="text-xs text-surface-500 mb-4">{t('settings.co.reset_db_desc')}</p>
+            <p className="text-xs text-red-500 font-semibold mb-4">{t('settings.co.cannot_undo')}</p>
             <button onClick={resetDatabase} disabled={resetting}
               className="px-6 py-2.5 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors text-sm">
-              {resetting ? 'Resetting...' : 'Reset All Data'}
+              {resetting ? t('settings.co.resetting') : t('settings.co.reset_all')}
             </button>
           </div>
         </div>

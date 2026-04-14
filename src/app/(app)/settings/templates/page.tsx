@@ -728,7 +728,7 @@ export default function TemplatesPage() {
     }
     setForm({ name: '', type: 'invoice', html_content: '', blocks: [] })
     setShowNew(false); setEditing(null); setSaving(false)
-    toast.success('Template saved')
+    toast.success(t('settings.tpl.saved'))
     load()
   }
 
@@ -741,9 +741,9 @@ export default function TemplatesPage() {
   }
 
   const deleteTemplate = async (id: string) => {
-    if (!confirm('Delete this template?')) return
+    if (!confirm(t('settings.tpl.delete_confirm'))) return
     await supabase.from('document_templates').delete().eq('id', id)
-    toast.success('Template deleted')
+    toast.success(t('settings.tpl.deleted'))
     load()
   }
 
@@ -758,7 +758,7 @@ export default function TemplatesPage() {
       variables: vars,
       metadata: { blocks: lt.blocks },
     })
-    toast.success(`"${lt.name}" installed`)
+    toast.success(t('settings.tpl.installed_msg'))
     setInstalledMessage(lt.name)
     setTimeout(() => setInstalledMessage(null), 2000)
     load()
@@ -807,7 +807,7 @@ export default function TemplatesPage() {
     // Store in sessionStorage for the email composer to pick up
     sessionStorage.setItem('template_email_body', rendered)
     sessionStorage.setItem('template_email_subject', templateName)
-    toast.success('Template copied. Open a contact to send via email.')
+    toast.success(t('settings.tpl.copied_msg'))
   }
 
   // WhatsApp
@@ -827,11 +827,11 @@ export default function TemplatesPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('pages.templates')}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">{templates.length} templates</p>
+          <p className="text-sm text-surface-500 mt-0.5">{templates.length} {t('settings.tpl.count_suffix')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowLibrary(true)} className="btn-secondary btn-sm">
-            <Sparkles className="w-3.5 h-3.5" /> Template Library
+            <Sparkles className="w-3.5 h-3.5" /> {t('settings.tpl.library_btn')}
           </button>
           <button onClick={() => {
             setEditing(null)
@@ -844,7 +844,7 @@ export default function TemplatesPage() {
             setEditorTab('visual')
             setShowNew(true)
           }} className="btn-primary btn-sm">
-            <Plus className="w-3.5 h-3.5" /> New Template
+            <Plus className="w-3.5 h-3.5" /> {t('settings.tpl.new_template')}
           </button>
         </div>
       </div>
@@ -853,34 +853,34 @@ export default function TemplatesPage() {
       {templates.length === 0 ? (
         <div className="card text-center py-16">
           <FileText className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-          <p className="text-surface-500">No templates yet</p>
-          <p className="text-xs text-surface-400 mt-1">Create templates or install from the library</p>
+          <p className="text-surface-500">{t('settings.tpl.empty')}</p>
+          <p className="text-xs text-surface-400 mt-1">{t('settings.tpl.empty_hint')}</p>
           <button onClick={() => setShowLibrary(true)} className="btn-primary btn-sm mt-4">
-            <Sparkles className="w-3.5 h-3.5" /> Browse Template Library
+            <Sparkles className="w-3.5 h-3.5" /> {t('settings.tpl.browse_library')}
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {templates.map(t => (
-            <div key={t.id} className="card p-4 hover:shadow-card-hover transition-all group">
+          {templates.map(tpl => (
+            <div key={tpl.id} className="card p-4 hover:shadow-card-hover transition-all group">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h3 className="text-sm font-bold text-surface-900">{t.name}</h3>
-                  <p className="text-[10px] text-surface-400 capitalize">{t.type}</p>
+                  <h3 className="text-sm font-bold text-surface-900">{tpl.name}</h3>
+                  <p className="text-[10px] text-surface-400 capitalize">{tpl.type}</p>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openPrintPreview(t.html_content)} title="Generate PDF" className="text-surface-300 hover:text-brand-600"><Printer className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => openEmailWithTemplate(t.html_content, t.name)} title="Send by Email" className="text-surface-300 hover:text-brand-600"><Mail className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => openWhatsAppWithTemplate(t.name)} title="Send by WhatsApp" className="text-surface-300 hover:text-green-600"><MessageCircle className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => editTemplate(t)} title="Edit" className="text-surface-300 hover:text-brand-600"><FileText className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => deleteTemplate(t.id)} title="Delete" className="text-surface-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => openPrintPreview(tpl.html_content)} title={t('settings.tpl.generate_pdf')} className="text-surface-300 hover:text-brand-600"><Printer className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => openEmailWithTemplate(tpl.html_content, tpl.name)} title={t('settings.tpl.email')} className="text-surface-300 hover:text-brand-600"><Mail className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => openWhatsAppWithTemplate(tpl.name)} title={t('settings.tpl.whatsapp')} className="text-surface-300 hover:text-green-600"><MessageCircle className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => editTemplate(tpl)} title={t('settings.tpl.edit_template')} className="text-surface-300 hover:text-brand-600"><FileText className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => deleteTemplate(tpl.id)} title={t('common.delete')} className="text-surface-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
-              <div className="h-28 bg-surface-50 rounded-lg overflow-hidden text-[6px] p-2 leading-tight text-surface-400" dangerouslySetInnerHTML={{ __html: sanitizeHTML(t.html_content.slice(0, 600)) }} />
+              <div className="h-28 bg-surface-50 rounded-lg overflow-hidden text-[6px] p-2 leading-tight text-surface-400" dangerouslySetInnerHTML={{ __html: sanitizeHTML(tpl.html_content.slice(0, 600)) }} />
               <div className="flex items-center justify-between mt-2">
-                {t.variables?.length > 0 && <p className="text-[9px] text-surface-300">{t.variables.length} variables</p>}
-                <button onClick={() => openPrintPreview(t.html_content)} className="text-[10px] text-brand-600 hover:text-brand-700 font-medium">
-                  Use Template
+                {tpl.variables?.length > 0 && <p className="text-[9px] text-surface-300">{tpl.variables.length} {t('settings.tpl.variables_count')}</p>}
+                <button onClick={() => openPrintPreview(tpl.html_content)} className="text-[10px] text-brand-600 hover:text-brand-700 font-medium">
+                  {t('settings.tpl.use_template')}
                 </button>
               </div>
             </div>
@@ -894,8 +894,8 @@ export default function TemplatesPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-4 border-b border-surface-100">
               <div>
-                <h2 className="font-semibold text-surface-900">Template Library</h2>
-                <p className="text-xs text-surface-400 mt-0.5">10 professional templates ready to use</p>
+                <h2 className="font-semibold text-surface-900">{t('settings.tpl.library_title')}</h2>
+                <p className="text-xs text-surface-400 mt-0.5">{t('settings.tpl.library_desc')}</p>
               </div>
               <button onClick={() => setShowLibrary(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100">
                 <X className="w-4 h-4 text-surface-500" />
@@ -905,7 +905,7 @@ export default function TemplatesPage() {
             {/* Category filter */}
             <div className="flex gap-2 p-4 border-b border-surface-100 overflow-x-auto">
               <button onClick={() => setLibraryFilter('all')} className={cn('text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition-colors', libraryFilter === 'all' ? 'bg-brand-600 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}>
-                All Templates
+                {t('settings.tpl.all_templates')}
               </button>
               {categories.map(cat => (
                 <button key={cat} onClick={() => setLibraryFilter(cat)} className={cn('text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition-colors', libraryFilter === cat ? 'bg-brand-600 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}>
@@ -916,7 +916,7 @@ export default function TemplatesPage() {
 
             <div className="flex-1 overflow-y-auto p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {TEMPLATE_LIBRARY.filter(t => libraryFilter === 'all' || t.category === libraryFilter).map((lt, i) => (
+                {TEMPLATE_LIBRARY.filter(lib => libraryFilter === 'all' || lib.category === libraryFilter).map((lt, i) => (
                   <div key={i} className="border border-surface-200 rounded-xl p-4 hover:border-brand-300 hover:shadow-sm transition-all">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -927,14 +927,14 @@ export default function TemplatesPage() {
                         onClick={() => installLibraryTemplate(lt)}
                         className={cn('btn-sm text-xs', installedMessage === lt.name ? 'btn-secondary text-green-600' : 'btn-primary')}
                       >
-                        {installedMessage === lt.name ? <><Check className="w-3 h-3" /> Installed</> : <><Download className="w-3 h-3" /> Install</>}
+                        {installedMessage === lt.name ? <><Check className="w-3 h-3" /> {t('settings.tpl.installed')}</> : <><Download className="w-3 h-3" /> {t('settings.tpl.install')}</>}
                       </button>
                     </div>
                     <p className="text-xs text-surface-500 mb-3">{lt.description}</p>
                     <div className="h-24 bg-surface-50 rounded-lg overflow-hidden text-[5px] p-2 leading-tight text-surface-400" dangerouslySetInnerHTML={{ __html: sanitizeHTML(lt.html_content.slice(0, 500)) }} />
                     <div className="flex gap-2 mt-3">
                       <button onClick={() => openPrintPreview(lt.html_content)} className="text-[10px] text-surface-400 hover:text-brand-600 flex items-center gap-1">
-                        <Eye className="w-3 h-3" /> Preview
+                        <Eye className="w-3 h-3" /> {t('settings.tpl.preview')}
                       </button>
                       <button onClick={() => {
                         setEditing(null)
@@ -943,7 +943,7 @@ export default function TemplatesPage() {
                         setShowLibrary(false)
                         setShowNew(true)
                       }} className="text-[10px] text-surface-400 hover:text-brand-600 flex items-center gap-1">
-                        <Copy className="w-3 h-3" /> Customize
+                        <Copy className="w-3 h-3" /> {t('settings.tpl.customize')}
                       </button>
                     </div>
                   </div>
@@ -961,11 +961,11 @@ export default function TemplatesPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-surface-100 flex-shrink-0">
               <div className="flex items-center gap-3">
-                <h2 className="font-semibold text-surface-900">{editing ? 'Edit Template' : 'New Template'}</h2>
+                <h2 className="font-semibold text-surface-900">{editing ? t('settings.tpl.edit_template') : t('settings.tpl.new_template_title')}</h2>
                 {/* Editor mode tabs */}
                 <div className="flex bg-surface-100 rounded-lg p-0.5">
                   <button onClick={() => setEditorTab('visual')} className={cn('text-[10px] px-3 py-1 rounded-md transition-colors flex items-center gap-1', editorTab === 'visual' ? 'bg-white text-brand-600 shadow-sm' : 'text-surface-500 hover:text-surface-700')}>
-                    <LayoutGrid className="w-3 h-3" /> Visual
+                    <LayoutGrid className="w-3 h-3" /> {t('settings.tpl.visual')}
                   </button>
                   <button onClick={() => {
                     if (editorTab === 'visual' && form.blocks.length > 0) {
@@ -973,16 +973,16 @@ export default function TemplatesPage() {
                     }
                     setEditorTab('advanced')
                   }} className={cn('text-[10px] px-3 py-1 rounded-md transition-colors flex items-center gap-1', editorTab === 'advanced' ? 'bg-white text-brand-600 shadow-sm' : 'text-surface-500 hover:text-surface-700')}>
-                    <Code className="w-3 h-3" /> Advanced
+                    <Code className="w-3 h-3" /> {t('settings.tpl.advanced')}
                   </button>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => setPreview(!preview)} className={cn('btn-ghost btn-sm text-[10px]', preview && 'bg-brand-50 text-brand-600')}>
-                  <Eye className="w-3 h-3" /> Preview
+                  <Eye className="w-3 h-3" /> {t('settings.tpl.preview')}
                 </button>
                 <button onClick={() => openPrintPreview(editorTab === 'visual' ? generateHTML(form.blocks) : form.html_content)} className="btn-ghost btn-sm text-[10px]">
-                  <Printer className="w-3 h-3" /> PDF
+                  <Printer className="w-3 h-3" /> {t('settings.tpl.pdf')}
                 </button>
                 <button onClick={() => { setShowNew(false); setEditing(null) }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100">
                   <X className="w-4 h-4 text-surface-500" />
@@ -993,9 +993,9 @@ export default function TemplatesPage() {
             {/* Name and type */}
             <div className="p-3 border-b border-surface-100 flex-shrink-0">
               <div className="flex gap-2">
-                <input className="input text-xs flex-1" placeholder="Template name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                <input className="input text-xs flex-1" placeholder={t('settings.tpl.template_name_placeholder')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                 <select className="input text-xs w-36" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                  {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {TEMPLATE_TYPES.map(tt => <option key={tt.value} value={tt.value}>{tt.label}</option>)}
                 </select>
               </div>
             </div>
@@ -1009,8 +1009,8 @@ export default function TemplatesPage() {
                     {form.blocks.length === 0 && (
                       <div className="text-center py-12 text-surface-400">
                         <LayoutGrid className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No blocks yet</p>
-                        <p className="text-xs mt-1">Add blocks to build your template</p>
+                        <p className="text-sm">{t('settings.tpl.no_blocks')}</p>
+                        <p className="text-xs mt-1">{t('settings.tpl.no_blocks_hint')}</p>
                       </div>
                     )}
                     {form.blocks.map((block, idx) => (
@@ -1040,9 +1040,9 @@ export default function TemplatesPage() {
                         {expandedBlock === block.id && block.type !== 'divider' && (
                           <div className="px-3 pb-3 pt-1 border-t border-surface-100">
                             {block.type === 'items_table' ? (
-                              <p className="text-xs text-surface-400 italic">This block auto-generates from your quote/invoice line items. No editing needed.</p>
+                              <p className="text-xs text-surface-400 italic">{t('settings.tpl.items_table_note')}</p>
                             ) : block.type === 'totals' ? (
-                              <p className="text-xs text-surface-400 italic">This block auto-calculates subtotal, tax, and total from your line items.</p>
+                              <p className="text-xs text-surface-400 italic">{t('settings.tpl.totals_note')}</p>
                             ) : (
                               <div
                                 className="text-xs min-h-[60px] p-2 rounded-lg bg-white border border-surface-200 focus:border-brand-300 focus:ring-1 focus:ring-brand-200 outline-none"
@@ -1068,7 +1068,7 @@ export default function TemplatesPage() {
                     {/* Add block button */}
                     <div className="relative">
                       <button onClick={() => setShowBlockPicker(!showBlockPicker)} className="w-full border-2 border-dashed border-surface-200 rounded-xl py-3 text-xs text-surface-400 hover:border-brand-300 hover:text-brand-500 transition-colors flex items-center justify-center gap-1">
-                        <Plus className="w-3.5 h-3.5" /> Add Block
+                        <Plus className="w-3.5 h-3.5" /> {t('settings.tpl.add_block')}
                       </button>
                       {showBlockPicker && (
                         <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-surface-200 rounded-xl shadow-lg p-2 z-10">
@@ -1126,18 +1126,18 @@ export default function TemplatesPage() {
 
             {/* Footer */}
             <div className="flex gap-2 p-4 border-t border-surface-100 flex-shrink-0">
-              <button onClick={() => { setShowNew(false); setEditing(null) }} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => { setShowNew(false); setEditing(null) }} className="btn-secondary flex-1">{t('settings.tpl.cancel')}</button>
               <button onClick={() => openPrintPreview(editorTab === 'visual' ? generateHTML(form.blocks) : form.html_content)} className="btn-ghost flex items-center justify-center gap-1.5 px-4">
-                <Printer className="w-3.5 h-3.5" /> Generate PDF
+                <Printer className="w-3.5 h-3.5" /> {t('settings.tpl.generate_pdf')}
               </button>
               <button onClick={() => openEmailWithTemplate(editorTab === 'visual' ? generateHTML(form.blocks) : form.html_content, form.name || 'Document')} className="btn-ghost flex items-center justify-center gap-1.5 px-4">
-                <Mail className="w-3.5 h-3.5" /> Email
+                <Mail className="w-3.5 h-3.5" /> {t('settings.tpl.email')}
               </button>
               <button onClick={() => openWhatsAppWithTemplate(form.name || 'Document')} className="btn-ghost flex items-center justify-center gap-1.5 px-4">
-                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                <MessageCircle className="w-3.5 h-3.5" /> {t('settings.tpl.whatsapp')}
               </button>
               <button onClick={saveTemplate} disabled={!form.name || saving} className="btn-primary flex-1">
-                <Save className="w-3.5 h-3.5" /> Save Template
+                <Save className="w-3.5 h-3.5" /> {t('settings.tpl.save_template')}
               </button>
             </div>
           </div>

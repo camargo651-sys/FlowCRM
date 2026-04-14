@@ -50,7 +50,7 @@ export default function CampaignsPage() {
   }
 
   const sendCampaign = async () => {
-    if (!subject || blocks.length === 0 || !htmlBody) { toast.error('Subject and at least one block are required'); return }
+    if (!subject || blocks.length === 0 || !htmlBody) { toast.error(t('campaigns.subject_required')); return }
     setSending(true)
     try {
       const res = await fetch('/api/campaigns', {
@@ -65,11 +65,11 @@ export default function CampaignsPage() {
       const result = await res.json()
       if (result.success) {
         setSent(result)
-        toast.success(`Campaign sent to ${result.sent} contacts!`)
+        toast.success(`${t('campaigns.sent_to_n')} ${result.sent} ${t('campaigns.contacts_suffix')}!`)
       } else {
-        toast.error(result.error || 'Failed to send')
+        toast.error(result.error || t('campaigns.send_failed'))
       }
-    } catch { toast.error('Failed to send campaign') }
+    } catch { toast.error(t('campaigns.failed_to_send')) }
     setSending(false)
   }
 
@@ -78,7 +78,7 @@ export default function CampaignsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('pages.campaigns')}</h1>
-          <p className="text-sm text-surface-500 mt-0.5">{contactCount} contacts with email</p>
+          <p className="text-sm text-surface-500 mt-0.5">{contactCount} {t('campaigns.contacts_with_email')}</p>
         </div>
       </div>
 
@@ -87,10 +87,10 @@ export default function CampaignsPage() {
           <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Send className="w-7 h-7 text-emerald-500" />
           </div>
-          <h2 className="text-xl font-bold text-surface-900 mb-2">Campaign sent!</h2>
-          <p className="text-sm text-surface-500 mb-1">{sent.sent} emails delivered, {sent.failed} failed</p>
+          <h2 className="text-xl font-bold text-surface-900 mb-2">{t('campaigns.campaign_sent')}</h2>
+          <p className="text-sm text-surface-500 mb-1">{sent.sent} {t('campaigns.emails_delivered')} {sent.failed} {t('campaigns.failed')}</p>
           <button onClick={() => { setSent(null); setSubject(''); setBlocks([]) }} className="btn-primary btn-sm mt-4">
-            Create another campaign
+            {t('campaigns.create_another')}
           </button>
         </div>
       ) : (
@@ -99,7 +99,7 @@ export default function CampaignsPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Templates */}
             <div className="card p-4">
-              <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Start from a template</p>
+              <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">{t('campaigns.start_from_template')}</p>
               <div className="flex gap-2 flex-wrap">
                 {EMAIL_TEMPLATES.map(tpl => (
                   <button key={tpl.name} onClick={() => applyTemplate(tpl)}
@@ -110,18 +110,18 @@ export default function CampaignsPage() {
 
             {/* Subject */}
             <div className="card p-4">
-              <label className="label">Subject line</label>
+              <label className="label">{t('campaigns.subject_line')}</label>
               <input className="input" value={subject} onChange={e => setSubject(e.target.value)}
-                placeholder="e.g. News from {{company}}" />
-              <p className="text-[10px] text-surface-400 mt-1">Variables: {'{{name}}, {{first_name}}, {{email}}, {{company}}'}</p>
+                placeholder={t('campaigns.subject_placeholder')} />
+              <p className="text-[10px] text-surface-400 mt-1">{t('campaigns.variables_label')} {'{{name}}, {{first_name}}, {{email}}, {{company}}'}</p>
             </div>
 
             {/* Visual body editor */}
             <div className="card p-4">
               <div className="flex items-center justify-between mb-3">
-                <label className="label mb-0">Email body</label>
+                <label className="label mb-0">{t('campaigns.email_body')}</label>
                 <button onClick={() => setPreview(!preview)} className={cn('btn-ghost btn-sm text-xs', preview && 'bg-brand-50 text-brand-600')}>
-                  {preview ? <><Edit3 className="w-3 h-3" /> Edit</> : <><Eye className="w-3 h-3" /> Preview</>}
+                  {preview ? <><Edit3 className="w-3 h-3" /> {t('campaigns.edit')}</> : <><Eye className="w-3 h-3" /> {t('campaigns.preview')}</>}
                 </button>
               </div>
               {preview ? (
@@ -137,30 +137,30 @@ export default function CampaignsPage() {
             <div className="card p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Filter className="w-4 h-4 text-surface-400" />
-                <p className="text-sm font-semibold text-surface-900">Audience</p>
+                <p className="text-sm font-semibold text-surface-900">{t('campaigns.audience')}</p>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className="label">Contact type</label>
+                  <label className="label">{t('campaigns.contact_type')}</label>
                   <select className="input" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                    <option value="all">All contacts</option>
-                    <option value="person">People only</option>
-                    <option value="company">Companies only</option>
+                    <option value="all">{t('campaigns.all_contacts')}</option>
+                    <option value="person">{t('campaigns.people_only')}</option>
+                    <option value="company">{t('campaigns.companies_only')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label">Engagement</label>
+                  <label className="label">{t('campaigns.engagement')}</label>
                   <select className="input" value={filterScore} onChange={e => setFilterScore(e.target.value)}>
-                    <option value="all">Any engagement</option>
-                    <option value="hot">Hot only</option>
-                    <option value="warm">Warm only</option>
-                    <option value="cold">Cold only</option>
+                    <option value="all">{t('campaigns.any_engagement')}</option>
+                    <option value="hot">{t('campaigns.hot_only')}</option>
+                    <option value="warm">{t('campaigns.warm_only')}</option>
+                    <option value="cold">{t('campaigns.cold_only')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label">Tags (comma separated)</label>
+                  <label className="label">{t('campaigns.tags_comma')}</label>
                   <input className="input" value={filterTags} onChange={e => setFilterTags(e.target.value)}
-                    placeholder="e.g. newsletter, vip" />
+                    placeholder={t('campaigns.tags_placeholder')} />
                 </div>
               </div>
             </div>
@@ -168,10 +168,10 @@ export default function CampaignsPage() {
             <div className="card p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-surface-400" />
-                <p className="text-sm font-semibold text-surface-900">Estimated reach</p>
+                <p className="text-sm font-semibold text-surface-900">{t('campaigns.estimated_reach')}</p>
               </div>
               <p className="text-3xl font-extrabold text-surface-900">{contactCount}</p>
-              <p className="text-xs text-surface-400">contacts with email address</p>
+              <p className="text-xs text-surface-400">{t('campaigns.contacts_email_addr')}</p>
             </div>
 
             <button onClick={sendCampaign} disabled={sending || !subject || blocks.length === 0}
@@ -179,13 +179,12 @@ export default function CampaignsPage() {
               {sending ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <><Mail className="w-4 h-4" /> {t('action.send')} Campaign</>
+                <><Mail className="w-4 h-4" /> {t('campaigns.send_campaign')}</>
               )}
             </button>
 
             <p className="text-[10px] text-surface-400 text-center">
-              Requires RESEND_API_KEY configured in environment.
-              Max 500 recipients per campaign.
+              {t('campaigns.resend_notice')}
             </p>
           </div>
         </div>
