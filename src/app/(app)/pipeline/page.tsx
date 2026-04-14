@@ -2,7 +2,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check, Pause, Play } from 'lucide-react'
+import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check, Pause, Play, Ban, Trophy } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -308,10 +308,12 @@ interface ActivityItem {
   author?: { full_name: string | null; email: string | null } | null
 }
 
-function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, teamMembers, workspaceId, currentUserId, currentUserName }: {
+function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLost, onMarkWon, teamMembers, workspaceId, currentUserId, currentUserName }: {
   deal: DealWithContact; onClose: () => void;
   onUpdateDeal: (dealId: string, updates: Partial<Deal>) => void;
   onDealHoldChange?: (dealId: string, onHold: boolean) => void;
+  onMarkLost?: (dealId: string, dealTitle: string, stageId: string) => void;
+  onMarkWon?: (dealId: string) => void;
   teamMembers: Pick<Profile, 'id' | 'full_name'>[];
   workspaceId: string;
   currentUserId: string | null;
@@ -660,6 +662,24 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, teamMembe
                 className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-amber-50 text-amber-600 transition-colors disabled:opacity-50"
               >
                 <Pause className="w-4 h-4" />
+              </button>
+            )}
+            {deal.status !== 'won' && deal.status !== 'lost' && onMarkWon && (
+              <button
+                onClick={() => onMarkWon(deal.id)}
+                title="Mark as won"
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
+              >
+                <Trophy className="w-4 h-4" />
+              </button>
+            )}
+            {deal.status !== 'lost' && deal.status !== 'won' && onMarkLost && (
+              <button
+                onClick={() => onMarkLost(deal.id, deal.title, deal.stage_id)}
+                title="Mark as lost"
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+              >
+                <Ban className="w-4 h-4" />
               </button>
             )}
             <button onClick={onClose} className="modal-close"><X className="w-4 h-4" /></button>
@@ -1535,6 +1555,30 @@ export default function PipelinePage() {
 
     toast.error('Deal marked as lost')
     setLossReasonPrompt(null)
+    // Close detail panel if this deal was open there
+    setSelectedDeal(prev => (prev && prev.id === dealId ? null : prev))
+  }
+
+  const handleMarkWonFromPanel = async (dealId: string) => {
+    const deal = columns.flatMap(c => c.deals).find(d => d.id === dealId)
+    if (!deal) return
+    const wonStage = columns.find(c => c.is_won)
+    const targetStageId = wonStage?.id || deal.stage_id
+    await supabase.from('deals').update({
+      status: 'won',
+      stage_id: targetStageId,
+    }).eq('id', dealId)
+
+    setColumns(prev => prev.map(col => ({
+      ...col,
+      deals: col.id === targetStageId
+        ? [...col.deals.filter(d => d.id !== dealId), { ...deal, stage_id: targetStageId, status: 'won' as const }]
+        : col.deals.filter(d => d.id !== dealId),
+    })))
+
+    setCelebration({ title: deal.title, value: deal.value || 0 })
+    toast.success('Deal won!')
+    setSelectedDeal(null)
   }
 
   const filteredColumns = columns.map(col => ({
@@ -1946,6 +1990,8 @@ export default function PipelinePage() {
               setColumns(prev => prev.map(col => ({ ...col, deals: col.deals.filter(d => d.id !== dealId) })))
             }
           }}
+          onMarkLost={(dealId, dealTitle, stageId) => setLossReasonPrompt({ dealId, dealTitle, stageId })}
+          onMarkWon={handleMarkWonFromPanel}
           teamMembers={teamMembers}
           workspaceId={workspaceId}
           currentUserId={currentUserId}

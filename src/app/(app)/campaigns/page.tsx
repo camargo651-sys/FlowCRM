@@ -1,53 +1,36 @@
 'use client'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Send, Users, Mail, Filter, Eye, ChevronDown } from 'lucide-react'
+import { Send, Users, Mail, Filter, Eye, Edit3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { useI18n } from '@/lib/i18n/context'
-
-const TEMPLATES = [
-  { name: 'Blank', subject: '', body: '' },
-  { name: 'Newsletter', subject: 'News from {{company}}', body: `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;">
-<h1 style="font-size:24px;color:#151b3a;">Hi {{first_name}},</h1>
-<p style="color:#6b75a0;font-size:15px;line-height:1.7;">Here's what's new this month:</p>
-<ul style="color:#374068;font-size:14px;line-height:2;">
-<li>New feature announcement</li>
-<li>Tips to get more from Tracktio</li>
-<li>Customer spotlight</li>
-</ul>
-<p style="color:#6b75a0;font-size:14px;margin-top:24px;">Best,<br/>The {{company}} Team</p>
-</div>` },
-  { name: 'Promotion', subject: 'Special offer for {{first_name}}', body: `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;text-align:center;">
-<h1 style="font-size:28px;color:#151b3a;">Special Offer!</h1>
-<p style="color:#6b75a0;font-size:16px;">Hi {{first_name}}, we have something special for you.</p>
-<div style="margin:32px 0;padding:24px;background:#f0f4ff;border-radius:16px;">
-<p style="font-size:36px;font-weight:800;color:#0891B2;margin:0;">20% OFF</p>
-<p style="color:#6b75a0;font-size:14px;margin:4px 0 0;">Use code: SPECIAL20</p>
-</div>
-<a href="#" style="display:inline-block;padding:14px 32px;background:#0891B2;color:white;text-decoration:none;border-radius:12px;font-weight:600;">Claim Offer</a>
-</div>` },
-  { name: 'Follow-up', subject: 'Quick follow-up, {{first_name}}', body: `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;">
-<p style="color:#374068;font-size:15px;line-height:1.7;">Hi {{first_name}},</p>
-<p style="color:#374068;font-size:15px;line-height:1.7;">I wanted to follow up on our last conversation. Do you have any questions I can help with?</p>
-<p style="color:#374068;font-size:15px;line-height:1.7;">I'd love to schedule a quick call this week if you're available.</p>
-<p style="color:#6b75a0;font-size:14px;margin-top:24px;">Best regards,<br/>{{company}}</p>
-</div>` },
-]
+import VisualMessageEditor, { EmailPreview } from '@/components/shared/VisualMessageEditor'
+import { type Block, blocksToHTML, EMAIL_TEMPLATES, newId } from '@/lib/campaigns/blocks-to-html'
 
 export default function CampaignsPage() {
   const { t } = useI18n()
   const supabase = createClient()
   const [contactCount, setContactCount] = useState(0)
   const [subject, setSubject] = useState('')
-  const [htmlBody, setHtmlBody] = useState('')
+  const [blocks, setBlocks] = useState<Block[]>([
+    { id: newId(), type: 'text', content: 'Hi {{first_name}},\n\nWrite your message here. Click "Add block" to insert images, buttons or headings.' },
+  ])
   const [filterType, setFilterType] = useState('all')
   const [filterScore, setFilterScore] = useState('all')
   const [filterTags, setFilterTags] = useState('')
   const [sending, setSending] = useState(false)
-  const [preview, setPreview] = useState(false)
+  const [preview, setPreview] = useState(true)
   const [sent, setSent] = useState<{ sent: number; failed: number } | null>(null)
+
+  const htmlBody = useMemo(() => blocksToHTML(blocks, 'email'), [blocks])
+  const previewHtml = useMemo(() => htmlBody
+    .replace(/\{\{name\}\}/g, 'John Doe')
+    .replace(/\{\{first_name\}\}/g, 'John')
+    .replace(/\{\{email\}\}/g, 'john@example.com')
+    .replace(/\{\{company\}\}/g, 'Your Company'),
+  [htmlBody])
 
   const loadCount = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -61,20 +44,20 @@ export default function CampaignsPage() {
 
   useEffect(() => { loadCount() }, [loadCount])
 
-  const applyTemplate = (t: typeof TEMPLATES[0]) => {
-    setSubject(t.subject)
-    setHtmlBody(t.body)
+  const applyTemplate = (tpl: typeof EMAIL_TEMPLATES[0]) => {
+    setSubject(tpl.subject)
+    setBlocks(tpl.blocks.map(b => ({ ...b, id: newId() })))
   }
 
   const sendCampaign = async () => {
-    if (!subject || !htmlBody) { toast.error('Subject and body are required'); return }
+    if (!subject || blocks.length === 0 || !htmlBody) { toast.error('Subject and at least one block are required'); return }
     setSending(true)
     try {
       const res = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subject, html_body: htmlBody,
+          subject, html_body: htmlBody, body_blocks: blocks,
           filter_type: filterType, filter_score: filterScore,
           filter_tags: filterTags ? filterTags.split(',').map(t => t.trim()) : [],
         }),
@@ -106,7 +89,7 @@ export default function CampaignsPage() {
           </div>
           <h2 className="text-xl font-bold text-surface-900 mb-2">Campaign sent!</h2>
           <p className="text-sm text-surface-500 mb-1">{sent.sent} emails delivered, {sent.failed} failed</p>
-          <button onClick={() => { setSent(null); setSubject(''); setHtmlBody('') }} className="btn-primary btn-sm mt-4">
+          <button onClick={() => { setSent(null); setSubject(''); setBlocks([]) }} className="btn-primary btn-sm mt-4">
             Create another campaign
           </button>
         </div>
@@ -118,9 +101,9 @@ export default function CampaignsPage() {
             <div className="card p-4">
               <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Start from a template</p>
               <div className="flex gap-2 flex-wrap">
-                {TEMPLATES.map(t => (
-                  <button key={t.name} onClick={() => applyTemplate(t)}
-                    className="btn-secondary btn-sm text-xs">{t.name}</button>
+                {EMAIL_TEMPLATES.map(tpl => (
+                  <button key={tpl.name} onClick={() => applyTemplate(tpl)}
+                    className="btn-secondary btn-sm text-xs">{tpl.name}</button>
                 ))}
               </div>
             </div>
@@ -133,25 +116,18 @@ export default function CampaignsPage() {
               <p className="text-[10px] text-surface-400 mt-1">Variables: {'{{name}}, {{first_name}}, {{email}}, {{company}}'}</p>
             </div>
 
-            {/* Body */}
+            {/* Visual body editor */}
             <div className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <label className="label mb-0">Email body (HTML)</label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="label mb-0">Email body</label>
                 <button onClick={() => setPreview(!preview)} className={cn('btn-ghost btn-sm text-xs', preview && 'bg-brand-50 text-brand-600')}>
-                  <Eye className="w-3 h-3" /> {preview ? 'Edit' : 'Preview'}
+                  {preview ? <><Edit3 className="w-3 h-3" /> Edit</> : <><Eye className="w-3 h-3" /> Preview</>}
                 </button>
               </div>
               {preview ? (
-                <div className="border border-surface-100 rounded-xl p-4 min-h-[300px] bg-white" dangerouslySetInnerHTML={{ __html: htmlBody
-                  .replace(/\{\{name\}\}/g, 'John Doe')
-                  .replace(/\{\{first_name\}\}/g, 'John')
-                  .replace(/\{\{email\}\}/g, 'john@example.com')
-                  .replace(/\{\{company\}\}/g, 'Your Company')
-                }} />
+                <EmailPreview html={previewHtml} />
               ) : (
-                <textarea className="input font-mono text-xs resize-none" rows={14}
-                  value={htmlBody} onChange={e => setHtmlBody(e.target.value)}
-                  placeholder="<div>Your email content here...</div>" />
+                <VisualMessageEditor type="email" value={blocks} onChange={setBlocks} />
               )}
             </div>
           </div>
@@ -198,7 +174,7 @@ export default function CampaignsPage() {
               <p className="text-xs text-surface-400">contacts with email address</p>
             </div>
 
-            <button onClick={sendCampaign} disabled={sending || !subject || !htmlBody}
+            <button onClick={sendCampaign} disabled={sending || !subject || blocks.length === 0}
               className="btn-primary w-full py-3">
               {sending ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
