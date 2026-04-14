@@ -465,6 +465,15 @@ export default function SettingsPage() {
           <h1 className="page-title">{t('settings.title')}</h1>
           <p className="page-subtitle">{t('settings.subtitle')}</p>
         </div>
+        <button
+          onClick={() => {
+            try { localStorage.removeItem('tracktio_tour_completed') } catch {}
+            window.dispatchEvent(new CustomEvent('tracktio:start-tour'))
+          }}
+          className="btn-sm border border-surface-200 text-surface-600 hover:bg-surface-50 rounded-lg px-3 py-1.5 text-xs font-medium"
+        >
+          Show tour
+        </button>
       </div>
 
       {/* Settings hub: links to all sub-module settings, grouped by category */}

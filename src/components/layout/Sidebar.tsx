@@ -8,6 +8,7 @@ import TracktioIcons from '@/components/icons/TracktioIcons'
 import NotificationBell from './NotificationBell'
 import ThemeToggle from '@/components/shared/ThemeToggle'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
+import RecentItems from './RecentItems'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, getInitials } from '@/lib/utils'
@@ -103,6 +104,7 @@ export const MODULES: ModuleDef[] = [
       { href: '/expenses', label: 'nav.expenses' },
       { href: '/accounting', label: 'nav.accounting' },
       { href: '/finance/payments', label: 'nav.payments' },
+      { href: '/finance/subscriptions', label: 'nav.subscriptions' },
       { href: '/finance/taxes', label: 'nav.taxes' },
     ],
   },
@@ -116,6 +118,7 @@ export const MODULES: ModuleDef[] = [
       { href: '/reports/calls', label: 'nav.calls_log' },
       { href: '/reports/lost-deals', label: 'nav.lost_deals' },
       { href: '/reports/forecast', label: 'nav.forecast' },
+      { href: '/insights/quotas', label: 'nav.quotas' },
     ],
   },
   {
@@ -146,6 +149,8 @@ export const MODULES: ModuleDef[] = [
       { href: '/tasks', label: 'nav.tasks' },
       { href: '/inter-dept-requests', label: 'nav.inter_dept' },
       { href: '/workspace/notes', label: 'nav.notes' },
+      { href: '/workspace/scheduler', label: 'nav.scheduler' },
+      { href: '/workspace/approvals', label: 'nav.approvals' },
     ],
   },
   {
@@ -161,10 +166,13 @@ export const MODULES: ModuleDef[] = [
       { href: '/settings/templates', label: 'nav.templates' },
       { href: '/settings/widget', label: 'nav.widget' },
       { href: '/settings/loss-reasons', label: 'nav.loss_reasons' },
+      { href: '/settings/quotas', label: 'nav.quotas_settings' },
       { href: '/settings/stage-conditions', label: 'nav.stage_conditions' },
+      { href: '/settings/approvals', label: 'nav.approvals' },
       // Permissions
       { href: '/roles', label: 'nav.roles' },
       { href: '/settings/field-permissions', label: 'nav.field_permissions' },
+      { href: '/settings/security', label: 'nav.security' },
       { href: '/team', label: 'nav.team' },
       // Automations
       { href: '/automations', label: 'nav.automations' },
@@ -174,6 +182,8 @@ export const MODULES: ModuleDef[] = [
       { href: '/billing', label: 'nav.billing' },
       // Developer
       { href: '/api-docs', label: 'nav.api_docs' },
+      { href: '/settings/api-keys', label: 'nav.api_keys' },
+      { href: '/settings/webhooks', label: 'nav.webhooks' },
       // Data
       { href: '/import', label: 'nav.import' },
       { href: '/audit-log', label: 'nav.audit_log' },
@@ -316,6 +326,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
             return (
               <button
                 key={mod.key}
+                data-tour={mod.key}
                 onClick={() => {
                   if (mod.directLink) { router.push(mod.directLink) }
                   handleSelectModule(mod.key)
@@ -343,6 +354,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
           {/* Settings module */}
           {visibleModules.find(m => m.key === 'settings') && (
             <button
+              data-tour="settings"
               onClick={() => handleSelectModule('settings')}
               title="Settings"
               className={cn(
@@ -448,6 +460,9 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
             })}
           </div>
         </nav>
+
+        {/* Recent items */}
+        <RecentItems />
 
         {/* Bottom */}
         <div className="p-2.5 border-t border-surface-100/80 flex-shrink-0">

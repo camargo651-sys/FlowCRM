@@ -8,6 +8,8 @@ import GettingStarted from '@/components/dashboard/GettingStarted'
 import DashboardWidgets from '@/components/dashboard/DashboardWidgets'
 import CallMetricsWidget from '@/components/shared/CallMetricsWidget'
 import LossReasonsWidget from '@/components/shared/LossReasonsWidget'
+import QuotaWidget from '@/components/shared/QuotaWidget'
+import NextActionsWidget from '@/components/shared/NextActionsWidget'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
@@ -308,6 +310,14 @@ export default async function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <CallMetricsWidget workspaceId={data.workspaceId} />
               <LossReasonsWidget workspaceId={data.workspaceId} />
+            </div>
+          )}
+
+          {/* Quota + AI Next Best Actions */}
+          {data.workspaceId && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <QuotaWidget workspaceId={data.workspaceId} />
+              <NextActionsWidget workspaceId={data.workspaceId} />
             </div>
           )}
 

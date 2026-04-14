@@ -5,10 +5,12 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Ticket, X, MessageCircle, Clock, AlertTriangle, StickyNote, UserCheck } from 'lucide-react'
+import { Plus, Search, Ticket, X, MessageCircle, Clock, AlertTriangle, StickyNote, UserCheck, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import BulkActions from '@/components/shared/BulkActions'
 import { showLocalNotification } from '@/lib/notifications/push'
+import EmptyState from '@/components/shared/EmptyState'
 
 const STATUS_STYLES: Record<string, string> = {
   open: 'badge-blue', in_progress: 'badge-yellow', waiting: 'badge-gray',
@@ -47,6 +49,7 @@ export default function TicketsPage() {
   const [detailTicket, setDetailTicket] = useState<DbRow | null>(null)
   const [internalNotes, setInternalNotes] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -126,6 +129,35 @@ export default function TicketsPage() {
     setInternalNotes(ticket.internal_notes || '')
   }
 
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const bulkClose = async () => {
+    if (selected.size === 0) return
+    const ids = Array.from(selected)
+    await supabase.from('tickets').update({ status: 'closed' }).in('id', ids)
+    toast.success(`${ids.length} ticket(s) closed`)
+    setSelected(new Set())
+    load()
+  }
+
+  const bulkAssign = async () => {
+    if (selected.size === 0) return
+    const memberId = prompt('Enter assignee user id (or leave empty to unassign):')
+    if (memberId === null) return
+    const ids = Array.from(selected)
+    await supabase.from('tickets').update({ assigned_to: memberId || null }).in('id', ids)
+    toast.success(`${ids.length} ticket(s) assigned`)
+    setSelected(new Set())
+    load()
+  }
+
   const filtered = tickets.filter(t => {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false
@@ -168,14 +200,26 @@ export default function TicketsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card text-center py-16"><Ticket className="w-10 h-10 text-surface-300 mx-auto mb-3" /><p className="text-surface-500">No tickets found</p></div>
+        <EmptyState
+          icon={<Ticket className="w-7 h-7" />}
+          title="Handle customer requests"
+          description="Open tickets to track support requests, complaints and follow-ups."
+          action={{ label: 'Create ticket', onClick: () => setShowNew(true), icon: <Plus className="w-3.5 h-3.5" /> }}
+        />
       ) : (
         <div className="space-y-2">
           {filtered.map(ticket => {
             const sla = getSlaColor(ticket.created_at)
             const assignee = ticket.assigned_to ? getMemberName(ticket.assigned_to) : null
             return (
-              <div key={ticket.id} className="card p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push(`/tickets/${ticket.id}`)}>
+              <div key={ticket.id} className={cn('card p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow', selected.has(ticket.id) && 'ring-2 ring-brand-500')} onClick={() => router.push(`/tickets/${ticket.id}`)}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(ticket.id)}
+                  onClick={e => e.stopPropagation()}
+                  onChange={() => toggleSelect(ticket.id)}
+                  className="rounded border-surface-300 flex-shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-[10px] font-mono text-surface-400">{ticket.ticket_number}</span>
@@ -244,6 +288,15 @@ export default function TicketsPage() {
           </div>
         </div>
       )}
+
+      <BulkActions count={selected.size} onClear={() => setSelected(new Set())}>
+        <button onClick={bulkClose} className="flex items-center gap-1.5 text-xs font-medium text-emerald-300 hover:text-emerald-200 transition-colors px-1">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Close
+        </button>
+        <button onClick={bulkAssign} className="flex items-center gap-1.5 text-xs font-medium hover:text-brand-300 transition-colors px-1">
+          <UserCheck className="w-3.5 h-3.5" /> Assign
+        </button>
+      </BulkActions>
 
       {/* Ticket Detail Modal */}
       {detailTicket && (

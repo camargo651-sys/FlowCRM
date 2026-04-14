@@ -17,6 +17,7 @@ import MentionTextarea from '@/components/shared/MentionTextarea'
 import CallButton from '@/components/shared/CallButton'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
 import RelatedNotes from '@/components/shared/RelatedNotes'
+import DealNextActions from '@/components/shared/DealNextActions'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -848,6 +849,8 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLos
                   {portalCopied ? 'URL Copied!' : 'Share via Portal'}
                 </button>
               )}
+
+              <DealNextActions dealId={deal.id} workspaceId={workspaceId} />
 
               <RelatedNotes dealId={deal.id} contactId={deal.contact_id || undefined} />
             </div>

@@ -46,6 +46,23 @@ export async function notifyRecordChange(args: NotifyRecordChangeArgs): Promise<
   } catch {
     // swallow — notifications are best-effort
   }
+
+  // Best-effort web push to the owner
+  try {
+    await fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: ownerId,
+        workspace_id: workspaceId,
+        title,
+        body: entityTitle,
+        url: actionUrl,
+      }),
+    })
+  } catch {
+    // swallow — push is best-effort
+  }
 }
 
 export interface NotifyMentionArgs {

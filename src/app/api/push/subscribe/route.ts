@@ -9,8 +9,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { subscription } = await request.json()
-    if (!subscription?.endpoint || !subscription?.keys) {
+    const body = await request.json()
+    const subscription = body?.subscription
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 })
     }
 
@@ -19,21 +20,25 @@ export async function POST(request: NextRequest) {
       .from('workspaces')
       .select('id')
       .eq('owner_id', user.id)
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (!workspace) {
       return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
     }
 
-    const { error } = await supabase.from('push_subscriptions').upsert(
-      {
-        user_id: user.id,
-        workspace_id: workspace.id,
-        endpoint: subscription.endpoint,
-        keys: subscription.keys,
-      },
-      { onConflict: 'user_id,endpoint' }
-    )
+    const row: Record<string, unknown> = {
+      user_id: user.id,
+      workspace_id: workspace.id,
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      user_agent: body?.user_agent ?? null,
+    }
+
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .upsert(row, { onConflict: 'user_id,endpoint' })
 
     if (error) {
       console.error('Push subscribe error:', error)

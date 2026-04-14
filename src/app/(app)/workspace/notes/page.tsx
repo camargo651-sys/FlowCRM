@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import NoteCard, { type Note } from '@/components/shared/NoteCard'
 import NoteEditorModal from '@/components/shared/NoteEditorModal'
 import { toast } from 'sonner'
+import EmptyState from '@/components/shared/EmptyState'
 
 type Filter = 'all' | 'pinned' | 'mine' | 'archived'
 
@@ -177,16 +178,12 @@ export default function WorkspaceNotesPage() {
               <div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
             </div>
           ) : notes.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="w-14 h-14 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <StickyNote className="w-7 h-7 text-surface-400" />
-              </div>
-              <p className="text-surface-600 font-medium mb-1">No notes yet</p>
-              <p className="text-surface-400 text-sm mb-4">Capture ideas, meeting minutes and more</p>
-              <button onClick={openNew} className="btn-primary btn-sm">
-                <Plus className="w-3.5 h-3.5" /> New note
-              </button>
-            </div>
+            <EmptyState
+              icon={<StickyNote className="w-7 h-7" />}
+              title="Capture ideas, meetings, anything"
+              description="Notes live with your contacts and deals. Start with your first one."
+              action={{ label: 'New note', onClick: openNew, icon: <Plus className="w-3.5 h-3.5" /> }}
+            />
           ) : (
             <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
               {notes.map(note => (

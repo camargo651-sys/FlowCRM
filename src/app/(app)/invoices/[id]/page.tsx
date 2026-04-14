@@ -12,6 +12,8 @@ import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { toast } from 'sonner'
 import { notifyRecordChange } from '@/lib/notifications/notify-change'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
+import EngagementBadge from '@/components/shared/EngagementBadge'
+import { pushRecent } from '@/lib/recent/items'
 
 interface InvoiceDetail {
   id: string; workspace_id: string; invoice_number: string; type: string; status: string
@@ -146,6 +148,7 @@ export default function InvoiceDetailPage() {
     const inv: InvoiceDetail = invRes.data
     setInvoice(inv)
     setItems(itemsRes.data || [])
+    pushRecent({ type: 'invoice', id: inv.id, label: inv.invoice_number || 'Invoice', href: `/invoices/${inv.id}` })
 
     // Load payments
     const { data: paymentsData } = await supabase.from('payments').select('*').eq('invoice_id', id).order('date', { ascending: false })
@@ -300,20 +303,23 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  // Payment link (Stripe)
+  // Payment link (Stripe + portal fallback)
   const openPaymentLink = async () => {
     if (!invoice) return
     try {
-      const res = await fetch('/api/payments/stripe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoice_id: invoice.id }),
-      })
-      const data = await res.json()
-      if (res.ok && data.url) {
-        window.open(data.url, '_blank')
+      const res = await fetch(`/api/invoices/${invoice.id}/payment-link`, { method: 'POST' })
+      const json = await res.json()
+      const url = json?.data?.url
+      if (res.ok && url) {
+        try {
+          await navigator.clipboard.writeText(url)
+          toast.success('Payment link copied to clipboard')
+        } catch {
+          toast.success('Payment link ready')
+        }
+        window.open(url, '_blank')
       } else {
-        toast.error(data.error || 'Failed to create payment link')
+        toast.error(json?.error?.message || 'Failed to create payment link')
       }
     } catch {
       toast.error('Failed to create payment link')
@@ -407,6 +413,7 @@ export default function InvoiceDetailPage() {
                 <div className="flex items-center gap-3">
                   <h1 className="text-xl font-bold text-surface-900 font-mono">{invoice.invoice_number}</h1>
                   <span className={cn('badge text-[10px]', STATUS_STYLES[invoice.status])}>{invoice.status}</span>
+                  <EngagementBadge entity="invoice" entityId={invoice.id} />
                 </div>
                 {invoice.contacts && (
                   <button onClick={() => router.push(`/contacts/${invoice.contacts!.id}`)}

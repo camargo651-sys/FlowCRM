@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
+import { pushRecent } from '@/lib/recent/items'
 
 const PLATFORM_ICONS: Record<string, string> = {
   instagram: '📸', facebook: '📘', tiktok: '🎵', linkedin: '💼', twitter: '🐦', youtube: '📺', other: '🌐',
@@ -106,6 +107,7 @@ export default function LeadDetailPage() {
     const { data: leadData } = await supabase.from('social_leads').select('*').eq('id', id).single()
     if (!leadData) { setLoading(false); return }
     setLead(leadData)
+    pushRecent({ type: 'lead', id: leadData.id, label: leadData.author_name || leadData.author_username || 'Lead', href: `/leads/${leadData.id}` })
 
     const wsId = leadData.workspace_id
 

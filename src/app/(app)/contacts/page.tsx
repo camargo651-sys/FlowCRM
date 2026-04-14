@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Mail, Phone, Building2, User, X, Globe, FileText, Upload, Download, GitMerge, MapPin, ChevronDown, Tag } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
 import BulkActions from '@/components/shared/BulkActions'
+import HealthScoreBadge from '@/components/shared/HealthScoreBadge'
 import ViewToggle from '@/components/shared/ViewToggle'
 import InlineEdit from '@/components/shared/InlineEdit'
 import { deleteWithUndo } from '@/lib/utils/undo'
@@ -13,6 +14,7 @@ import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
 import type { Contact, DbRow } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import EmptyState from '@/components/shared/EmptyState'
 
 const AVATAR_COLORS = ['bg-brand-500','bg-violet-500','bg-emerald-500','bg-amber-500','bg-rose-500','bg-cyan-500']
 const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
@@ -477,14 +479,13 @@ export default function ContactsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">
-            <User className="w-7 h-7 text-surface-300" />
-          </div>
-          <p className="empty-state-title">No {template.contactLabel.plural.toLowerCase()} yet</p>
-          <p className="empty-state-desc">Add your first {template.contactLabel.singular.toLowerCase()} to get started</p>
-          <button onClick={() => setShowNew(true)} className="btn-primary"><Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}</button>
-        </div>
+        <EmptyState
+          icon={<User className="w-7 h-7" />}
+          title="Start building your CRM"
+          description={`Add your first ${template.contactLabel.singular.toLowerCase()} or import them from a CSV file.`}
+          action={{ label: `Add ${template.contactLabel.singular.toLowerCase()}`, onClick: () => setShowNew(true), icon: <Plus className="w-3.5 h-3.5" /> }}
+          secondaryAction={{ label: 'Import CSV', href: '/import', icon: <Upload className="w-3.5 h-3.5" /> }}
+        />
       ) : view === 'kanban' ? (
         /* ====== KANBAN VIEW ====== */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -587,7 +588,10 @@ export default function ContactsPage() {
                     <div className="flex items-center gap-3">
                       <div className={`avatar-sm ${avatarColor(contact.name)} flex-shrink-0`}>{getInitials(contact.name)}</div>
                       <div>
-                        <InlineEdit value={contact.name} className="text-sm font-semibold text-surface-800" onSave={v => updateField(contact.id, 'name', v)} />
+                        <div className="flex items-center gap-1.5">
+                          <InlineEdit value={contact.name} className="text-sm font-semibold text-surface-800" onSave={v => updateField(contact.id, 'name', v)} />
+                          <HealthScoreBadge contactId={contact.id} size="sm" />
+                        </div>
                         {contact.job_title && <p className="text-xs text-surface-400">{contact.job_title}</p>}
                       </div>
                     </div>

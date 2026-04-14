@@ -8,6 +8,7 @@ import { Plus, Search, FileText, Send, DollarSign, CheckCircle2, X, Clock, Alert
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
+import EmptyState from '@/components/shared/EmptyState'
 
 interface Invoice {
   id: string; invoice_number: string; type: string; status: string
@@ -425,11 +426,12 @@ export default function InvoicesPage() {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="text-center py-20 card p-6">
-          <FileText className="w-12 h-12 text-surface-300 mx-auto mb-3" />
-          <p className="text-surface-600 font-medium mb-1">No invoices yet</p>
-          <button onClick={openNewInvoice} className="btn-primary btn-sm mt-3"><Plus className="w-3.5 h-3.5" /> Create Invoice</button>
-        </div>
+        <EmptyState
+          icon={<FileText className="w-7 h-7" />}
+          title="Bill your customers"
+          description="Create your first invoice and start collecting payments."
+          action={{ label: 'Create invoice', onClick: openNewInvoice, icon: <Plus className="w-3.5 h-3.5" /> }}
+        />
       ) : (
         <>
         <DesktopOnly><div className="card overflow-hidden">

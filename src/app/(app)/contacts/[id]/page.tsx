@@ -21,6 +21,8 @@ import MentionText from '@/components/shared/MentionText'
 import CallButton from '@/components/shared/CallButton'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
 import RelatedNotes from '@/components/shared/RelatedNotes'
+import HealthScoreBadge from '@/components/shared/HealthScoreBadge'
+import { pushRecent } from '@/lib/recent/items'
 
 interface ContactDetail {
   id: string; workspace_id: string; type: string; name: string;
@@ -172,6 +174,7 @@ export default function ContactDetailPage() {
     if (contactRes.data) {
       setContact(contactRes.data)
       setEditData(contactRes.data)
+      pushRecent({ type: 'contact', id: contactRes.data.id, label: contactRes.data.name || 'Contact', href: `/contacts/${contactRes.data.id}` })
 
       // Load stages for new deal form
       const { data: stagesData } = await supabase.from('pipeline_stages').select('id, name').eq('workspace_id', contactRes.data.workspace_id).order('order_index').limit(20)
@@ -471,9 +474,10 @@ export default function ContactDetailPage() {
             <div className="flex items-start gap-4">
               <div className={`avatar-lg ${avatarColor} text-lg`}>{getInitials(contact.name)}</div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="text-xl font-bold text-surface-900">{contact.name}</h1>
                   <span className={cn('badge text-[10px]', contact.type === 'company' ? 'badge-blue' : 'badge-gray')}>{contact.type}</span>
+                  <HealthScoreBadge contactId={contact.id} />
                 </div>
                 {contact.job_title && <p className="text-sm text-surface-500 mt-0.5">{contact.job_title}{contact.company_name ? ` at ${contact.company_name}` : ''}</p>}
                 <div className="flex flex-wrap gap-4 mt-3">
@@ -529,6 +533,13 @@ export default function ContactDetailPage() {
                 <button onClick={() => setEditing(true)} className="btn-secondary btn-sm">
                   <Edit2 className="w-3.5 h-3.5" /> Edit
                 </button>
+                <a
+                  href={`/api/gdpr/export/${contact.id}`}
+                  className="btn-secondary btn-sm"
+                  title="Download all data Tracktio holds about this contact"
+                >
+                  Export data (GDPR)
+                </a>
               </div>
             </div>
           </div>

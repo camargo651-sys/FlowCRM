@@ -13,6 +13,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { cn, formatCurrency } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
+import EmptyState from '@/components/shared/EmptyState'
+import BulkActions from '@/components/shared/BulkActions'
 
 interface Product {
   id: string; sku: string; name: string; description: string;
@@ -80,6 +82,53 @@ export default function InventoryPage() {
   const [movType, setMovType] = useState<string>('purchase')
   const [movQty, setMovQty] = useState('')
   const [movNotes, setMovNotes] = useState('')
+
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const bulkDeleteProducts = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} product(s)?`)) return
+    const ids = Array.from(selected)
+    await supabase.from('products').delete().in('id', ids)
+    setProducts(prev => prev.filter(p => !ids.includes(p.id)))
+    setSelected(new Set())
+    toast.success(`${ids.length} product(s) deleted`)
+  }
+
+  const bulkAddTag = async (tag: string) => {
+    if (selected.size === 0 || !tag) return
+    const ids = Array.from(selected)
+    for (const id of ids) {
+      const p = products.find(x => x.id === id)
+      if (!p) continue
+      const newTags = Array.from(new Set([...(p.tags || []), tag]))
+      await supabase.from('products').update({ tags: newTags }).eq('id', id)
+    }
+    toast.success(`Tag added to ${ids.length} product(s)`)
+    setSelected(new Set())
+    load()
+  }
+
+  const bulkChangeCategory = async () => {
+    if (selected.size === 0) return
+    const cats = categories.map(c => `${c.id}:${c.name}`).join('\n')
+    const cid = prompt(`Enter category id to assign:\n${cats}`)
+    if (!cid) return
+    const ids = Array.from(selected)
+    await supabase.from('products').update({ category_id: cid }).in('id', ids)
+    toast.success(`${ids.length} product(s) re-categorized`)
+    setSelected(new Set())
+    load()
+  }
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -456,12 +505,12 @@ export default function InventoryPage() {
 
       {/* Products Table */}
       {tab === 'products' && filtered.length === 0 ? (
-        <div className="text-center py-20 card p-6">
-          <Package className="w-12 h-12 text-surface-300 mx-auto mb-3" />
-          <p className="text-surface-600 font-medium mb-1">No products yet</p>
-          <p className="text-surface-400 text-sm mb-4">Add your first product to start managing inventory</p>
-          <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> Add Product</button>
-        </div>
+        <EmptyState
+          icon={<Package className="w-7 h-7" />}
+          title="Track what's in stock"
+          description="Add your first product and keep an eye on stock, costs and pricing."
+          action={{ label: 'Add product', onClick: () => setShowNew(true), icon: <Plus className="w-3.5 h-3.5" /> }}
+        />
       ) : tab === 'products' ? (
         <>
         <MobileList>
@@ -510,6 +559,7 @@ export default function InventoryPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-100">
+                <th className="px-4 py-3 w-8"></th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Product</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">SKU</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden xl:table-cell">Barcode</th>
@@ -523,7 +573,10 @@ export default function InventoryPage() {
               {filtered.map(product => {
                 const isLow = product.stock_quantity <= product.min_stock && product.status === 'active'
                 return (
-                <tr key={product.id} className="border-b border-surface-50 last:border-0 hover:bg-surface-50 transition-colors">
+                <tr key={product.id} className={cn('border-b border-surface-50 last:border-0 hover:bg-surface-50 transition-colors', selected.has(product.id) && 'bg-brand-50')}>
+                  <td className="px-4 py-3">
+                    <input type="checkbox" checked={selected.has(product.id)} onChange={() => toggleSelect(product.id)} className="rounded border-surface-300" />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10 bg-surface-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -772,6 +825,12 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      <BulkActions count={selected.size} onClear={() => setSelected(new Set())} onDelete={bulkDeleteProducts} onTag={bulkAddTag}>
+        <button onClick={bulkChangeCategory} className="flex items-center gap-1.5 text-xs font-medium hover:text-brand-300 transition-colors px-1">
+          <Box className="w-3.5 h-3.5" /> Category
+        </button>
+      </BulkActions>
     </div>
   )
 }

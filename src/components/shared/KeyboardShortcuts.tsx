@@ -10,7 +10,9 @@ const SHORTCUT_SECTIONS = [
       { keys: ['G', 'D'], desc: 'Go to Dashboard' },
       { keys: ['G', 'P'], desc: 'Go to Pipeline' },
       { keys: ['G', 'C'], desc: 'Go to Contacts' },
-      { keys: ['G', 'I'], desc: 'Go to Invoices' },
+      { keys: ['G', 'I'], desc: 'Go to Inbox' },
+      { keys: ['G', 'M'], desc: 'Go to Marketing' },
+      { keys: ['G', 'V'], desc: 'Go to Invoices' },
       { keys: ['G', 'N'], desc: 'Go to Inventory' },
       { keys: ['G', 'H'], desc: 'Go to HR' },
       { keys: ['G', 'S'], desc: 'Go to Settings' },
@@ -20,8 +22,11 @@ const SHORTCUT_SECTIONS = [
     title: 'Actions',
     shortcuts: [
       { keys: ['⌘', 'K'], desc: 'Open command palette' },
+      { keys: ['/'], desc: 'Focus search' },
+      { keys: ['N'], desc: 'New (Quick create)' },
       { keys: ['C'], desc: 'Quick create menu' },
       { keys: ['?'], desc: 'Show this help' },
+      { keys: ['⌘', '/'], desc: 'Show this help' },
     ]
   },
   {
@@ -46,11 +51,29 @@ export default function KeyboardShortcuts() {
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
 
-      // ? to show shortcuts help
+      // ? or Cmd+/ to show shortcuts help
       if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         setOpen(o => !o)
         return
+      }
+      if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setOpen(o => !o)
+        return
+      }
+
+      // / to focus search (open command palette)
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault()
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
+        return
+      }
+
+      // N to trigger quick-create FAB on list pages
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const fab = document.querySelector('[data-tour="quick-create"]') as HTMLButtonElement | null
+        if (fab) { e.preventDefault(); fab.click(); return }
       }
 
       // Escape to close
@@ -71,7 +94,8 @@ export default function KeyboardShortcuts() {
         gPressed = false
         const routes: Record<string, string> = {
           d: '/dashboard', p: '/pipeline', c: '/contacts',
-          i: '/invoices', n: '/inventory', h: '/hr', s: '/settings',
+          i: '/whatsapp', m: '/campaigns', v: '/invoices',
+          n: '/inventory', h: '/hr', s: '/settings',
         }
         if (routes[e.key]) router.push(routes[e.key])
       }

@@ -56,6 +56,8 @@ export default function PortalPage() {
   const [tab, setTab] = useState<'invoices' | 'quotes' | 'deals' | 'contracts' | 'documents'>('invoices')
 
   useEffect(() => {
+    // Fire portal_view engagement event (non-blocking)
+    fetch(`/api/track/click?event=portal_view&e=portal&i=${token}&w=portal`).catch(() => {})
     fetch(`/api/portal?token=${token}`)
       .then(async (r) => {
         if (!r.ok) throw new Error('not_found')

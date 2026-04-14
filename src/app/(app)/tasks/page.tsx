@@ -2,12 +2,14 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, CheckSquare, Square, Calendar, Search, X, AlarmClock, UserCheck, Repeat, ListChecks } from 'lucide-react'
+import { Plus, CheckSquare, Square, Calendar, Search, X, AlarmClock, UserCheck, Repeat, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import BulkActions from '@/components/shared/BulkActions'
 import type { Activity } from '@/types'
 import type { DbRow } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { useI18n } from '@/lib/i18n/context'
+import EmptyState from '@/components/shared/EmptyState'
 
 const TYPES = ['call','email','meeting','note','task'] as const
 const TYPE_COLORS: Record<string, string> = {
@@ -231,6 +233,16 @@ export default function TasksPage() {
     toast.success(`${ids.length} task(s) completed`)
   }
 
+  const bulkDelete = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} task(s)?`)) return
+    const ids = Array.from(selected)
+    await supabase.from('activities').delete().in('id', ids)
+    setTasks(prev => prev.filter(t => !ids.includes(t.id)))
+    setSelected(new Set())
+    toast.success(`${ids.length} task(s) deleted`)
+  }
+
   const now = new Date()
 
   // Sort: overdue first, then by priority, then by due date
@@ -303,24 +315,15 @@ export default function TasksPage() {
           <option value="">Unassigned</option>
           {members.map(m => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}
         </select>
-        {selected.size > 0 && (
-          <button onClick={bulkComplete} className="btn-sm bg-emerald-600 text-white text-xs rounded-lg px-3 py-1.5 flex items-center gap-1">
-            <ListChecks className="w-3.5 h-3.5" /> Complete {selected.size} selected
-          </button>
-        )}
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-14 h-14 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <CheckSquare className="w-7 h-7 text-surface-400" />
-          </div>
-          <p className="text-surface-600 font-medium mb-1">{filter === 'done' ? 'No completed tasks' : 'No tasks here'}</p>
-          <p className="text-surface-400 text-sm mb-4">
-            {filter === 'pending' ? 'You\'re all caught up!' : 'Create your first task'}
-          </p>
-          {filter !== 'done' && <button onClick={() => setShowNew(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" /> New Task</button>}
-        </div>
+        <EmptyState
+          icon={<CheckSquare className="w-7 h-7" />}
+          title={filter === 'done' ? 'No completed tasks' : 'Stay on top of your day'}
+          description={filter === 'pending' ? "You're all caught up! Add a task to keep moving." : 'Create tasks for follow-ups, reminders and to-dos.'}
+          action={filter !== 'done' ? { label: 'Add task', onClick: () => setShowNew(true), icon: <Plus className="w-3.5 h-3.5" /> } : undefined}
+        />
       ) : (
         <div className="space-y-2">
           {filtered.map((task, i) => {
@@ -372,6 +375,12 @@ export default function TasksPage() {
       )}
 
       {showNew && <NewTaskModal workspaceId={workspaceId} members={members} onClose={() => setShowNew(false)} onSave={handleCreate} />}
+
+      <BulkActions count={selected.size} onClear={() => setSelected(new Set())} onDelete={bulkDelete}>
+        <button onClick={bulkComplete} className="flex items-center gap-1.5 text-xs font-medium text-emerald-300 hover:text-emerald-200 transition-colors px-1">
+          <Check className="w-3.5 h-3.5" /> Mark done
+        </button>
+      </BulkActions>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { decryptToken } from '@/lib/email/token-manager'
 
 function getSupabase() {
@@ -24,13 +25,21 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { to, subject, body, contactId } = await request.json()
-  if (!to || !subject || !body) {
+  const { to, subject, body: rawBody, contactId, entityId, entity } = await request.json()
+  if (!to || !subject || !rawBody) {
     return NextResponse.json({ error: 'Missing to, subject, or body' }, { status: 400 })
   }
 
   const { data: ws } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
   if (!ws) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
+
+  // Inject engagement tracking pixel
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+  const trackEntity = entity || 'email'
+  const trackId = entityId || crypto.randomUUID()
+  const pixelUrl = `${appUrl}/api/track/pixel?w=${ws.id}&e=${trackEntity}&i=${trackId}${contactId ? `&c=${contactId}` : ''}`
+  const pixel = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none" />`
+  const body = rawBody.includes('</body>') ? rawBody.replace('</body>', `${pixel}</body>`) : rawBody + pixel
 
   // Try Gmail first
   const { data: gmailAccount } = await supabase

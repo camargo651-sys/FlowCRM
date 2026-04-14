@@ -13,6 +13,7 @@ import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import EmailComposer from '@/components/shared/EmailComposer'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
 import RelatedNotes from '@/components/shared/RelatedNotes'
+import { pushRecent } from '@/lib/recent/items'
 import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-change'
 import { extractMentionIds } from '@/lib/mentions/parse'
 import MentionTextarea from '@/components/shared/MentionTextarea'
@@ -153,6 +154,7 @@ export default function TicketDetailPage() {
       .single()
     if (!ticketData) { setLoading(false); return }
     setTicket(ticketData)
+    pushRecent({ type: 'ticket', id: ticketData.id, label: ticketData.subject || ticketData.ticket_number || 'Ticket', href: `/tickets/${ticketData.id}` })
 
     const ws = ticketData.workspace_id
 

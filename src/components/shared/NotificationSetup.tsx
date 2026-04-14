@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Bell, X } from 'lucide-react'
-import { requestPushPermission } from '@/lib/notifications/push'
+import { requestPushPermission, subscribeToPush } from '@/lib/notifications/push'
 
 const DISMISS_KEY = 'tracktio_notif_dismissed'
 
@@ -21,6 +21,13 @@ export default function NotificationSetup() {
   const enable = async () => {
     setBusy(true)
     const ok = await requestPushPermission()
+    if (ok) {
+      try {
+        await subscribeToPush()
+      } catch (err) {
+        console.warn('[notif-setup] subscribe failed', err)
+      }
+    }
     setBusy(false)
     if (ok) setShow(false)
   }

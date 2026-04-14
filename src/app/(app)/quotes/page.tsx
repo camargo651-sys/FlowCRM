@@ -7,6 +7,8 @@ import { formatCurrency, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import EmptyState from '@/components/shared/EmptyState'
+import BulkActions from '@/components/shared/BulkActions'
 
 interface QuoteItem {
   id: string
@@ -613,6 +615,36 @@ export default function QuotesPage() {
   const [showEditor, setShowEditor] = useState(false)
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const bulkDeleteQuotes = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} quote(s)?`)) return
+    const ids = Array.from(selected)
+    await supabase.from('quote_items').delete().in('quote_id', ids)
+    await supabase.from('quotes').delete().in('id', ids)
+    setQuotes(prev => prev.filter(q => !ids.includes(q.id)))
+    setSelected(new Set())
+    toast.success(`${ids.length} quote(s) deleted`)
+  }
+
+  const bulkSendQuotes = async () => {
+    if (selected.size === 0) return
+    const ids = Array.from(selected)
+    await supabase.from('quotes').update({ status: 'sent', sent_at: new Date().toISOString() }).in('id', ids)
+    toast.success(`${ids.length} quote(s) marked as sent`)
+    setSelected(new Set())
+    load()
+  }
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -770,21 +802,18 @@ export default function QuotesPage() {
 
       {/* Quotes list */}
       {filtered.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-14 h-14 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <FileText className="w-7 h-7 text-surface-400" />
-          </div>
-          <p className="text-surface-600 font-medium mb-1">No quotes yet</p>
-          <p className="text-surface-400 text-sm mb-4">Create your first quote to start sending proposals</p>
-          <button onClick={() => { setEditingQuote(null); setShowEditor(true) }} className="btn-primary btn-sm">
-            <Plus className="w-3.5 h-3.5" /> New Quote
-          </button>
-        </div>
+        <EmptyState
+          icon={<FileText className="w-7 h-7" />}
+          title="Send your first quote"
+          description="Create polished proposals and send them to clients in seconds."
+          action={{ label: 'Create quote', onClick: () => { setEditingQuote(null); setShowEditor(true) }, icon: <Plus className="w-3.5 h-3.5" /> }}
+        />
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-100">
+                <th className="px-4 py-3 w-8"></th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Quote</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">{template.contactLabel.singular}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden lg:table-cell">{template.dealLabel.singular}</th>
@@ -803,7 +832,10 @@ export default function QuotesPage() {
                 const relativeViewed = lastViewed ? (Date.now() - lastViewed.getTime() < 3600000 ? `${Math.round((Date.now() - lastViewed.getTime()) / 60000)}m ago` : Date.now() - lastViewed.getTime() < 86400000 ? `${Math.round((Date.now() - lastViewed.getTime()) / 3600000)}h ago` : lastViewed.toLocaleDateString()) : null
                 return (
                   <tr key={quote.id} onClick={() => openEditor(quote)}
-                    className="border-b border-surface-50 last:border-0 hover:bg-surface-50 cursor-pointer transition-colors">
+                    className={cn('border-b border-surface-50 last:border-0 hover:bg-surface-50 cursor-pointer transition-colors', selected.has(quote.id) && 'bg-brand-50')}>
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={selected.has(quote.id)} onChange={() => toggleSelect(quote.id)} className="rounded border-surface-300" />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-semibold text-surface-800">{quote.title}</p>
                       <p className="text-xs text-surface-400">{quote.quote_number} · {new Date(quote.created_at).toLocaleDateString()}</p>
@@ -851,6 +883,12 @@ export default function QuotesPage() {
           </table>
         </div>
       )}
+
+      <BulkActions count={selected.size} onClear={() => setSelected(new Set())} onDelete={bulkDeleteQuotes}>
+        <button onClick={bulkSendQuotes} className="flex items-center gap-1.5 text-xs font-medium hover:text-brand-300 transition-colors px-1">
+          <Send className="w-3.5 h-3.5" /> Mark sent
+        </button>
+      </BulkActions>
 
       {showEditor && (
         <QuoteEditor

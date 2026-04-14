@@ -7,12 +7,15 @@ import MobileNav from '@/components/layout/MobileNav'
 import Breadcrumbs from '@/components/shared/Breadcrumbs'
 import { Toaster } from 'sonner'
 import KeyboardShortcuts from '@/components/shared/KeyboardShortcuts'
+import OnboardingTour from '@/components/shared/OnboardingTour'
 import InactivityLock from '@/components/shared/InactivityLock'
 import InstallPrompt from '@/components/shared/InstallPrompt'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import GoogleAnalytics from '@/components/shared/GoogleAnalytics'
 import FacebookPixel from '@/components/shared/FacebookPixel'
 import NotificationSetup from '@/components/shared/NotificationSetup'
+import OfflineBanner from '@/components/shared/OfflineBanner'
+import QuickCapture from '@/components/shared/QuickCapture'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -34,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen overflow-hidden bg-surface-50">
       <MobileNav>{sidebar}</MobileNav>
       <main className="flex-1 overflow-y-auto min-w-0">
+        <OfflineBanner />
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 lg:py-8 pt-14 md:pt-6 lg:pt-8 pb-20 md:pb-6">
           <Breadcrumbs />
           <NotificationSetup />
@@ -44,8 +48,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <QuickCreate />
       <Toaster position="bottom-right" richColors closeButton />
       <KeyboardShortcuts />
+      <OnboardingTour />
       <InactivityLock />
       <InstallPrompt />
+      <QuickCapture />
       <GoogleAnalytics />
       <FacebookPixel />
     </div>

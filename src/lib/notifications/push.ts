@@ -111,8 +111,26 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY_PLACEHOLDER).buffer as ArrayBuffer,
     })
 
-    // TODO: POST `sub` to backend (e.g. /api/push/subscribe) to persist
-    // the PushSubscription against the current user/workspace.
+    // Persist subscription server-side so the backend can deliver pushes.
+    try {
+      const json = sub.toJSON() as {
+        endpoint?: string
+        keys?: { p256dh?: string; auth?: string }
+      }
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscription: {
+            endpoint: json.endpoint,
+            keys: json.keys,
+          },
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        }),
+      })
+    } catch (err) {
+      console.warn('[push] failed to persist subscription', err)
+    }
     return sub
   } catch (err) {
     console.warn('[push] subscribe failed', err)

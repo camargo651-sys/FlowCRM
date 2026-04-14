@@ -63,7 +63,7 @@ export default function QuickCreate() {
       )}
 
       {/* FAB */}
-      <button onClick={() => setOpen(o => !o)}
+      <button data-tour="quick-create" onClick={() => setOpen(o => !o)}
         className={cn(
           'w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-200',
           open

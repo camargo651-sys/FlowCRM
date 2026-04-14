@@ -9,6 +9,7 @@ import { formatCurrency, cn } from '@/lib/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
+import BulkActions from '@/components/shared/BulkActions'
 
 const CATEGORIES = ['Travel', 'Meals', 'Office Supplies', 'Software', 'Transportation', 'Lodging', 'Training', 'Marketing', 'Utilities', 'Other']
 
@@ -40,6 +41,35 @@ export default function ExpensesPage() {
   // Receipt upload refs
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const bulkApprove = async () => {
+    if (selected.size === 0) return
+    const ids = Array.from(selected)
+    await supabase.from('expense_reports').update({ status: 'approved', reviewed_at: new Date().toISOString() }).in('id', ids)
+    toast.success(`${ids.length} report(s) approved`)
+    setSelected(new Set())
+    load()
+  }
+
+  const bulkDeleteReports = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} report(s)?`)) return
+    const ids = Array.from(selected)
+    await supabase.from('expense_reports').delete().in('id', ids)
+    toast.success(`${ids.length} report(s) deleted`)
+    setSelected(new Set())
+    load()
+  }
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -256,6 +286,7 @@ export default function ExpensesPage() {
         <><DesktopOnly><div className="card overflow-hidden">
           <table className="w-full">
             <thead><tr className="border-b border-surface-100">
+              <th className="px-4 py-3 w-8"></th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Report</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-surface-500 uppercase hidden md:table-cell">Employee</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-surface-500 uppercase">Amount</th>
@@ -265,7 +296,8 @@ export default function ExpensesPage() {
             </tr></thead>
             <tbody>
               {filteredReports.map(r => (
-                <tr key={r.id} className="border-b border-surface-50 hover:bg-surface-50">
+                <tr key={r.id} className={cn('border-b border-surface-50 hover:bg-surface-50', selected.has(r.id) && 'bg-brand-50')}>
+                  <td className="px-4 py-3"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded border-surface-300" /></td>
                   <td className="px-4 py-3"><p className="text-sm font-semibold text-surface-800">{r.title}</p><p className="text-[10px] text-surface-400 font-mono">{r.report_number}</p></td>
                   <td className="px-4 py-3 text-sm text-surface-600 hidden md:table-cell">{r.employees ? `${r.employees.first_name} ${r.employees.last_name}` : '—'}</td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-surface-900">{formatCurrency(r.total)}</td>
@@ -309,6 +341,12 @@ export default function ExpensesPage() {
           ))}
         </MobileList></>
       )}
+
+      <BulkActions count={selected.size} onClear={() => setSelected(new Set())} onDelete={bulkDeleteReports}>
+        <button onClick={bulkApprove} className="flex items-center gap-1.5 text-xs font-medium text-emerald-300 hover:text-emerald-200 transition-colors px-1">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+        </button>
+      </BulkActions>
 
       {showNew && (
         <div className="modal-overlay">
