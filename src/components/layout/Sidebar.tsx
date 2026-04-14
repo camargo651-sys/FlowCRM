@@ -47,18 +47,52 @@ export const MODULES: ModuleDef[] = [
     items: [
       { href: '/pipeline', label: 'nav.pipeline' },
       { href: '/contacts', label: 'nav.contacts' },
+      { href: '/contacts?type=company', label: 'nav.companies' },
       { href: '/quotes', label: 'nav.quotes' },
-      { href: '/leads', label: 'nav.leads' },
-      { href: '/campaigns', label: 'nav.campaigns' },
+      { href: '/contracts', label: 'nav.contracts' },
+      { href: '/tasks', label: 'nav.my_activities' },
     ],
   },
   {
-    key: 'whatsapp', icon: 'whatsapp', label: 'WhatsApp',
+    key: 'marketing', icon: 'marketing', label: 'nav.marketing',
+    enableKeys: ['crm'],
+    items: [
+      { href: '/leads', label: 'nav.leads' },
+      { href: '/campaigns', label: 'nav.campaigns' },
+      { href: '/whatsapp-campaigns', label: 'nav.wa_campaigns' },
+      { href: '/sequences', label: 'nav.sequences' },
+      { href: '/forms', label: 'nav.forms' },
+      { href: '/templates-marketplace', label: 'nav.templates' },
+    ],
+  },
+  {
+    key: 'inbox', icon: 'inbox', label: 'nav.inbox',
     enableKeys: ['crm'],
     items: [
       { href: '/whatsapp', label: 'nav.wa_inbox' },
-      { href: '/whatsapp-campaigns', label: 'nav.wa_campaigns' },
-      { href: '/sequences', label: 'nav.sequences' },
+      { href: '/inbox/email', label: 'nav.email_inbox' },
+      { href: '/inbox/sms', label: 'nav.sms_inbox' },
+      { href: '/reports/calls', label: 'nav.calls_log' },
+    ],
+  },
+  {
+    key: 'commerce', icon: 'commerce', label: 'nav.commerce',
+    enableKeys: ['pos', 'ecommerce'],
+    items: [
+      { href: '/pos', label: 'nav.pos' },
+      { href: '/store-orders', label: 'nav.ecommerce' },
+      { href: '/commerce/catalog', label: 'nav.catalog' },
+      { href: '/commerce/discounts', label: 'nav.discounts' },
+    ],
+  },
+  {
+    key: 'operations', icon: 'operations', label: 'section.operations',
+    enableKeys: ['inventory', 'purchasing', 'manufacturing'],
+    items: [
+      { href: '/inventory', label: 'nav.inventory' },
+      { href: '/purchasing', label: 'nav.purchasing' },
+      { href: '/purchasing?view=suppliers', label: 'nav.suppliers' },
+      { href: '/manufacturing', label: 'nav.manufacturing' },
     ],
   },
   {
@@ -66,24 +100,22 @@ export const MODULES: ModuleDef[] = [
     enableKeys: ['invoicing', 'accounting', 'expenses'],
     items: [
       { href: '/invoices', label: 'nav.invoices' },
-      { href: '/accounting', label: 'nav.accounting' },
       { href: '/expenses', label: 'nav.expenses' },
-      { href: '/reports', label: 'nav.reports' },
-      { href: '/reports/calls', label: 'Call Reports' },
-      { href: '/reports/lost-deals', label: 'Lost Deals' },
-      { href: '/reports/custom', label: 'nav.custom_reports' },
-      { href: '/bi', label: 'nav.bi' },
+      { href: '/accounting', label: 'nav.accounting' },
+      { href: '/finance/payments', label: 'nav.payments' },
+      { href: '/finance/taxes', label: 'nav.taxes' },
     ],
   },
   {
-    key: 'operations', icon: 'operations', label: 'section.operations',
-    enableKeys: ['inventory', 'purchasing', 'manufacturing', 'pos', 'ecommerce'],
+    key: 'insights', icon: 'insights', label: 'nav.insights',
+    always: true,
     items: [
-      { href: '/inventory', label: 'nav.inventory' },
-      { href: '/purchasing', label: 'nav.purchasing' },
-      { href: '/manufacturing', label: 'nav.manufacturing' },
-      { href: '/pos', label: 'nav.pos' },
-      { href: '/store-orders', label: 'nav.ecommerce' },
+      { href: '/reports', label: 'nav.reports' },
+      { href: '/reports/custom', label: 'nav.custom_reports' },
+      { href: '/bi', label: 'nav.bi' },
+      { href: '/reports/calls', label: 'nav.calls_log' },
+      { href: '/reports/lost-deals', label: 'nav.lost_deals' },
+      { href: '/reports/forecast', label: 'nav.forecast' },
     ],
   },
   {
@@ -91,9 +123,9 @@ export const MODULES: ModuleDef[] = [
     enableKeys: ['hr'],
     items: [
       { href: '/hr', label: 'nav.hr' },
-      { href: '/tasks', label: 'nav.tasks' },
-      { href: '/calendar', label: 'nav.calendar' },
-      { href: '/inter-dept-requests', label: 'Solicitudes' },
+      { href: '/hr?tab=payroll', label: 'nav.payroll' },
+      { href: '/hr?tab=time-off', label: 'nav.time_off' },
+      { href: '/hr?tab=org-chart', label: 'nav.org_chart' },
     ],
   },
   {
@@ -101,29 +133,50 @@ export const MODULES: ModuleDef[] = [
     enableKeys: ['crm'],
     items: [
       { href: '/tickets', label: 'nav.tickets' },
-      { href: '/contracts', label: 'nav.contracts' },
-      { href: '/audit-log', label: 'nav.audit_log' },
+      { href: '/support/sla', label: 'nav.sla' },
+      { href: '/support/knowledge-base', label: 'nav.knowledge_base' },
+      { href: '/portal', label: 'nav.client_portals' },
+    ],
+  },
+  {
+    key: 'workspace', icon: 'people', label: 'nav.workspace',
+    always: true,
+    items: [
+      { href: '/calendar', label: 'nav.calendar' },
+      { href: '/tasks', label: 'nav.tasks' },
+      { href: '/inter-dept-requests', label: 'nav.inter_dept' },
+      { href: '/workspace/notes', label: 'nav.notes' },
     ],
   },
   {
     key: 'settings', icon: 'settings', label: 'nav.settings',
     always: true,
     items: [
+      // General
       { href: '/settings', label: 'nav.general' },
       { href: '/settings/company', label: 'nav.company' },
       { href: '/settings/modules', label: 'nav.modules' },
+      // Customization
       { href: '/settings/form-builder', label: 'nav.form_builder' },
       { href: '/settings/templates', label: 'nav.templates' },
       { href: '/settings/widget', label: 'nav.widget' },
+      { href: '/settings/loss-reasons', label: 'nav.loss_reasons' },
+      { href: '/settings/stage-conditions', label: 'nav.stage_conditions' },
+      // Permissions
       { href: '/roles', label: 'nav.roles' },
-      { href: '/settings/field-permissions', label: 'Field Permissions' },
+      { href: '/settings/field-permissions', label: 'nav.field_permissions' },
       { href: '/team', label: 'nav.team' },
-      { href: '/integrations', label: 'nav.integrations' },
+      // Automations
       { href: '/automations', label: 'nav.automations' },
+      // Integrations
+      { href: '/integrations', label: 'nav.integrations' },
+      // Billing
       { href: '/billing', label: 'nav.billing' },
-      { href: '/templates-marketplace', label: 'nav.marketplace' },
-      { href: '/import', label: 'nav.import' },
+      // Developer
       { href: '/api-docs', label: 'nav.api_docs' },
+      // Data
+      { href: '/import', label: 'nav.import' },
+      { href: '/audit-log', label: 'nav.audit_log' },
     ],
   },
 ]
@@ -134,12 +187,22 @@ export const MODULES: ModuleDef[] = [
 const ICON_MAP: Record<string, (props: { className?: string }) => React.ReactNode> = {
   home: (p) => <TracktioIcons.Home {...p} />,
   sales: (p) => <TracktioIcons.Sales {...p} />,
+  marketing: (p) => <TracktioIcons.Marketing {...p} />,
+  inbox: (p) => <TracktioIcons.Inbox {...p} />,
   whatsapp: (p) => <TracktioIcons.WhatsApp {...p} />,
+  commerce: (p) => <TracktioIcons.Commerce {...p} />,
   finance: (p) => <TracktioIcons.Finance {...p} />,
+  insights: (p) => <TracktioIcons.Insights {...p} />,
   operations: (p) => <TracktioIcons.Operations {...p} />,
   people: (p) => <TracktioIcons.People {...p} />,
   support: (p) => <TracktioIcons.Support {...p} />,
   settings: (p) => <TracktioIcons.Settings {...p} />,
+}
+
+/** Strip query string from an href for pathname matching */
+function hrefPath(href: string): string {
+  const q = href.indexOf('?')
+  return q >= 0 ? href.slice(0, q) : href
 }
 
 function ModuleIcon({ icon, className }: { icon: string; className?: string }) {
@@ -154,7 +217,10 @@ function findActiveModule(pathname: string): string {
     if (mod.directLink && (pathname === mod.directLink || pathname.startsWith(mod.directLink + '/'))) {
       return mod.key
     }
-    if (mod.items.some(i => pathname === i.href || pathname.startsWith(i.href + '/'))) {
+    if (mod.items.some(i => {
+      const p = hrefPath(i.href)
+      return pathname === p || pathname.startsWith(p + '/')
+    })) {
       return mod.key
     }
   }
@@ -210,7 +276,10 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
     }
   }, [])
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+  const isActive = (href: string) => {
+    const p = hrefPath(href)
+    return pathname === p || pathname.startsWith(p + '/')
+  }
 
   const visibleModules = MODULES.filter(m => isModuleVisible(m, enabledModules))
   const activeModuleDef = MODULES.find(m => m.key === selectedModule) || MODULES[0]
@@ -349,7 +418,7 @@ export default function Sidebar({ userEmail, userName, workspaceName }: SidebarP
         <nav className="flex-1 px-2.5 py-1 overflow-y-auto no-scrollbar">
           <div className="space-y-0.5">
             {activeModuleDef.items.map(({ href, label }) => {
-              const mod = ROUTE_TO_MODULE[href]
+              const mod = ROUTE_TO_MODULE[hrefPath(href)]
               const locked = mod ? planGate.isLocked(mod) : false
               return (
                 <Link

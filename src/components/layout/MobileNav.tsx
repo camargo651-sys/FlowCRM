@@ -11,8 +11,12 @@ import Link from 'next/link'
 const ICON_MAP: Record<string, (p: { className?: string }) => React.ReactNode> = {
   home: (p) => <TracktioIcons.Home {...p} />,
   sales: (p) => <TracktioIcons.Sales {...p} />,
+  marketing: (p) => <TracktioIcons.Marketing {...p} />,
+  inbox: (p) => <TracktioIcons.Inbox {...p} />,
   whatsapp: (p) => <TracktioIcons.WhatsApp {...p} />,
+  commerce: (p) => <TracktioIcons.Commerce {...p} />,
   finance: (p) => <TracktioIcons.Finance {...p} />,
+  insights: (p) => <TracktioIcons.Insights {...p} />,
   operations: (p) => <TracktioIcons.Operations {...p} />,
   people: (p) => <TracktioIcons.People {...p} />,
   support: (p) => <TracktioIcons.Support {...p} />,
@@ -20,17 +24,25 @@ const ICON_MAP: Record<string, (p: { className?: string }) => React.ReactNode> =
 }
 
 // Bottom tab bar shows these 4 + More
-const TAB_KEYS = ['home', 'sales', 'whatsapp', 'finance']
+const TAB_KEYS = ['home', 'sales', 'inbox', 'marketing']
 
 function getModuleHref(mod: ModuleDef): string {
   if (mod.directLink) return mod.directLink
   return mod.items[0]?.href || '/dashboard'
 }
 
+function hrefPath(href: string): string {
+  const q = href.indexOf('?')
+  return q >= 0 ? href.slice(0, q) : href
+}
+
 function findActiveModule(pathname: string): string {
   for (const mod of MODULES) {
     if (mod.directLink && (pathname === mod.directLink || pathname.startsWith(mod.directLink + '/'))) return mod.key
-    if (mod.items.some(i => pathname === i.href || pathname.startsWith(i.href + '/'))) return mod.key
+    if (mod.items.some(i => {
+      const p = hrefPath(i.href)
+      return pathname === p || pathname.startsWith(p + '/')
+    })) return mod.key
   }
   return 'home'
 }

@@ -120,6 +120,48 @@ function Analytics(props: IconProps) {
   )
 }
 
+/** Marketing — megaphone with signal */
+function Marketing(props: IconProps) {
+  return (
+    <Icon {...defaultProps} {...props}>
+      <path d="M3 11v2a2 2 0 002 2h1l3 4h2v-14h-2l-3 4H5a2 2 0 00-2 2z" />
+      <path d="M15 8c1.5 1 1.5 7 0 8" />
+      <path d="M18 6c3 2 3 10 0 12" />
+    </Icon>
+  )
+}
+
+/** Inbox — tray with arrow */
+function Inbox(props: IconProps) {
+  return (
+    <Icon {...defaultProps} {...props}>
+      <path d="M3 13l3-9h12l3 9" />
+      <path d="M3 13v6a2 2 0 002 2h14a2 2 0 002-2v-6h-6l-2 2h-4l-2-2H3z" />
+    </Icon>
+  )
+}
+
+/** Commerce — shopping bag */
+function Commerce(props: IconProps) {
+  return (
+    <Icon {...defaultProps} {...props}>
+      <path d="M5 8h14l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 8z" />
+      <path d="M9 11V7a3 3 0 016 0v4" />
+    </Icon>
+  )
+}
+
+/** Insights — sparkline with dot */
+function Insights(props: IconProps) {
+  return (
+    <Icon {...defaultProps} {...props}>
+      <path d="M3 20V10m5 10V4m5 16v-8m5 8V7" />
+      <circle cx="8" cy="4" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="7" r="1.5" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
 /** Settings — gear */
 function Settings(props: IconProps) {
   return (
@@ -164,10 +206,14 @@ const TracktioIcons = {
   Support,
   WhatsApp,
   Analytics,
+  Marketing,
+  Inbox,
+  Commerce,
+  Insights,
   Settings,
   Add,
   Logo,
 }
 
 export default TracktioIcons
-export { Home, Sales, Finance, Operations, People, Support, WhatsApp, Analytics, Settings, Add, Logo }
+export { Home, Sales, Finance, Operations, People, Support, WhatsApp, Analytics, Marketing, Inbox, Commerce, Insights, Settings, Add, Logo }
