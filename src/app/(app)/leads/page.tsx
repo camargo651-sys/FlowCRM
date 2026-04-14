@@ -140,9 +140,18 @@ export default function LeadsPage() {
       toast.error('No active workspace — please reload')
       return
     }
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    console.log('[leads] createLead', {
+      authUserId: authUser?.id,
+      authEmail: authUser?.email,
+      workspaceId,
+      activeWsLocalStorage: localStorage.getItem('tracktio_active_workspace'),
+      form,
+    })
     const { data: newLead, error } = await supabase.from('social_leads').insert({
       workspace_id: workspaceId, ...form,
     }).select('id').single()
+    console.log('[leads] insert result', { newLead, error })
     if (error || !newLead) {
       console.error('[leads] insert failed:', error)
       toast.error(`Failed to add lead: ${error?.message || 'unknown error'}`)
