@@ -42,6 +42,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
+  const [authed, setAuthed] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -49,6 +50,7 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     try {
       const res = await fetch('/api/ai/notifications')
+      if (res.status === 401) { setAuthed(false); return }
       if (res.ok) {
         const data = await res.json()
         setNotifications(data.notifications || [])
@@ -58,25 +60,42 @@ export default function NotificationBell() {
   }
 
   useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-
-    // Realtime subscription (graceful — won't break if table doesn't exist)
+    let cancelled = false
+    let interval: ReturnType<typeof setInterval> | null = null
     let channel: ReturnType<typeof supabase.channel> | null = null
-    try {
-      channel = supabase
-        .channel('notifications')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-          const newNotif = payload.new as Notification
-          setNotifications(prev => [newNotif, ...prev].slice(0, 20))
-          setUnread(prev => prev + 1)
-        })
-        .subscribe()
-    } catch {}
+
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (cancelled || !user) return
+      setAuthed(true)
+      fetchNotifications()
+      interval = setInterval(fetchNotifications, 30000)
+
+      try {
+        channel = supabase
+          .channel('notifications')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+            const newNotif = payload.new as Notification
+            setNotifications(prev => [newNotif, ...prev].slice(0, 20))
+            setUnread(prev => prev + 1)
+          })
+          .subscribe()
+      } catch {}
+    })()
+
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setAuthed(false)
+        if (interval) { clearInterval(interval); interval = null }
+        if (channel) { supabase.removeChannel(channel); channel = null }
+      }
+    })
 
     return () => {
-      clearInterval(interval)
+      cancelled = true
+      if (interval) clearInterval(interval)
       if (channel) supabase.removeChannel(channel)
+      authSub.subscription.unsubscribe()
     }
   }, [])
 
@@ -123,6 +142,8 @@ export default function NotificationBell() {
     if (hrs < 24) return `${hrs}h ago`
     return `${Math.floor(hrs / 24)}d ago`
   }
+
+  if (!authed) return null
 
   return (
     <div ref={ref} className="relative">
