@@ -40,7 +40,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>{children}</Providers>
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {})
+            var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            if (isLocal) {
+              // Never keep a SW on localhost — it causes stale cache + HTTPS upgrade bugs during dev.
+              navigator.serviceWorker.getRegistrations().then(function(regs){
+                regs.forEach(function(r){ r.unregister() });
+              }).catch(function(){});
+              if (window.caches) {
+                caches.keys().then(function(keys){ keys.forEach(function(k){ caches.delete(k) }) }).catch(function(){});
+              }
+            } else {
+              navigator.serviceWorker.register('/sw.js').catch(function(){});
+            }
           }
         `}} />
       </body>
