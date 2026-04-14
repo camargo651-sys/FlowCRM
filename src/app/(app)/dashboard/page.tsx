@@ -8,6 +8,7 @@ import GettingStarted from '@/components/dashboard/GettingStarted'
 import DashboardWidgets from '@/components/dashboard/DashboardWidgets'
 import CallMetricsWidget from '@/components/shared/CallMetricsWidget'
 import LossReasonsWidget from '@/components/shared/LossReasonsWidget'
+import QuickTaskButton from '@/components/shared/QuickTaskButton'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
 import { SupabaseClient } from '@supabase/supabase-js'
@@ -223,7 +224,8 @@ export default async function DashboardPage() {
       <GettingStarted />
 
       {/* Personalized greeting */}
-      <div className="mb-6">
+      <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
         <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">{getGreeting(firstName)}</h1>
         {data.alerts.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
@@ -239,6 +241,8 @@ export default async function DashboardPage() {
             ))}
           </div>
         )}
+        </div>
+        <QuickTaskButton size="sm" label="Quick task" />
       </div>
 
       <DashboardWidgets

@@ -19,6 +19,8 @@ import { extractMentionIds } from '@/lib/mentions/parse'
 import MentionTextarea from '@/components/shared/MentionTextarea'
 import MentionText from '@/components/shared/MentionText'
 import CallButton from '@/components/shared/CallButton'
+import QuickTaskButton from '@/components/shared/QuickTaskButton'
+import RelatedNotes from '@/components/shared/RelatedNotes'
 
 interface ContactDetail {
   id: string; workspace_id: string; type: string; name: string;
@@ -522,9 +524,12 @@ export default function ContactDetailPage() {
                   </div>
                 )}
               </div>
-              <button onClick={() => setEditing(true)} className="btn-secondary btn-sm flex-shrink-0">
-                <Edit2 className="w-3.5 h-3.5" /> Edit
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <QuickTaskButton contactId={contact.id} size="sm" />
+                <button onClick={() => setEditing(true)} className="btn-secondary btn-sm">
+                  <Edit2 className="w-3.5 h-3.5" /> Edit
+                </button>
+              </div>
             </div>
           </div>
 
@@ -879,6 +884,9 @@ export default function ContactDetailPage() {
                 </>
               )}
             </div>
+
+            {/* Related notes */}
+            <RelatedNotes contactId={contact.id} />
 
             {/* Calls History (collapsible) */}
             <div className="card overflow-hidden">

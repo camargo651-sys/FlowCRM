@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import QuickTaskButton from '@/components/shared/QuickTaskButton'
 
 const PLATFORM_ICONS: Record<string, string> = {
   instagram: '📸', facebook: '📘', tiktok: '🎵', linkedin: '💼', twitter: '🐦', youtube: '📺', other: '🌐',
@@ -394,6 +395,9 @@ export default function LeadDetailPage() {
                     <ExternalLink className="w-3 h-3" /> View original post
                   </a>
                 )}
+              </div>
+              <div className="flex-shrink-0">
+                <QuickTaskButton size="sm" />
               </div>
             </div>
           </div>

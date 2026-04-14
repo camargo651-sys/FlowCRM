@@ -11,6 +11,7 @@ import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { toast } from 'sonner'
 import { notifyRecordChange } from '@/lib/notifications/notify-change'
+import QuickTaskButton from '@/components/shared/QuickTaskButton'
 
 interface InvoiceDetail {
   id: string; workspace_id: string; invoice_number: string; type: string; status: string
@@ -424,11 +425,14 @@ export default function InvoiceDetailPage() {
                   )}
                 </div>
               </div>
-              {invoice.status === 'draft' && (
-                <button onClick={() => router.push('/invoices')} className="btn-secondary btn-sm flex-shrink-0">
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
-                </button>
-              )}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <QuickTaskButton contactId={invoice.contacts?.id} size="sm" />
+                {invoice.status === 'draft' && (
+                  <button onClick={() => router.push('/invoices')} className="btn-secondary btn-sm">
+                    <Edit2 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

@@ -12,6 +12,7 @@ import MentionText from '@/components/shared/MentionText'
 import { extractMentionIds } from '@/lib/mentions/parse'
 import { notifyMentions } from '@/lib/notifications/notify-change'
 import { useTeam } from '@/lib/hooks/use-team'
+import QuickTaskButton from '@/components/shared/QuickTaskButton'
 
 const STATUS_META: Record<IDRStatus, { label: string; className: string }> = {
   draft:     { label: 'Borrador',    className: 'bg-surface-100 text-surface-700' },
@@ -117,7 +118,8 @@ export default function InterDeptRequestDetailPage() {
             <span className={cn('px-2 py-0.5 rounded-full text-[11px] font-semibold', prioMeta.className)}>{prioMeta.label}</span>
           </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0 items-center">
+          <QuickTaskButton size="sm" />
           {(req.status === 'submitted' || req.status === 'draft') && (
             <button onClick={() => changeStatus('in_review')} className="btn-primary inline-flex items-center gap-1 text-sm">
               <Clock className="w-3.5 h-3.5" /> Revisar

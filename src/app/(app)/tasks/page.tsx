@@ -154,6 +154,13 @@ export default function TasksPage() {
 
   useEffect(() => { load() }, [load])
 
+  // Refresh when a task is created elsewhere via QuickTaskButton
+  useEffect(() => {
+    const handler = () => { load() }
+    window.addEventListener('tracktio:task-created', handler as EventListener)
+    return () => window.removeEventListener('tracktio:task-created', handler as EventListener)
+  }, [load])
+
   const handleCreate = async (data: Partial<Activity>) => {
     const { data: created } = await supabase.from('activities').insert([data]).select().single()
     if (created) setTasks(prev => [...prev, created])

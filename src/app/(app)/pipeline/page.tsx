@@ -15,6 +15,8 @@ import { extractMentionIds } from '@/lib/mentions/parse'
 import MentionText from '@/components/shared/MentionText'
 import MentionTextarea from '@/components/shared/MentionTextarea'
 import CallButton from '@/components/shared/CallButton'
+import QuickTaskButton from '@/components/shared/QuickTaskButton'
+import RelatedNotes from '@/components/shared/RelatedNotes'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -682,6 +684,7 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLos
                 <Ban className="w-4 h-4" />
               </button>
             )}
+            <QuickTaskButton dealId={deal.id} contactId={deal.contact_id || undefined} variant="icon" size="sm" />
             <button onClick={onClose} className="modal-close"><X className="w-4 h-4" /></button>
           </div>
         </div>
@@ -835,6 +838,8 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLos
                   {portalCopied ? 'URL Copied!' : 'Share via Portal'}
                 </button>
               )}
+
+              <RelatedNotes dealId={deal.id} contactId={deal.contact_id || undefined} />
             </div>
           )}
 

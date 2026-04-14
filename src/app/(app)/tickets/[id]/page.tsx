@@ -11,6 +11,8 @@ import {
 import { cn, formatDate } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import EmailComposer from '@/components/shared/EmailComposer'
+import QuickTaskButton from '@/components/shared/QuickTaskButton'
+import RelatedNotes from '@/components/shared/RelatedNotes'
 import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-change'
 import { extractMentionIds } from '@/lib/mentions/parse'
 import MentionTextarea from '@/components/shared/MentionTextarea'
@@ -397,8 +399,13 @@ export default function TicketDetailPage() {
                   </span>
                 </div>
               </div>
+              <div className="flex-shrink-0">
+                <QuickTaskButton ticketId={ticket.id} contactId={ticket.contact_id || undefined} size="sm" />
+              </div>
             </div>
           </div>
+
+          <RelatedNotes ticketId={ticket.id} contactId={ticket.contact_id || undefined} />
 
           {/* 2. KPI Stats Bar */}
           <div className="card p-4">
