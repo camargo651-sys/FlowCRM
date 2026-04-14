@@ -15,6 +15,9 @@ const IMAGE_REMOTE_PATTERNS = [
 // - Supabase realtime needs ws/wss.
 // - Stripe checkout + js.stripe.com.
 // - Google fonts + gstatic.
+// CSP only applied in production — localhost over HTTP would break with
+// upgrade-insecure-requests and strict connect-src.
+const isProd = process.env.NODE_ENV === 'production'
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://connect.facebook.net",
@@ -40,20 +43,21 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
   async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=()' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'Content-Security-Policy', value: CSP },
-        ],
-      },
+    const baseHeaders = [
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'X-XSS-Protection', value: '1; mode=block' },
+      { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=()' },
     ]
+    // HSTS + CSP only in production to avoid breaking localhost over HTTP
+    if (isProd) {
+      baseHeaders.push(
+        { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+        { key: 'Content-Security-Policy', value: CSP },
+      )
+    }
+    return [{ source: '/(.*)', headers: baseHeaders }]
   },
 }
 
