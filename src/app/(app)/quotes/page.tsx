@@ -654,7 +654,7 @@ export default function QuotesPage() {
     setWorkspaceId(ws.id)
 
     const [quotesRes, contactsRes, dealsRes, productsRes] = await Promise.all([
-      supabase.from('quotes').select('*, contacts(name, email), deals(title)').eq('workspace_id', ws.id).order('created_at', { ascending: false }),
+      supabase.from('quotes').select('*, contacts!quotes_contact_id_fkey(name, email), deals!quotes_deal_id_fkey(title)').eq('workspace_id', ws.id).order('created_at', { ascending: false }),
       supabase.from('contacts').select('id, name, email').eq('workspace_id', ws.id).order('name'),
       supabase.from('deals').select('id, title, contact_id').eq('workspace_id', ws.id).order('title'),
       supabase.from('products').select('id, name, sku, unit_price, stock_quantity').eq('workspace_id', ws.id).eq('status', 'active').order('name'),
