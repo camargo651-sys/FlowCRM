@@ -31,7 +31,7 @@ interface ContactRow {
 interface DealRow {
   id: string
   owner_id: string | null
-  close_date: string | null
+  expected_close_date: string | null
 }
 
 interface InvoiceRow {
@@ -57,7 +57,7 @@ export async function analyzeWorkspace(
     { data: activities },
   ] = await Promise.all([
     supabase.from('contacts').select('id, email, phone, tags').eq('workspace_id', workspaceId),
-    supabase.from('deals').select('id, owner_id, close_date').eq('workspace_id', workspaceId),
+    supabase.from('deals').select('id, owner_id, expected_close_date').eq('workspace_id', workspaceId),
     supabase.from('invoices').select('id, status, due_date').eq('workspace_id', workspaceId),
     supabase
       .from('activities')
@@ -90,7 +90,7 @@ export async function analyzeWorkspace(
   }).length
 
   const dealsNoOwner = dealList.filter(d => !d.owner_id).length
-  const dealsNoCloseDate = dealList.filter(d => !d.close_date).length
+  const dealsNoCloseDate = dealList.filter(d => !d.expected_close_date).length
 
   const overdueNoFollowUp = invoiceList.filter(i => {
     if (!i.due_date) return false

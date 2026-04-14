@@ -45,8 +45,8 @@ export default function QuickWinsCard() {
       safeCount(supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)),
       safeCount(supabase.from('deals').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)),
       safeCount(supabase.from('email_accounts').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)),
-      safeCount(supabase.from('quotas').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)),
-      safeCount(supabase.from('workspace_members').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)),
+      safeCount(supabase.from('sales_quotas').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)),
+      safeCount(supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)),
     ])
 
     // Only show for new workspaces
