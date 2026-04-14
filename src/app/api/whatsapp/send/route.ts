@@ -24,6 +24,9 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // TODO(variables): when a true WhatsApp campaign endpoint exists that loops over
+  // recipients, call interpolateVariables(message, { contact, company, deal, workspace, date })
+  // before sending. This single-send endpoint receives an already-rendered message.
   const { contactId, message } = await request.json()
   if (!contactId || !message) {
     return NextResponse.json({ error: 'Missing contactId or message' }, { status: 400 })

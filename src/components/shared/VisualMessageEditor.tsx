@@ -8,7 +8,9 @@ import { cn } from '@/lib/utils'
 import {
   type Block, type BlockType, makeBlock,
   EMAIL_BLOCK_TYPES, WHATSAPP_BLOCK_TYPES,
+  renderVariables,
 } from '@/lib/campaigns/blocks-to-html'
+import VariableInput from './VariableInput'
 
 interface Props {
   value: Block[]
@@ -114,15 +116,22 @@ export default function VisualMessageEditor({ value, onChange, type }: Props) {
               </div>
 
               {block.type === 'heading' && (
-                <input className="input text-lg font-bold" value={block.content}
-                  onChange={e => update(block.id, { content: e.target.value })}
-                  placeholder="Your headline" />
+                <VariableInput
+                  className="text-lg font-bold"
+                  value={block.content}
+                  onChange={v => update(block.id, { content: v })}
+                  placeholder="Your headline"
+                />
               )}
 
               {block.type === 'text' && (
-                <textarea className="input resize-none" rows={4} value={block.content}
-                  onChange={e => update(block.id, { content: e.target.value })}
-                  placeholder="Write your message here..." />
+                <VariableInput
+                  multiline
+                  rows={4}
+                  value={block.content}
+                  onChange={v => update(block.id, { content: v })}
+                  placeholder="Write your message here..."
+                />
               )}
 
               {block.type === 'image' && (
@@ -147,12 +156,18 @@ export default function VisualMessageEditor({ value, onChange, type }: Props) {
 
               {block.type === 'button' && (
                 <div className="space-y-2">
-                  <input className="input text-xs" placeholder="Button label"
+                  <VariableInput
+                    className="text-xs"
+                    placeholder="Button label"
                     value={block.content}
-                    onChange={e => update(block.id, { content: e.target.value })} />
-                  <input className="input text-xs" placeholder="Link URL (https://...)"
+                    onChange={v => update(block.id, { content: v })}
+                  />
+                  <VariableInput
+                    className="text-xs"
+                    placeholder="Link URL (https://...)"
                     value={String(block.meta?.url || '')}
-                    onChange={e => updateMeta(block.id, { url: e.target.value })} />
+                    onChange={v => updateMeta(block.id, { url: v })}
+                  />
                 </div>
               )}
 
@@ -193,22 +208,25 @@ export default function VisualMessageEditor({ value, onChange, type }: Props) {
 
 /** Lightweight preview renderers, exported so pages can show live previews. */
 export function EmailPreview({ html }: { html: string }) {
+  const rendered = html ? renderVariables(html, 'preview') : ''
   return (
     <div className="rounded-xl border border-surface-100 bg-surface-50 p-4">
       <div className="mx-auto bg-white rounded-lg shadow-sm" style={{ maxWidth: 600 }}>
-        <div className={cn('min-h-[300px]')} dangerouslySetInnerHTML={{ __html: html || '<p style="padding:40px;text-align:center;color:#9ca3af;font-family:sans-serif;">Your email preview will appear here</p>' }} />
+        <div className={cn('min-h-[300px]')} dangerouslySetInnerHTML={{ __html: rendered || '<p style="padding:40px;text-align:center;color:#9ca3af;font-family:sans-serif;">Your email preview will appear here</p>' }} />
       </div>
     </div>
   )
 }
 
 export function WhatsAppPreview({ text }: { text: string }) {
+  const rendered = text ? renderVariables(text, 'preview') : ''
   return (
     <div className="bg-[#e5ddd5] rounded-xl p-4">
       <div className="bg-white rounded-xl rounded-tl-sm p-3 shadow-sm max-w-xs">
-        <p className="text-sm text-surface-800 whitespace-pre-wrap break-words">
-          {text || 'Your message will appear here...'}
-        </p>
+        <p
+          className="text-sm text-surface-800 whitespace-pre-wrap break-words"
+          dangerouslySetInnerHTML={{ __html: rendered || 'Your message will appear here...' }}
+        />
         <p className="text-[10px] text-surface-400 text-right mt-1">
           {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>

@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendTransactionalEmail } from '@/lib/email/transactional'
+import { interpolateVariables } from '@/lib/campaigns/blocks-to-html'
 
 function getSupabase() {
   const cookieStore = cookies()
@@ -55,17 +56,41 @@ export async function POST(request: NextRequest) {
   let sent = 0
   let failed = 0
 
+  const today = new Date()
+  const tomorrow = new Date(today.getTime() + 86_400_000)
   for (const contact of recipients) {
-    // Personalize body
-    const personalizedHtml = html_body
+    const firstName = (contact.name || 'there').split(' ')[0]
+    const varData = {
+      contact: {
+        name: contact.name || 'there',
+        first_name: firstName,
+        email: contact.email,
+        phone: '',
+        tags: '',
+      },
+      company: { name: '', industry: '', website: '' },
+      deal: { title: '', value: '', stage: '', close_date: '' },
+      workspace: { name: ws.name, sender_name: '' },
+      date: {
+        today: today.toLocaleDateString(),
+        tomorrow: tomorrow.toLocaleDateString(),
+      },
+    }
+
+    // New `{{group.field}}` interpolation, then legacy short keys for back-compat.
+    const personalizedHtml = interpolateVariables(html_body, varData)
       .replace(/\{\{name\}\}/g, contact.name || 'there')
-      .replace(/\{\{first_name\}\}/g, (contact.name || 'there').split(' ')[0])
+      .replace(/\{\{first_name\}\}/g, firstName)
       .replace(/\{\{email\}\}/g, contact.email)
       .replace(/\{\{company\}\}/g, ws.name)
 
+    const personalizedSubject = interpolateVariables(subject, varData)
+      .replace(/\{\{name\}\}/g, contact.name || '')
+      .replace(/\{\{first_name\}\}/g, firstName)
+
     const result = await sendTransactionalEmail({
       to: contact.email,
-      subject: subject.replace(/\{\{name\}\}/g, contact.name || '').replace(/\{\{first_name\}\}/g, (contact.name || '').split(' ')[0]),
+      subject: personalizedSubject,
       html: personalizedHtml,
     })
 

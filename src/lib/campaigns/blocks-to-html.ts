@@ -1,6 +1,44 @@
 // Visual message editor block model + serializers.
 // Blocks are the source of truth; HTML (for email) and plain text (for WhatsApp)
 // are generated at send time so the user never touches markup.
+import { findVariable } from './variables'
+
+const VAR_RE = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g
+
+/**
+ * Render `{{group.field}}` tokens in `text`.
+ * - mode='preview': replace each token with a friendly pill span (HTML).
+ * - mode='send':    leave tokens intact so the backend can interpolate them.
+ *
+ * NOTE: in preview mode the surrounding context is HTML. In send mode the
+ * caller must run any required HTML escaping itself.
+ */
+export function renderVariables(text: string, mode: 'preview' | 'send'): string {
+  if (!text) return ''
+  if (mode === 'send') return text
+  return text.replace(VAR_RE, (match, key: string) => {
+    const v = findVariable(key)
+    const label = v?.label ?? key
+    return `<span class="inline-block px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-xs font-semibold">${label}</span>`
+  })
+}
+
+/**
+ * Send-time interpolation: replace `{{group.field}}` with `data[group][field]`.
+ * Missing values resolve to empty string. Supports dot notation only one level
+ * deep (group.field) which matches the variable catalog.
+ */
+export function interpolateVariables(text: string, data: Record<string, unknown>): string {
+  if (!text) return ''
+  return text.replace(VAR_RE, (_match, key: string) => {
+    const [group, field] = key.split('.')
+    if (!group || !field) return ''
+    const g = data[group] as Record<string, unknown> | undefined
+    const value = g?.[field]
+    if (value === null || value === undefined) return ''
+    return String(value)
+  })
+}
 
 export type BlockType =
   | 'heading'
