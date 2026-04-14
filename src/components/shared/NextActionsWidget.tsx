@@ -79,12 +79,12 @@ export default function NextActionsWidget({ workspaceId }: Props) {
       if (dealIds.length > 0) {
         const { data: quotes } = await supabase
           .from('quotes')
-          .select('deal_id, status, viewed_at')
+          .select('deal_id, status, last_viewed_at')
           .in('deal_id', dealIds)
-        for (const q of (quotes || []) as { deal_id: string | null; status: string | null; viewed_at: string | null }[]) {
+        for (const q of (quotes || []) as { deal_id: string | null; status: string | null; last_viewed_at: string | null }[]) {
           if (!q.deal_id) continue
           if (q.status === 'sent' || q.status === 'viewed' || q.status === 'accepted') quoteSent.add(q.deal_id)
-          if (q.viewed_at) quoteViewed.add(q.deal_id)
+          if (q.last_viewed_at) quoteViewed.add(q.deal_id)
         }
       }
 

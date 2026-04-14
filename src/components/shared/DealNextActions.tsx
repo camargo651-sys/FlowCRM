@@ -55,11 +55,11 @@ export default function DealNextActions({ dealId, workspaceId }: Props) {
 
       const { data: quotes } = await supabase
         .from('quotes')
-        .select('status, viewed_at')
+        .select('status, last_viewed_at')
         .eq('deal_id', dealId)
-      const qList = (quotes || []) as { status: string | null; viewed_at: string | null }[]
+      const qList = (quotes || []) as { status: string | null; last_viewed_at: string | null }[]
       const hasQuoteSent = qList.some(q => q.status === 'sent' || q.status === 'viewed' || q.status === 'accepted')
-      const quoteViewed = qList.some(q => !!q.viewed_at)
+      const quoteViewed = qList.some(q => !!q.last_viewed_at)
 
       // Workspace avg deal value for "big deal" rule
       const { data: allDeals } = await supabase

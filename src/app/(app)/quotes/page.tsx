@@ -708,7 +708,7 @@ export default function QuotesPage() {
       status: 'draft',
       quote_number: `Q-${String(num).padStart(4, '0')}`,
       view_token: viewToken,
-    }]).select('*,  contacts(name, email), deals(title)').single()
+    }]).select('*, contacts!quotes_contact_id_fkey(name, email), deals!quotes_deal_id_fkey(title)').single()
 
     if (newQuote && originalItems && originalItems.length > 0) {
       const newItems = originalItems.map((item: QuoteItem & { quote_id?: string }, i: number) => ({
