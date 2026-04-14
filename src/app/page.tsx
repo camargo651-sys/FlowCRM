@@ -143,6 +143,7 @@ export default function Home() {
           <div className="hidden md:flex items-center gap-8">
             <Link href="/features" className="text-sm font-medium text-surface-500 hover:text-surface-900 transition-colors">{t('landing.nav.features')}</Link>
             <Link href="/pricing" className="text-sm font-medium text-surface-500 hover:text-surface-900 transition-colors">{t('landing.nav.pricing')}</Link>
+            <Link href="/why" className="text-sm font-medium text-surface-500 hover:text-surface-900 transition-colors">Why Tracktio</Link>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <LocaleSwitcher variant="light" />
@@ -434,6 +435,11 @@ export default function Home() {
             {['Odoo', 'SAP B1', 'Zoho', 'Monday', 'HubSpot', 'Freshworks'].map(name => (
               <span key={name} className="text-sm font-bold text-surface-900 tracking-tight">{name}</span>
             ))}
+          </div>
+          <div className="text-center mt-6">
+            <a href="/settings/migrate" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors">
+              Migrate from HubSpot in 1 click →
+            </a>
           </div>
         </div>
       </section>

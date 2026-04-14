@@ -5,12 +5,15 @@ import Link from 'next/link'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import AICommandCenter from '@/components/dashboard/AICommandCenter'
 import GettingStarted from '@/components/dashboard/GettingStarted'
+import QuickWinsCard from '@/components/shared/QuickWinsCard'
 import DashboardWidgets from '@/components/dashboard/DashboardWidgets'
 import CallMetricsWidget from '@/components/shared/CallMetricsWidget'
 import LossReasonsWidget from '@/components/shared/LossReasonsWidget'
 import QuotaWidget from '@/components/shared/QuotaWidget'
 import NextActionsWidget from '@/components/shared/NextActionsWidget'
+import CostVisibilityWidget from '@/components/shared/CostVisibilityWidget'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
+import DataHealthWidget from '@/components/dashboard/DataHealthWidget'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
 import { SupabaseClient } from '@supabase/supabase-js'
@@ -224,6 +227,7 @@ export default async function DashboardPage() {
     <div className="animate-fade-in">
       <DashboardClient />
       <GettingStarted />
+      <QuickWinsCard />
 
       {/* Personalized greeting */}
       <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
@@ -244,7 +248,10 @@ export default async function DashboardPage() {
           </div>
         )}
         </div>
-        <QuickTaskButton size="sm" label="Quick task" />
+        <div className="flex items-center gap-2">
+          <DataHealthWidget />
+          <QuickTaskButton size="sm" label="Quick task" />
+        </div>
       </div>
 
       <DashboardWidgets
@@ -266,7 +273,7 @@ export default async function DashboardPage() {
           )}
 
           {/* Conversion & Performance KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-6">
             <div className="card p-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 bg-blue-50 dark:bg-blue-500/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🎯</div>
@@ -303,6 +310,7 @@ export default async function DashboardPage() {
                 </div>
               </div>
             </div>
+            <CostVisibilityWidget variant="compact" />
           </div>
 
           {/* Call metrics + Loss reasons widgets */}

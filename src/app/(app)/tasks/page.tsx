@@ -10,6 +10,7 @@ import type { DbRow } from '@/types'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { useI18n } from '@/lib/i18n/context'
 import EmptyState from '@/components/shared/EmptyState'
+import { pushUndoAction } from '@/lib/undo/stack'
 
 const TYPES = ['call','email','meeting','note','task'] as const
 const TYPE_COLORS: Record<string, string> = {
@@ -169,9 +170,19 @@ export default function TasksPage() {
   }
 
   const toggleDone = async (task: Activity) => {
+    const prevDone = !!task.done
     const updated = { ...task, done: !task.done }
     await supabase.from('activities').update({ done: updated.done }).eq('id', task.id)
     setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
+    if (!prevDone) {
+      pushUndoAction({
+        label: `Completed "${task.title}"`,
+        undo: async () => {
+          await supabase.from('activities').update({ done: false }).eq('id', task.id)
+          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: false } : t))
+        },
+      })
+    }
 
     // If completing a recurring task, create next occurrence
     if (!task.done && task.metadata?.recurring && task.metadata?.recurrence_interval) {
@@ -235,12 +246,19 @@ export default function TasksPage() {
 
   const bulkDelete = async () => {
     if (selected.size === 0) return
-    if (!confirm(`Delete ${selected.size} task(s)?`)) return
     const ids = Array.from(selected)
+    // Snapshot for undo
+    const snapshot = tasks.filter(t => ids.includes(t.id))
     await supabase.from('activities').delete().in('id', ids)
     setTasks(prev => prev.filter(t => !ids.includes(t.id)))
     setSelected(new Set())
-    toast.success(`${ids.length} task(s) deleted`)
+    pushUndoAction({
+      label: `${ids.length} task(s) deleted`,
+      undo: async () => {
+        await supabase.from('activities').insert(snapshot)
+        setTasks(prev => [...prev, ...snapshot])
+      },
+    })
   }
 
   const now = new Date()

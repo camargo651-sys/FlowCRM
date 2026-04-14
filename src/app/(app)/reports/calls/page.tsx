@@ -6,6 +6,7 @@ import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { Download, Phone, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { MobileList, MobileListCard } from '@/components/shared/MobileListCard'
 import Link from 'next/link'
+import AISummaryButton from '@/components/shared/AISummaryButton'
 
 interface CallRow {
   id: string
@@ -223,9 +224,16 @@ export default function CallsReportPage() {
                         : <span className="text-surface-300 text-xs">—</span>}
                     </td>
                     <td className="px-3 py-2 max-w-xs">
-                      {r.transcript
-                        ? <p className="text-xs text-surface-500 line-clamp-2">{r.transcript}</p>
-                        : <span className="text-surface-300 text-xs">—</span>}
+                      {r.transcript ? (
+                        <div className="space-y-1">
+                          <p className="text-xs text-surface-500 line-clamp-2">{r.transcript}</p>
+                          <AISummaryButton
+                            type="call"
+                            label="AI Summary"
+                            getText={() => r.transcript || ''}
+                          />
+                        </div>
+                      ) : <span className="text-surface-300 text-xs">—</span>}
                     </td>
                   </tr>
                 ))}

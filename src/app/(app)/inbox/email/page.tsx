@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Mail, Search, Inbox, Send as SendIcon, Star, Archive, RefreshCw, Paperclip, ArrowLeft, Reply, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import AISummaryButton from '@/components/shared/AISummaryButton'
 
 type Folder = 'inbox' | 'sent' | 'starred' | 'archived'
 
@@ -293,6 +294,11 @@ export default function InboxEmailPage() {
                   <button onClick={() => archiveMsg(selected)} className="btn-ghost btn-sm" title="Archive">
                     <Archive className="w-4 h-4 text-surface-400" />
                   </button>
+                  <AISummaryButton
+                    type="email"
+                    label="Summarize thread"
+                    getText={() => thread.map(m => `${m.from_name || m.from_address}: ${m.body_text || m.snippet || ''}`).join('\n\n')}
+                  />
                   <button onClick={openReply} className="btn-primary btn-sm"><Reply className="w-3.5 h-3.5" /> Reply</button>
                 </div>
               </div>

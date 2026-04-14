@@ -3,7 +3,8 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle, Route, FormInput, FileText, Shield, Lock, Sliders, UserCog, Building2, CreditCard, Plug, Tag } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, Kanban, Palette, Users, Globe, Upload, CheckCircle2, Type, Database, ChevronDown, ChevronRight, MessageCircle, Route, FormInput, FileText, Shield, Lock, Sliders, UserCog, Building2, CreditCard, Plug, Tag, Map } from 'lucide-react'
+import CostVisibilityWidget from '@/components/shared/CostVisibilityWidget'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { LOCALES } from '@/lib/i18n/translations'
@@ -476,6 +477,11 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      {/* Cost visibility */}
+      <div className="mb-6">
+        <CostVisibilityWidget />
+      </div>
+
       {/* Settings hub: links to all sub-module settings, grouped by category */}
       <div className="mb-8 space-y-5">
         {[
@@ -500,12 +506,14 @@ export default function SettingsPage() {
             category: t('settings.cat_account'),
             items: [
               { href: '/billing', icon: CreditCard, label: t('settings.hub.billing_label'), desc: t('settings.hub.billing_desc') },
+              { href: '/roadmap', icon: Map, label: 'Public Roadmap', desc: 'Vote on features and submit ideas' },
             ],
           },
           {
             category: t('settings.cat_integrations'),
             items: [
               { href: '/integrations', icon: Plug, label: t('settings.hub.integrations_label'), desc: t('settings.hub.integrations_desc') },
+              { href: '/settings/migrate', icon: Database, label: 'Import from other CRM', desc: 'Migrate from HubSpot, Pipedrive, Zoho or CSV' },
             ],
           },
         ].map(group => (

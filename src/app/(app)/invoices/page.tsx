@@ -4,7 +4,8 @@ import { toast } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, FileText, Send, DollarSign, CheckCircle2, X, Clock, AlertTriangle, Download, CreditCard, Copy, Repeat, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Search, FileText, Send, DollarSign, CheckCircle2, X, Clock, AlertTriangle, Download, CreditCard, Copy, Repeat, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
+import { pushUndoAction } from '@/lib/undo/stack'
 import { formatCurrency, cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { MobileList, MobileListCard, DesktopOnly } from '@/components/shared/MobileListCard'
@@ -71,7 +72,7 @@ export default function InvoicesPage() {
     setDefaultTaxRate(wsTaxRate)
 
     const [invRes, conRes, prodRes, recRes] = await Promise.all([
-      supabase.from('invoices').select('*, contacts(name, email)').eq('workspace_id', ws.id).order('created_at', { ascending: false }),
+      supabase.from('invoices').select('*, contacts(name, email)').eq('workspace_id', ws.id).is('deleted_at', null).order('created_at', { ascending: false }),
       supabase.from('contacts').select('id, name').eq('workspace_id', ws.id).order('name'),
       supabase.from('products').select('id, name, unit_price').eq('workspace_id', ws.id).eq('status', 'active').order('name'),
       supabase.from('recurring_invoices').select('id').eq('workspace_id', ws.id).eq('active', true),
@@ -480,6 +481,23 @@ export default function InvoicesPage() {
                         </>
                       )}
                       <button onClick={() => duplicateInvoice(inv)} className="btn-ghost btn-sm text-[10px]" title="Duplicate"><Copy className="w-3 h-3" /></button>
+                      <button
+                        onClick={async () => {
+                          await supabase.from('invoices').update({ deleted_at: new Date().toISOString() }).eq('id', inv.id)
+                          setInvoices(prev => prev.filter(i => i.id !== inv.id))
+                          pushUndoAction({
+                            label: `Invoice ${inv.invoice_number} deleted`,
+                            undo: async () => {
+                              await supabase.from('invoices').update({ deleted_at: null }).eq('id', inv.id)
+                              load()
+                            },
+                          })
+                        }}
+                        className="btn-ghost btn-sm text-[10px] text-rose-600"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
                   </td>
                 </tr>

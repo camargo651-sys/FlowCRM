@@ -1,8 +1,8 @@
 'use client'
-import { List, LayoutGrid, Table2 } from 'lucide-react'
+import { List, LayoutGrid, Table2, Sheet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type ViewMode = 'table' | 'grid' | 'kanban'
+type ViewMode = 'table' | 'grid' | 'kanban' | 'spreadsheet'
 
 interface ViewToggleProps {
   view: ViewMode
@@ -11,7 +11,7 @@ interface ViewToggleProps {
 }
 
 export default function ViewToggle({ view, onChange, options = ['table', 'grid'] }: ViewToggleProps) {
-  const ICONS: Record<ViewMode, typeof List> = { table: List, grid: LayoutGrid, kanban: Table2 }
+  const ICONS: Record<ViewMode, typeof List> = { table: List, grid: LayoutGrid, kanban: Table2, spreadsheet: Sheet }
 
   return (
     <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">

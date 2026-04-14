@@ -2,7 +2,8 @@
 import { toast } from 'sonner'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check, Pause, Play, Ban, Trophy } from 'lucide-react'
+import { Plus, Search, Filter, X, DollarSign, Calendar, User, MessageCircle, Send, ArrowLeft, Share2, ChevronDown, ChevronUp, Phone, Mail, FileText, CheckSquare, Clock, Pencil, LayoutGrid, Table2, ArrowUpDown, Check, Pause, Play, Ban, Trophy, Sheet } from 'lucide-react'
+import InlineSpreadsheet, { type SpreadsheetColumn } from '@/components/shared/InlineSpreadsheet'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -18,6 +19,8 @@ import CallButton from '@/components/shared/CallButton'
 import QuickTaskButton from '@/components/shared/QuickTaskButton'
 import RelatedNotes from '@/components/shared/RelatedNotes'
 import DealNextActions from '@/components/shared/DealNextActions'
+import AISummaryButton from '@/components/shared/AISummaryButton'
+import { pushUndoAction } from '@/lib/undo/stack'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -816,7 +819,24 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLos
 
               {/* Notes */}
               <div>
-                <p className="text-[10px] text-surface-400 font-semibold uppercase mb-1">Notes</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-surface-400 font-semibold uppercase">Notes</p>
+                  <AISummaryButton
+                    type="deal"
+                    label="Summarize this deal"
+                    getText={() => {
+                      const parts: string[] = []
+                      parts.push(`Deal: ${deal.title}`)
+                      if (deal.value) parts.push(`Value: ${deal.value}`)
+                      if (deal.status) parts.push(`Status: ${deal.status}`)
+                      if (notes) parts.push(`Notes: ${notes}`)
+                      for (const a of activities) {
+                        parts.push(`${a.type}: ${a.title || ''} ${a.notes || ''}`.trim())
+                      }
+                      return parts.join('\n')
+                    }}
+                  />
+                </div>
                 <textarea
                   className="input text-sm min-h-[60px]"
                   placeholder="Add notes about this deal..."
@@ -1286,7 +1306,7 @@ export default function PipelinePage() {
   const [mobileStage, setMobileStage] = useState<string | null>(null)
 
   // New states for features 6, 7, 8
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban')
+  const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'spreadsheet'>('kanban')
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<FilterState>({ minValue: '', maxValue: '', assignedTo: '', age: 'all' })
   const [celebration, setCelebration] = useState<{ title: string; value: number } | null>(null)
@@ -1332,7 +1352,7 @@ export default function PipelinePage() {
 
     const [stagesRes, dealsRes, contactsRes, wonThisMonthRes, profilesRes] = await Promise.all([
       supabase.from('pipeline_stages').select('*').eq('pipeline_id', activeId).order('order_index'),
-      supabase.from('deals').select('*, contacts!deals_contact_id_fkey(name, email)').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'open').order('order_index'),
+      supabase.from('deals').select('*, contacts!deals_contact_id_fkey(name, email)').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'open').is('deleted_at', null).order('order_index'),
       supabase.from('contacts').select('id, name, email').eq('workspace_id', ws.id).order('name'),
       supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'won').gte('updated_at', firstOfMonth),
       supabase.from('profiles').select('id, full_name').eq('workspace_id', ws.id),
@@ -1539,10 +1559,27 @@ export default function PipelinePage() {
       return
     }
 
+    const prevStageId = deal.stage_id
+    const prevStatus = deal.status
     await supabase.from('deals').update({
       stage_id: newStageId,
       ...(targetStage.is_won ? { status: 'won' } : {}),
     }).eq('id', dealId)
+
+    if (prevStageId !== newStageId) {
+      pushUndoAction({
+        label: `Moved "${deal.title}" to ${targetStage.name}`,
+        undo: async () => {
+          await supabase.from('deals').update({ stage_id: prevStageId, status: prevStatus }).eq('id', dealId)
+          setColumns(prev => prev.map(col => ({
+            ...col,
+            deals: col.id === prevStageId
+              ? [...col.deals.filter(d => d.id !== dealId), { ...deal, stage_id: prevStageId, status: prevStatus }]
+              : col.deals.filter(d => d.id !== dealId),
+          })))
+        },
+      })
+    }
 
     if (deal.owner_id && deal.owner_id !== currentUserId) {
       notifyRecordChange({
@@ -1679,6 +1716,11 @@ export default function PipelinePage() {
               className={cn('px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1',
                 viewMode === 'table' ? 'bg-white dark:bg-surface-700 text-surface-900 shadow-sm' : 'text-surface-400 hover:text-surface-600')}>
               <Table2 className="w-3.5 h-3.5" /> Table
+            </button>
+            <button onClick={() => setViewMode('spreadsheet')}
+              className={cn('px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1',
+                viewMode === 'spreadsheet' ? 'bg-white dark:bg-surface-700 text-surface-900 shadow-sm' : 'text-surface-400 hover:text-surface-600')}>
+              <Sheet className="w-3.5 h-3.5" /> Sheet
             </button>
           </div>
           <div className="relative">
@@ -1908,6 +1950,64 @@ export default function PipelinePage() {
           columns={filteredColumns}
           teamMembers={teamMembers}
           onSelectDeal={setSelectedDeal}
+        />
+      )}
+
+      {/* SPREADSHEET VIEW */}
+      {statusView === 'active' && columns.length > 0 && viewMode === 'spreadsheet' && (
+        <InlineSpreadsheet
+          rows={filteredColumns.flatMap(c => c.deals).map(d => ({
+            id: d.id,
+            title: d.title,
+            value: d.value ?? 0,
+            stage: columns.find(s => s.id === d.stage_id)?.name || '',
+            contact: d.contacts?.name || '',
+            close_date: d.expected_close_date || '',
+            owner: teamMembers.find(m => m.id === d.owner_id)?.full_name || '',
+          }))}
+          columns={[
+            { key: 'title', label: 'Title', type: 'text', width: 220 },
+            { key: 'value', label: 'Value', type: 'number', width: 120 },
+            { key: 'stage', label: 'Stage', type: 'select', options: columns.map(c => c.name), width: 160 },
+            { key: 'contact', label: 'Contact', type: 'text', width: 180 },
+            { key: 'close_date', label: 'Close date', type: 'date', width: 140 },
+            { key: 'owner', label: 'Owner', type: 'text', width: 160 },
+          ] as SpreadsheetColumn[]}
+          onUpdate={async (id, field, value) => {
+            const patch: Record<string, unknown> = {}
+            if (field === 'title') patch.title = value
+            else if (field === 'value') patch.value = value == null ? 0 : Number(value)
+            else if (field === 'close_date') patch.expected_close_date = value || null
+            else if (field === 'stage') {
+              const stage = columns.find(c => c.name === value)
+              if (!stage) return
+              patch.stage_id = stage.id
+            } else {
+              // TODO: contact/owner by name requires lookup — skip for now
+              return
+            }
+            const { error } = await supabase.from('deals').update(patch).eq('id', id)
+            if (error) throw error
+            // Refresh deals in columns optimistically
+            setColumns(prev => prev.map(col => ({
+              ...col,
+              deals: col.deals.map(d => d.id === id ? { ...d, ...patch } as DealWithContact : d),
+            })))
+          }}
+          onDelete={async (id) => {
+            const deal = columns.flatMap(c => c.deals).find(d => d.id === id)
+            await supabase.from('deals').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+            setColumns(prev => prev.map(col => ({ ...col, deals: col.deals.filter(d => d.id !== id) })))
+            pushUndoAction({
+              label: `Deleted "${deal?.title || 'deal'}"`,
+              undo: async () => {
+                await supabase.from('deals').update({ deleted_at: null }).eq('id', id)
+                if (deal) {
+                  setColumns(prev => prev.map(col => col.id === deal.stage_id ? { ...col, deals: [...col.deals, deal] } : col))
+                }
+              },
+            })
+          }}
         />
       )}
 

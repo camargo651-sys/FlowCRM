@@ -6,6 +6,7 @@ import { CreditCard, Check, ExternalLink, Sparkles, Package, Download, X } from 
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
+import CostVisibilityWidget from '@/components/shared/CostVisibilityWidget'
 
 // ─── Module-based pricing ───────────────────────────────────────
 interface ModulePricing {
@@ -154,6 +155,11 @@ export default function BillingPage() {
           <h1 className="page-title">{t('nav.billing')}</h1>
           <p className="page-subtitle">Install modules to expand your workspace</p>
         </div>
+      </div>
+
+      {/* Cost transparency */}
+      <div className="mb-6">
+        <CostVisibilityWidget />
       </div>
 
       {/* Current Plan Summary */}

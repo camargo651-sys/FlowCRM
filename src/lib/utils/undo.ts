@@ -1,9 +1,10 @@
 import { toast } from 'sonner'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { pushUndoAction } from '@/lib/undo/stack'
 
 /**
- * Delete with undo — shows toast with undo button.
- * If user clicks undo within 5 seconds, restores the record.
+ * Soft-delete with undo — marks `deleted_at` and shows undo toast.
+ * Tables must have a `deleted_at timestamptz` column.
  */
 export async function deleteWithUndo(
   supabase: SupabaseClient,
@@ -12,29 +13,42 @@ export async function deleteWithUndo(
   label: string,
   onDone: () => void,
 ) {
-  // Soft delete: get the record first
-  const { data: record } = await supabase.from(table).select('*').eq('id', id).single()
-  if (!record) { toast.error('Record not found'); return }
+  const { error } = await supabase.from(table).update({ deleted_at: new Date().toISOString() }).eq('id', id)
+  if (error) { toast.error('Delete failed'); return }
 
-  // Delete it
-  await supabase.from(table).delete().eq('id', id)
+  onDone()
 
-  let undone = false
-
-  toast(`${label} deleted`, {
-    action: {
-      label: 'Undo',
-      onClick: async () => {
-        undone = true
-        const { id: _, created_at, updated_at, ...rest } = record
-        await supabase.from(table).insert({ id, ...rest })
-        toast.success(`${label} restored`)
-        onDone()
-      },
+  pushUndoAction({
+    label: `${label} deleted`,
+    undo: async () => {
+      await supabase.from(table).update({ deleted_at: null }).eq('id', id)
+      onDone()
     },
-    duration: 5000,
-    onAutoClose: () => { if (!undone) onDone() },
-    onDismiss: () => { if (!undone) onDone() },
+  })
+}
+
+/**
+ * Bulk soft-delete with undo
+ */
+export async function bulkDeleteWithUndo(
+  supabase: SupabaseClient,
+  table: string,
+  ids: string[],
+  label: string,
+  onDone: () => void,
+) {
+  if (ids.length === 0) return
+  const { error } = await supabase.from(table).update({ deleted_at: new Date().toISOString() }).in('id', ids)
+  if (error) { toast.error('Delete failed'); return }
+
+  onDone()
+
+  pushUndoAction({
+    label: `${ids.length} ${label} deleted`,
+    undo: async () => {
+      await supabase.from(table).update({ deleted_at: null }).in('id', ids)
+      onDone()
+    },
   })
 }
 

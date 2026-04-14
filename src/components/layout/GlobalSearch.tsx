@@ -4,11 +4,12 @@ import {
   Search, User, TrendingUp, FileText, CheckSquare, Mail, MessageCircle, X,
   LayoutDashboard, Kanban, Receipt, Package, BookOpen, Settings, Briefcase,
   Plus, ArrowRight, Zap, Clock, ShoppingCart, Factory, CreditCard, Plug,
-  BarChart2, Shield, UserPlus, Ticket
+  BarChart2, Shield, UserPlus, Ticket, Sparkles, HelpCircle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { parseCommand, HELP_EXAMPLES, type ParsedCommand } from '@/lib/command-parser/parse'
 
 interface SearchResult {
   id: string
@@ -49,6 +50,10 @@ export default function GlobalSearch() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [parsed, setParsed] = useState<ParsedCommand | null>(null)
+  const [executing, setExecuting] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -129,8 +134,124 @@ export default function GlobalSearch() {
       setQuery('')
       setResults([])
       setSelected(0)
+      setParsed(null)
+      setShowHelp(false)
     }
   }, [open])
+
+  // Parse command in real time
+  useEffect(() => {
+    const p = parseCommand(query)
+    setParsed(p)
+    if (p?.action === 'help') setShowHelp(true)
+  }, [query])
+
+  const getWorkspaceId = async (): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data } = await supabase.from('workspaces').select('id').eq('owner_id', user.id).limit(1)
+    return data?.[0]?.id || null
+  }
+
+  const findContactByName = async (wsId: string, name: string): Promise<string | null> => {
+    const escaped = name.replace(/[%_\\]/g, '\\$&')
+    const { data } = await supabase
+      .from('contacts')
+      .select('id, name')
+      .eq('workspace_id', wsId)
+      .ilike('name', `%${escaped}%`)
+      .limit(1)
+    return data?.[0]?.id || null
+  }
+
+  const executeCommand = async (cmd: ParsedCommand) => {
+    setExecuting(true)
+    try {
+      const wsId = await getWorkspaceId()
+      if (!wsId) { setToast('No workspace'); return }
+
+      if (cmd.action === 'navigate') {
+        const target = (cmd.query || '').toLowerCase()
+        const map: Record<string, string> = {
+          pipeline: '/pipeline', contacts: '/contacts', deals: '/pipeline',
+          dashboard: '/dashboard', invoices: '/invoices', quotes: '/quotes',
+          tasks: '/tasks', inbox: '/inbox/email', tickets: '/tickets',
+          settings: '/settings', analytics: '/analytics',
+        }
+        const url = map[target] || `/${target}`
+        navigate(url)
+        return
+      }
+
+      if (cmd.action === 'create' && cmd.entity === 'deal') {
+        const f = cmd.fields || {}
+        const { error } = await supabase.from('deals').insert({
+          workspace_id: wsId,
+          title: f.title || 'Untitled',
+          value: f.value || null,
+          expected_close_date: f.expected_close_date || null,
+          status: 'open',
+        })
+        if (error) throw error
+        setToast(`Deal "${f.title}" created`)
+        setTimeout(() => { setOpen(false); router.refresh() }, 600)
+        return
+      }
+
+      if (cmd.action === 'create' && cmd.entity === 'contact') {
+        const f = cmd.fields || {}
+        const { error } = await supabase.from('contacts').insert({
+          workspace_id: wsId,
+          name: f.name || 'New contact',
+          email: f.email || null,
+        })
+        if (error) throw error
+        setToast(`Contact "${f.name}" created`)
+        setTimeout(() => { setOpen(false); router.refresh() }, 600)
+        return
+      }
+
+      if (cmd.action === 'create' && (cmd.entity === 'task' || cmd.entity === 'meeting')) {
+        const f = cmd.fields || {}
+        let contactId: string | null = null
+        if (f.contact_name) {
+          contactId = await findContactByName(wsId, f.contact_name as string)
+        }
+        const { error } = await supabase.from('activities').insert({
+          workspace_id: wsId,
+          title: f.title || 'Task',
+          type: cmd.entity === 'meeting' ? 'meeting' : 'task',
+          due_date: f.due_date || null,
+          contact_id: contactId,
+          done: false,
+        })
+        if (error) throw error
+        setToast(`${cmd.entity === 'meeting' ? 'Meeting' : 'Task'} created`)
+        setTimeout(() => { setOpen(false); router.refresh() }, 600)
+        return
+      }
+
+      if (cmd.action === 'update' && cmd.entity === 'deal') {
+        const f = cmd.fields || {}
+        if (!f.title || !f.status) { setToast('Need deal name and status'); return }
+        const escaped = (f.title as string).replace(/[%_\\]/g, '\\$&')
+        const { data: deals } = await supabase
+          .from('deals').select('id, title')
+          .eq('workspace_id', wsId).ilike('title', `%${escaped}%`).limit(1)
+        if (!deals?.[0]) { setToast('Deal not found'); return }
+        const { error } = await supabase.from('deals')
+          .update({ status: f.status }).eq('id', deals[0].id)
+        if (error) throw error
+        setToast(`Deal "${deals[0].title}" → ${f.status}`)
+        setTimeout(() => { setOpen(false); router.refresh() }, 600)
+        return
+      }
+    } catch (e: unknown) {
+      setToast(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setExecuting(false)
+    }
+  }
 
   const search = useCallback(async (q: string) => {
     if (!q.trim() || q.length < 2) { setResults([]); return }
@@ -230,6 +351,11 @@ export default function GlobalSearch() {
     if (e.key === 'ArrowUp') { e.preventDefault(); setSelected(s => Math.max(s - 1, 0)) }
     if (e.key === 'Enter') {
       e.preventDefault()
+      // If we have a parsed actionable command, execute it
+      if (parsed && parsed.action !== 'search' && parsed.action !== 'help' && parsed.confidence >= 0.6) {
+        executeCommand(parsed)
+        return
+      }
       if (query.trim()) {
         allItems[selected]?.action()
       } else {
@@ -265,10 +391,57 @@ export default function GlobalSearch() {
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-surface-100">
           <Search className="w-5 h-5 text-surface-400 flex-shrink-0" />
           <input ref={inputRef} type="text" className="flex-1 text-sm outline-none placeholder:text-surface-400 bg-transparent"
-            placeholder="Search or type a command..."
+            placeholder="Search or type a command... (type 'help')"
             value={query} onChange={e => setQuery(e.target.value)} onKeyDown={handleKeyDown} />
+          <button onClick={() => setShowHelp(h => !h)} className="p-1 text-surface-400 hover:text-brand-600" title="Help">
+            <HelpCircle className="w-4 h-4" />
+          </button>
           <kbd className="kbd hidden sm:flex">ESC</kbd>
         </div>
+
+        {/* Parsed command preview */}
+        {parsed && parsed.action !== 'search' && parsed.action !== 'help' && parsed.confidence >= 0.6 && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-brand-50 to-violet-50 border-b border-brand-100">
+            <Sparkles className="w-4 h-4 text-brand-600 flex-shrink-0" />
+            <div className="flex-1 text-xs text-surface-800">
+              <span className="text-surface-500">Understood:</span>{' '}
+              <span className="font-medium">{parsed.preview}</span>
+            </div>
+            <button
+              disabled={executing}
+              onClick={() => executeCommand(parsed)}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
+            >
+              {executing ? '...' : 'Confirm ↵'}
+            </button>
+          </div>
+        )}
+
+        {/* Toast */}
+        {toast && (
+          <div className="px-4 py-2 bg-emerald-50 border-b border-emerald-100 text-xs text-emerald-800">
+            {toast}
+          </div>
+        )}
+
+        {/* Help panel */}
+        {showHelp && (
+          <div className="px-4 py-3 border-b border-surface-100 bg-surface-50">
+            <p className="text-[10px] font-bold text-surface-500 uppercase tracking-widest mb-2">Command Examples</p>
+            <ul className="space-y-1">
+              {HELP_EXAMPLES.map((ex, i) => (
+                <li key={i}>
+                  <button
+                    onClick={() => { setQuery(ex); setShowHelp(false) }}
+                    className="text-[11px] text-surface-700 hover:text-brand-700 font-mono"
+                  >
+                    {ex}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Content */}
         <div className="max-h-[50vh] overflow-y-auto">

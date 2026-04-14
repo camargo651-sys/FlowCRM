@@ -167,6 +167,7 @@ export const MODULES: ModuleDef[] = [
       { href: '/settings/widget', label: 'nav.widget' },
       { href: '/settings/loss-reasons', label: 'nav.loss_reasons' },
       { href: '/settings/quotas', label: 'nav.quotas_settings' },
+      { href: '/settings/data-quality', label: 'Data Quality' },
       { href: '/settings/stage-conditions', label: 'nav.stage_conditions' },
       { href: '/settings/approvals', label: 'nav.approvals' },
       // Permissions

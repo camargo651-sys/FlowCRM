@@ -3,7 +3,8 @@ import { toast } from 'sonner'
 import { DbRow } from '@/types'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Building2, Save, CheckCircle2, Globe, DollarSign, FileText, Key, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
+import { Building2, Save, CheckCircle2, Globe, DollarSign, FileText, Key, Plus, Trash2, Eye, EyeOff, Copy, Mail, Download, ShieldCheck } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { getActiveWorkspace } from '@/lib/get-active-workspace'
 import { useI18n } from '@/lib/i18n/context'
@@ -183,6 +184,26 @@ export default function CompanySettingsPage() {
             </div>
           </div>
 
+          <div className="card p-6 border-emerald-200 bg-emerald-50/30 dark:bg-emerald-500/5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-surface-900 dark:text-surface-50">Your data is 100% yours</h3>
+                <p className="text-xs text-surface-500 mt-1 mb-3">Export everything in your workspace as a portable JSON file. No lock-in, ever.</p>
+                <div className="flex gap-2 flex-wrap">
+                  <a href="/api/gdpr/export-workspace" className="btn-primary btn-sm">
+                    <Download className="w-3.5 h-3.5" /> Export all workspace data (JSON)
+                  </a>
+                  <a href="/api/gdpr/export-workspace?format=csv" className="btn-secondary btn-sm">
+                    <Download className="w-3.5 h-3.5" /> Export as CSVs
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button onClick={saveSettings} disabled={saving} className="btn-primary">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saved ? t('settings.co.saved_excl') : t('settings.co.save_settings')}
@@ -296,6 +317,19 @@ export default function CompanySettingsPage() {
             </div>
             <p className="text-[10px] text-surface-400 mt-3">All endpoints also support POST, PUT, DELETE. Use <code className="bg-surface-100 px-1 rounded">Authorization: Bearer flw_...</code> header.</p>
           </div>
+
+          <Link href="/settings/email-health" className="card-interactive p-6 block group">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center flex-shrink-0">
+                <Mail className="w-5 h-5 text-brand-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-surface-900 dark:text-surface-50 group-hover:text-brand-600 transition-colors">Email Deliverability</h3>
+                <p className="text-xs text-surface-500 mt-0.5">Verify SPF, DKIM, DMARC records and monitor bounce &amp; complaint rates.</p>
+              </div>
+              <span className="text-brand-600 text-lg group-hover:translate-x-0.5 transition-transform">→</span>
+            </div>
+          </Link>
         </div>
       )}
 

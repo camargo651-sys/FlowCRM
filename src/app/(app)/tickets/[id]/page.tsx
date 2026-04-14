@@ -18,6 +18,7 @@ import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-c
 import { extractMentionIds } from '@/lib/mentions/parse'
 import MentionTextarea from '@/components/shared/MentionTextarea'
 import MentionText from '@/components/shared/MentionText'
+import AISummaryButton from '@/components/shared/AISummaryButton'
 
 // --- Types ---
 
@@ -401,7 +402,20 @@ export default function TicketDetailPage() {
                   </span>
                 </div>
               </div>
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 flex items-center gap-2">
+                <AISummaryButton
+                  type="ticket"
+                  label="Summarize conversation"
+                  getText={() => {
+                    const parts: string[] = []
+                    parts.push(`Ticket: ${ticket.subject}`)
+                    if (ticket.description) parts.push(ticket.description)
+                    for (const m of waMessages) {
+                      parts.push(`${m.direction === 'inbound' ? 'Contact' : 'Agent'}: ${m.body || ''}`)
+                    }
+                    return parts.join('\n')
+                  }}
+                />
                 <QuickTaskButton ticketId={ticket.id} contactId={ticket.contact_id || undefined} size="sm" />
               </div>
             </div>

@@ -9,7 +9,8 @@ import BulkActions from '@/components/shared/BulkActions'
 import HealthScoreBadge from '@/components/shared/HealthScoreBadge'
 import ViewToggle from '@/components/shared/ViewToggle'
 import InlineEdit from '@/components/shared/InlineEdit'
-import { deleteWithUndo } from '@/lib/utils/undo'
+import InlineSpreadsheet, { type SpreadsheetColumn } from '@/components/shared/InlineSpreadsheet'
+import { deleteWithUndo, bulkDeleteWithUndo } from '@/lib/utils/undo'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useI18n } from '@/lib/i18n/context'
 import type { Contact, DbRow } from '@/types'
@@ -211,7 +212,7 @@ export default function ContactsPage() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [view, setView] = useState<'table' | 'grid' | 'kanban'>('table')
+  const [view, setView] = useState<'table' | 'grid' | 'kanban' | 'spreadsheet'>('table')
   const [showDuplicates, setShowDuplicates] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<Contact[][]>([])
   const [selectedPrimary, setSelectedPrimary] = useState<Record<number, string>>({})
@@ -231,7 +232,7 @@ export default function ContactsPage() {
     const ws = await getActiveWorkspace(supabase, user.id, 'id')
     if (!ws) { setLoading(false); return }
     setWorkspaceId(ws.id)
-    const { data } = await supabase.from('contacts').select('*').eq('workspace_id', ws.id).order('name')
+    const { data } = await supabase.from('contacts').select('*').eq('workspace_id', ws.id).is('deleted_at', null).order('name')
     setContacts(data || [])
 
     // Load last interaction per contact
@@ -393,7 +394,7 @@ export default function ContactsPage() {
               e.target.value = ''
             }} />
           </label>
-          <ViewToggle view={view} onChange={setView} />
+          <ViewToggle view={view} onChange={setView} options={['table', 'grid', 'spreadsheet']} />
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm">
             <Plus className="w-3.5 h-3.5" /> Add {template.contactLabel.singular}
           </button>
@@ -554,6 +555,44 @@ export default function ContactsPage() {
             </div>
           ))}
         </div>
+        ) : view === 'spreadsheet' ? (
+          <InlineSpreadsheet
+            rows={filtered.map(c => ({
+              id: c.id,
+              name: c.name,
+              email: c.email || '',
+              phone: c.phone || '',
+              company: c.company_name || '',
+              tags: (c.tags || []).join(', '),
+              owner: c.owner_id || '',
+            }))}
+            columns={[
+              { key: 'name', label: 'Name', type: 'text', width: 200 },
+              { key: 'email', label: 'Email', type: 'text', width: 220 },
+              { key: 'phone', label: 'Phone', type: 'text', width: 140 },
+              { key: 'company', label: 'Company', type: 'text', width: 180 },
+              { key: 'tags', label: 'Tags', type: 'text', width: 160 },
+              { key: 'owner', label: 'Owner', type: 'text', width: 160 },
+            ] as SpreadsheetColumn[]}
+            onUpdate={async (id, field, value) => {
+              const map: Record<string, string> = { company: 'company_name', owner: 'owner_id' }
+              const dbField = map[field] || field
+              if (field === 'tags') {
+                const tags = String(value || '').split(',').map(s => s.trim()).filter(Boolean)
+                const { error } = await supabase.from('contacts').update({ tags }).eq('id', id)
+                if (error) throw error
+                setContacts(prev => prev.map(c => c.id === id ? { ...c, tags } : c))
+                return
+              }
+              const { error } = await supabase.from('contacts').update({ [dbField]: value || null }).eq('id', id)
+              if (error) throw error
+              setContacts(prev => prev.map(c => c.id === id ? { ...c, [dbField]: value as string } : c))
+            }}
+            onDelete={async (id) => {
+              await supabase.from('contacts').delete().eq('id', id)
+              setContacts(prev => prev.filter(c => c.id !== id))
+            }}
+          />
         ) : (
         <div className="card overflow-hidden">
           <table className="w-full">
@@ -645,11 +684,11 @@ export default function ContactsPage() {
         onClear={() => setSelected(new Set())}
         onExport={() => window.open('/api/export?type=contacts')}
         onDelete={async () => {
-          if (!confirm(`Delete ${selected.size} contacts?`)) return
-          for (const id of Array.from(selected)) { await supabase.from('contacts').delete().eq('id', id) }
-          toast.success(`${selected.size} contacts deleted`)
-          setSelected(new Set())
-          loadContacts()
+          const ids = Array.from(selected)
+          await bulkDeleteWithUndo(supabase, 'contacts', ids, 'contacts', () => {
+            setSelected(new Set())
+            loadContacts()
+          })
         }}
         onTag={async (tag) => {
           for (const id of Array.from(selected)) {
