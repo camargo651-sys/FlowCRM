@@ -18,6 +18,7 @@ import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-c
 import { extractMentionIds } from '@/lib/mentions/parse'
 import MentionTextarea from '@/components/shared/MentionTextarea'
 import MentionText from '@/components/shared/MentionText'
+import CallButton from '@/components/shared/CallButton'
 
 interface ContactDetail {
   id: string; workspace_id: string; type: string; name: string;
@@ -112,6 +113,8 @@ export default function ContactDetailPage() {
   const [emails, setEmails] = useState<EmailMessage[]>([])
   const [waMessages, setWaMessages] = useState<WhatsAppMessage[]>([])
   const [callLogs, setCallLogs] = useState<CallLog[]>([])
+  const [callsExpanded, setCallsExpanded] = useState(true)
+  const [openTranscriptId, setOpenTranscriptId] = useState<string | null>(null)
   const [socialLeads, setSocialLeads] = useState<SocialLead[]>([])
   const [waSendText, setWaSendText] = useState('')
   const [waSending, setWaSending] = useState(false)
@@ -478,9 +481,10 @@ export default function ContactDetailPage() {
                     </a>
                   )}
                   {contact.phone && (
-                    <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 text-xs text-surface-600">
+                    <span className="flex items-center gap-1.5 text-xs text-surface-600">
                       <Phone className="w-3.5 h-3.5" /> {contact.phone}
-                    </a>
+                      <CallButton contactId={contact.id} phone={contact.phone} contactName={contact.name} />
+                    </span>
                   )}
                   {contact.website && (
                     <a href={contact.website} target="_blank" className="flex items-center gap-1.5 text-xs text-surface-600 hover:text-brand-600">
@@ -873,6 +877,83 @@ export default function ContactDetailPage() {
                     </>
                   )}
                 </>
+              )}
+            </div>
+
+            {/* Calls History (collapsible) */}
+            <div className="card overflow-hidden">
+              <button
+                onClick={() => setCallsExpanded(!callsExpanded)}
+                className="w-full px-4 py-3 border-b border-surface-100 bg-surface-50 flex items-center justify-between hover:bg-surface-100 transition-colors">
+                <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wide flex items-center gap-1">
+                  <PhoneCall className="w-3.5 h-3.5 inline text-emerald-600" /> Calls ({callLogs.length})
+                </h3>
+                <div className="flex items-center gap-2">
+                  {contact.phone && (
+                    <CallButton contactId={contact.id} phone={contact.phone} contactName={contact.name} />
+                  )}
+                  {callsExpanded ? <ChevronUp className="w-4 h-4 text-surface-400" /> : <ChevronDown className="w-4 h-4 text-surface-400" />}
+                </div>
+              </button>
+              {callsExpanded && (
+                <div className="max-h-[40vh] overflow-y-auto">
+                  {callLogs.length === 0 ? (
+                    <div className="text-center py-6 px-4">
+                      <PhoneCall className="w-8 h-8 text-surface-300 mx-auto mb-2" />
+                      <p className="text-sm text-surface-500">No calls yet</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-surface-100">
+                      {callLogs.map(c => {
+                        const mm = Math.floor((c.duration_seconds || 0) / 60)
+                        const ss = (c.duration_seconds || 0) % 60
+                        const dur = `${mm}:${ss.toString().padStart(2, '0')}`
+                        const sentimentEmoji = c.sentiment === 'positive' ? '🙂' : c.sentiment === 'negative' ? '😟' : c.sentiment ? '😐' : ''
+                        const isOpen = openTranscriptId === c.id
+                        return (
+                          <div key={c.id} className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className={cn('w-5 h-5 rounded flex items-center justify-center flex-shrink-0',
+                                c.direction === 'inbound' ? 'bg-blue-50' : 'bg-emerald-50')}>
+                                {c.direction === 'inbound'
+                                  ? <ArrowDownLeft className="w-3 h-3 text-blue-600" />
+                                  : <ArrowUpRight className="w-3 h-3 text-emerald-600" />}
+                              </div>
+                              <span className={cn('text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded',
+                                c.direction === 'inbound' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700')}>
+                                {c.direction}
+                              </span>
+                              <span className="text-xs text-surface-700 font-mono">{dur}</span>
+                              {sentimentEmoji && <span className="text-sm" title={c.sentiment || ''}>{sentimentEmoji}</span>}
+                              <span className="text-[10px] text-surface-400 ml-auto">{timeAgo(c.started_at)}</span>
+                            </div>
+                            {c.summary && <p className="text-[11px] text-surface-500 mt-1 pl-7 line-clamp-2">{c.summary}</p>}
+                            <div className="flex items-center gap-3 mt-1 pl-7">
+                              {c.recording_url && (
+                                <a href={c.recording_url} target="_blank" rel="noreferrer" className="text-[10px] text-brand-600 hover:underline">
+                                  Recording
+                                </a>
+                              )}
+                              {c.transcript && (
+                                <button
+                                  onClick={() => setOpenTranscriptId(isOpen ? null : c.id)}
+                                  className="text-[10px] text-brand-600 hover:underline"
+                                >
+                                  {isOpen ? 'Hide transcript' : 'View transcript'}
+                                </button>
+                              )}
+                            </div>
+                            {isOpen && c.transcript && (
+                              <div className="mt-2 ml-7 p-2 bg-surface-50 rounded text-[11px] text-surface-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                                {c.transcript}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

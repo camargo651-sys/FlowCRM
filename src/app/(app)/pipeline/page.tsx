@@ -14,6 +14,7 @@ import { notifyRecordChange, notifyMentions } from '@/lib/notifications/notify-c
 import { extractMentionIds } from '@/lib/mentions/parse'
 import MentionText from '@/components/shared/MentionText'
 import MentionTextarea from '@/components/shared/MentionTextarea'
+import CallButton from '@/components/shared/CallButton'
 
 interface DealWithContact extends Deal {
   contacts?: { name: string; email?: string } | null
@@ -344,6 +345,14 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
   const [noteDraft, setNoteDraft] = useState('')
   const [postingNote, setPostingNote] = useState(false)
 
+  // Contact phone for call button
+  const [contactPhone, setContactPhone] = useState<string | null>(null)
+  useEffect(() => {
+    if (!deal.contact_id) return
+    supabase.from('contacts').select('phone').eq('id', deal.contact_id).limit(1).maybeSingle()
+      .then(({ data }) => setContactPhone((data?.phone as string) || null))
+  }, [deal.contact_id])
+
   // Next action state
   const [nextActionText, setNextActionText] = useState('')
   const [nextActionDate, setNextActionDate] = useState('')
@@ -614,6 +623,11 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, teamMembers, workspaceId, c
               <MessageCircle className="w-3 h-3" /> WhatsApp
               {messages.length > 0 && <span className="text-[9px] bg-green-100 text-green-700 px-1 rounded-full">{messages.length}</span>}
             </button>
+          )}
+          {deal.contact_id && contactPhone && (
+            <div className="ml-auto pr-2 flex items-center">
+              <CallButton contactId={deal.contact_id} dealId={deal.id} phone={contactPhone} contactName={deal.contacts?.name} />
+            </div>
           )}
         </div>
 

@@ -5,7 +5,8 @@ export interface IntegrationDef {
   category: string
   color: string
   icon: string // emoji for simplicity across the catalog
-  status: 'active' | 'coming_soon'
+  status: 'active' | 'coming_soon' | 'beta'
+  capabilities?: string[]
   popular?: boolean
   oauthFlow?: boolean // true = uses OAuth connect button instead of manual fields
   oauthUrl?: string   // API route to initiate OAuth
@@ -88,8 +89,9 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
     ],
   },
   {
-    key: 'twilio', name: 'Twilio (SMS)', category: 'communication', color: '#F22F46', icon: '📱', status: 'active',
-    description: 'Send SMS messages to leads and clients. Automate reminders and follow-ups.',
+    key: 'twilio', name: 'Twilio (SMS + Voice)', category: 'communication', color: '#F22F46', icon: '📱', status: 'active',
+    capabilities: ['sms', 'voice'],
+    description: 'Send SMS messages and make outbound voice calls to leads and clients. Automate reminders and follow-ups.',
     fields: [
       { key: 'account_sid', label: 'Account SID', placeholder: 'ACxxxxxxxxxxxxxxx', help: 'Twilio Console dashboard' },
       { key: 'auth_token', label: 'Auth Token', placeholder: 'xxxxxxxxxxxxxxx', type: 'password', help: 'Twilio Console dashboard' },
@@ -99,6 +101,33 @@ export const INTEGRATIONS_CATALOG: IntegrationDef[] = [
       { step: 1, title: 'Create Twilio account', description: 'Sign up at twilio.com and verify your phone number.' },
       { step: 2, title: 'Get a phone number', description: 'Buy a phone number from the Twilio Console.' },
       { step: 3, title: 'Copy credentials', description: 'Find Account SID and Auth Token on the Twilio Console dashboard.' },
+      { step: 4, title: 'Buy a phone number for voice', description: 'Buy a Twilio phone number for outbound voice calls (Console > Phone Numbers).' },
+    ],
+  },
+  {
+    key: 'aircall', name: 'Aircall', category: 'communication', color: '#00B388', icon: '☎️', status: 'beta',
+    capabilities: ['voice', 'recordings', 'click_to_call'],
+    description: 'Cloud phone system with click-to-call, recordings, and team analytics.',
+    fields: [
+      { key: 'api_token', label: 'API Token', placeholder: 'xxxxxxxx', type: 'password', help: 'Aircall Settings > API > Generate token' },
+    ],
+    setupSteps: [
+      { step: 1, title: 'Sign up', description: 'Create an Aircall account' },
+      { step: 2, title: 'Get API token', description: 'Settings → API → Generate token' },
+      { step: 3, title: 'Connect', description: 'Paste API token here' },
+    ],
+  },
+  {
+    key: 'ringcentral', name: 'RingCentral', category: 'communication', color: '#FF7A00', icon: '📞', status: 'beta',
+    capabilities: ['voice', 'sms', 'video'],
+    description: 'Enterprise voice + SMS + video on a single API.',
+    fields: [
+      { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxxxx' },
+      { key: 'client_secret', label: 'Client Secret', placeholder: 'xxxxxxxx', type: 'password' },
+    ],
+    setupSteps: [
+      { step: 1, title: 'Create RingCentral app', description: 'Go to developers.ringcentral.com and create an app.' },
+      { step: 2, title: 'Copy credentials', description: 'Paste Client ID and Secret here.' },
     ],
   },
 

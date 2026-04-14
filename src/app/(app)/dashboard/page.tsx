@@ -6,6 +6,7 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import AICommandCenter from '@/components/dashboard/AICommandCenter'
 import GettingStarted from '@/components/dashboard/GettingStarted'
 import DashboardWidgets from '@/components/dashboard/DashboardWidgets'
+import CallMetricsWidget from '@/components/shared/CallMetricsWidget'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import { getIndustryKPIs } from '@/lib/ai/industry-kpis'
 import { SupabaseClient } from '@supabase/supabase-js'
@@ -154,6 +155,7 @@ async function getData(userId: string, supabase: SupabaseClient) {
   try { industryKPIs = await getIndustryKPIs(supabase, ws.id as string, (ws.industry as string) || 'generic') } catch {}
 
   return {
+    workspaceId: ws.id as string,
     workspaceName: ws.name as string,
     industry: ws.industry as string,
     enabledModules: enabledMods,
@@ -295,6 +297,9 @@ export default async function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Call metrics widget */}
+          {data.workspaceId && <CallMetricsWidget workspaceId={data.workspaceId} />}
 
           {/* Trend chart + Leads by source side by side */}
           <DashboardCharts
