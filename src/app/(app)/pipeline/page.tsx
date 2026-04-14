@@ -936,7 +936,7 @@ export default function PipelinePage() {
 
     const [stagesRes, dealsRes, contactsRes, wonThisMonthRes, profilesRes] = await Promise.all([
       supabase.from('pipeline_stages').select('*').eq('pipeline_id', activeId).order('order_index'),
-      supabase.from('deals').select('*, contacts(name, email)').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'open').order('order_index'),
+      supabase.from('deals').select('*, contacts!deals_contact_id_fkey(name, email)').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'open').order('order_index'),
       supabase.from('contacts').select('id, name, email').eq('workspace_id', ws.id).order('name'),
       supabase.from('deals').select('id, value').eq('workspace_id', ws.id).eq('pipeline_id', activeId).eq('status', 'won').gte('updated_at', firstOfMonth),
       supabase.from('profiles').select('id, full_name').eq('workspace_id', ws.id),
@@ -1000,7 +1000,7 @@ export default function PipelinePage() {
     }
     const dataWithPipeline = { ...dealData, pipeline_id: activePipelineId, owner_id: currentUserId || undefined }
     console.log('[pipeline] handleCreateDeal', dataWithPipeline)
-    const { data, error } = await supabase.from('deals').insert([dataWithPipeline]).select('*, contacts(name, email)').single()
+    const { data, error } = await supabase.from('deals').insert([dataWithPipeline]).select('*, contacts!deals_contact_id_fkey(name, email)').single()
     if (error || !data) {
       console.error('[pipeline] create failed:', error)
       toast.error(`Could not create: ${error?.message || 'unknown error'}`)
