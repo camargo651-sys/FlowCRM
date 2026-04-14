@@ -310,12 +310,13 @@ interface ActivityItem {
   author?: { full_name: string | null; email: string | null } | null
 }
 
-function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLost, onMarkWon, teamMembers, workspaceId, currentUserId, currentUserName }: {
+function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLost, onMarkWon, onReopen, teamMembers, workspaceId, currentUserId, currentUserName }: {
   deal: DealWithContact; onClose: () => void;
   onUpdateDeal: (dealId: string, updates: Partial<Deal>) => void;
   onDealHoldChange?: (dealId: string, onHold: boolean) => void;
   onMarkLost?: (dealId: string, dealTitle: string, stageId: string) => void;
   onMarkWon?: (dealId: string) => void;
+  onReopen?: (dealId: string) => void;
   teamMembers: Pick<Profile, 'id' | 'full_name'>[];
   workspaceId: string;
   currentUserId: string | null;
@@ -682,6 +683,15 @@ function DealWhatsApp({ deal, onClose, onUpdateDeal, onDealHoldChange, onMarkLos
                 className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-600 transition-colors"
               >
                 <Ban className="w-4 h-4" />
+              </button>
+            )}
+            {(deal.status === 'won' || deal.status === 'lost') && onReopen && (
+              <button
+                onClick={() => onReopen(deal.id)}
+                title="Reopen — move back to active pipeline"
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
+              >
+                <Play className="w-4 h-4" />
               </button>
             )}
             <QuickTaskButton dealId={deal.id} contactId={deal.contact_id || undefined} variant="icon" size="sm" />
@@ -1425,6 +1435,29 @@ export default function PipelinePage() {
     }
   }
 
+  const handleReopenDeal = async (dealId: string) => {
+    if (!confirm('Reopen this deal? It will return to the active pipeline and clear won/lost status.')) return
+    // Find a non-terminal stage to land on (first stage that is not won/lost)
+    const fallbackStage = columns.find(c => !c.is_won && !c.is_lost)?.id || columns[0]?.id
+    const { error } = await supabase.from('deals').update({
+      status: 'open',
+      lost_reason: null,
+      lost_reason_id: null,
+      hold_reason: null,
+      hold_until: null,
+      hold_at: null,
+      stage_id: fallbackStage,
+    }).eq('id', dealId)
+    if (error) {
+      toast.error(`Could not reopen: ${error.message}`)
+      return
+    }
+    setAltDeals(prev => prev.filter(d => d.id !== dealId))
+    setSelectedDeal(prev => prev?.id === dealId ? null : prev)
+    toast.success('Deal reopened')
+    loadData(activePipelineId)
+  }
+
 
   const switchPipeline = (pipelineId: string) => {
     setLoading(true)
@@ -1807,7 +1840,7 @@ export default function PipelinePage() {
                     {statusView === 'lost' && <th className="px-3 py-2 text-left">Date</th>}
                     {statusView === 'won' && <th className="px-3 py-2 text-left">Closed</th>}
                     <th className="px-3 py-2 text-left">Owner</th>
-                    {statusView === 'on_hold' && <th className="px-3 py-2"></th>}
+                    <th className="px-3 py-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-100">
@@ -1837,16 +1870,24 @@ export default function PipelinePage() {
                         {statusView === 'lost' && <td className="px-3 py-2 text-surface-500">{dRaw.updated_at ? new Date(dRaw.updated_at).toLocaleDateString() : '—'}</td>}
                         {statusView === 'won' && <td className="px-3 py-2 text-surface-500">{dRaw.updated_at ? new Date(dRaw.updated_at).toLocaleDateString() : '—'}</td>}
                         <td className="px-3 py-2 text-surface-600">{owner}</td>
-                        {statusView === 'on_hold' && (
-                          <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right">
+                          {statusView === 'on_hold' ? (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleResumeFromList(d.id) }}
                               className="btn-primary btn-sm inline-flex items-center gap-1"
                             >
                               <Play className="w-3 h-3" /> Resume
                             </button>
-                          </td>
-                        )}
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleReopenDeal(d.id) }}
+                              className="btn-secondary btn-sm inline-flex items-center gap-1"
+                              title="Move back to active pipeline"
+                            >
+                              <Play className="w-3 h-3" /> Reopen
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -1997,6 +2038,7 @@ export default function PipelinePage() {
           }}
           onMarkLost={(dealId, dealTitle, stageId) => setLossReasonPrompt({ dealId, dealTitle, stageId })}
           onMarkWon={handleMarkWonFromPanel}
+          onReopen={handleReopenDeal}
           teamMembers={teamMembers}
           workspaceId={workspaceId}
           currentUserId={currentUserId}
