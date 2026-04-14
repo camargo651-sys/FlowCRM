@@ -16,6 +16,7 @@ import FacebookPixel from '@/components/shared/FacebookPixel'
 import NotificationSetup from '@/components/shared/NotificationSetup'
 import OfflineBanner from '@/components/shared/OfflineBanner'
 import QuickCapture from '@/components/shared/QuickCapture'
+import FetchDebugLogger from '@/components/shared/FetchDebugLogger'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -51,6 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <OnboardingTour />
       <InactivityLock />
       <InstallPrompt />
+      <FetchDebugLogger />
       <QuickCapture />
       <GoogleAnalytics />
       <FacebookPixel />
